@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import connectDB from "@/lib/mongodb"
-import { AttemptService } from "@/lib/services/AttemptService"
+import { AttemptController } from "@/lib/controllers/AttemptController"
 
 /**
  * GET /api/attempts/[id]
@@ -24,29 +24,10 @@ export async function GET(
         await connectDB()
         const { id } = await params
 
-        const attempt = await AttemptService.getAttempt(id, session.user.id)
+        return await AttemptController.getAttempt(id, session.user.id) // Correct signature as per Controller
 
-        return NextResponse.json({
-            success: true,
-            data: attempt
-        })
     } catch (error: any) {
         console.error("[GetAttempt API] Error:", error)
-
-        if (error.message.includes("not found")) {
-            return NextResponse.json(
-                { success: false, message: error.message },
-                { status: 404 }
-            )
-        }
-
-        if (error.message.includes("Unauthorized")) {
-            return NextResponse.json(
-                { success: false, message: error.message },
-                { status: 403 }
-            )
-        }
-
         return NextResponse.json(
             { success: false, message: error.message || "Internal server error" },
             { status: 500 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import connectDB from "@/lib/mongodb"
-import { AttemptService } from "@/lib/services/AttemptService"
+import { AttemptController } from "@/lib/controllers/AttemptController"
 
 /**
  * POST /api/attempts/[id]/resume
@@ -25,45 +25,10 @@ export async function POST(
         await connectDB()
         const { id } = await params
 
-        const { resumeToken } = await req.json()
+        return await AttemptController.resumeAttempt(req, id, session.user.id)
 
-        if (!resumeToken) {
-            return NextResponse.json(
-                { success: false, message: "resumeToken is required" },
-                { status: 400 }
-            )
-        }
-
-        const result = await AttemptService.resumeAttempt(
-            id,
-            resumeToken,
-            session.user.id
-        )
-
-        return NextResponse.json({
-            success: true,
-            data: result,
-            message: "Attempt resumed successfully"
-        })
     } catch (error: any) {
         console.error("[ResumeAttempt API] Error:", error)
-
-        if (error.message.includes("not found")) {
-            return NextResponse.json(
-                { success: false, message: error.message },
-                { status: 404 }
-            )
-        }
-
-        if (error.message.includes("Invalid token") ||
-            error.message.includes("Unauthorized") ||
-            error.message.includes("not in progress")) {
-            return NextResponse.json(
-                { success: false, message: error.message },
-                { status: 403 }
-            )
-        }
-
         return NextResponse.json(
             { success: false, message: error.message || "Internal server error" },
             { status: 500 }

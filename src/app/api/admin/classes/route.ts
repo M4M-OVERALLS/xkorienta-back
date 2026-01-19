@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import connectDB from "@/lib/mongodb"
-import School from "@/models/School"
-import { ClassService } from "@/lib/services/ClassService"
-import { UserRole, ClassValidationStatus } from "@/models/enums"
+import { ClassController } from "@/lib/controllers/ClassController"
+import { UserRole } from "@/models/enums"
 
 /**
  * GET /api/admin/classes
@@ -32,37 +31,7 @@ export async function GET(req: NextRequest) {
 
         await connectDB()
 
-        // Find schools where user is admin
-        const adminSchools = await School.find({ admins: session.user.id }).select('_id name')
-
-        if (adminSchools.length === 0) {
-            return NextResponse.json(
-                { success: false, message: "You are not an administrator of any school" },
-                { status: 403 }
-            )
-        }
-
-        const { searchParams } = new URL(req.url)
-        const statusFilter = searchParams.get("status") as ClassValidationStatus | null
-
-        // Get classes from all schools this admin manages
-        const allClasses = []
-        for (const school of adminSchools) {
-            const classes = await ClassService.getSchoolClassesWithValidation(
-                school._id.toString(),
-                statusFilter || undefined
-            )
-            allClasses.push(...classes.map((c: any) => ({
-                ...c.toObject(),
-                schoolName: school.name
-            })))
-        }
-
-        return NextResponse.json({
-            success: true,
-            data: allClasses,
-            schools: adminSchools
-        })
+        return await ClassController.getAdminClasses(req, session.user.id)
 
     } catch (error: any) {
         console.error("Error fetching admin classes:", error)

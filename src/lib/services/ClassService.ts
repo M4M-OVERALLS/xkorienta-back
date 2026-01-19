@@ -356,48 +356,26 @@ export class ClassService {
      * Validate a class (approve by school admin)
      */
     static async validateClass(classId: string, adminId: string) {
-        return await Class.findByIdAndUpdate(
-            classId,
-            {
-                validationStatus: ClassValidationStatus.VALIDATED,
-                validatedBy: adminId,
-                validatedAt: new Date(),
-                rejectionReason: null
-            },
-            { new: true }
-        )
+        const { ClassRepository } = await import("@/lib/repositories/ClassRepository");
+        const repo = new ClassRepository();
+        return await repo.updateValidationStatus(classId, ClassValidationStatus.VALIDATED, adminId);
     }
 
     /**
      * Reject a class (reject by school admin)
      */
     static async rejectClass(classId: string, adminId: string, reason: string) {
-        return await Class.findByIdAndUpdate(
-            classId,
-            {
-                validationStatus: ClassValidationStatus.REJECTED,
-                validatedBy: adminId,
-                validatedAt: new Date(),
-                rejectionReason: reason
-            },
-            { new: true }
-        )
+        const { ClassRepository } = await import("@/lib/repositories/ClassRepository");
+        const repo = new ClassRepository();
+        return await repo.updateValidationStatus(classId, ClassValidationStatus.REJECTED, adminId, reason);
     }
 
     /**
      * Get all classes for a school with their validation status
      */
     static async getSchoolClassesWithValidation(schoolId: string, statusFilter?: ClassValidationStatus) {
-        const query: any = { school: schoolId }
-        if (statusFilter) {
-            query.validationStatus = statusFilter
-        }
-
-        return await Class.find(query)
-            .populate('mainTeacher', 'name email')
-            .populate('level', 'name code')
-            .populate('field', 'name code')
-            .populate({ path: 'specialty', select: 'name code', strictPopulate: false })
-            .sort({ createdAt: -1 })
+        const { ClassRepository } = await import("@/lib/repositories/ClassRepository");
+        const repo = new ClassRepository();
+        return await repo.findBySchoolAndStatus(schoolId, statusFilter);
     }
 }

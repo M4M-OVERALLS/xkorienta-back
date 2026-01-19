@@ -368,23 +368,38 @@ export class SchoolService {
         return school;
     }
 
-    // Validate a school (admin approval)
-    static async validateSchool(schoolId: string, adminId: string): Promise<ISchool | null> {
-        const school = await School.findByIdAndUpdate(
-            schoolId,
-            {
-                isValidated: true,
-                validatedBy: adminId,
-                validatedAt: new Date()
-            },
-            { new: true }
-        );
+    static async validateSchool(schoolId: string, adminId: string, status?: any): Promise<ISchool | null> {
+        const { SchoolRepository } = await import("@/lib/repositories/SchoolRepository");
+        const schoolRepo = new SchoolRepository();
+
+        const school = await schoolRepo.updateValidationStatus(schoolId, true, adminId, status);
 
         if (!school) {
             throw new Error("School not found");
         }
 
         return school;
+    }
+
+    /**
+     * Verify if user is admin of the school
+     */
+    static async verifySchoolAdmin(schoolId: string, userId: string): Promise<boolean> {
+        // We import the repository dynamically to avoid circular dependencies if any, 
+        // or just import at top if safe. 
+        // For now, let's just use the repository pattern as requested.
+        const { SchoolRepository } = await import("@/lib/repositories/SchoolRepository");
+        const schoolRepo = new SchoolRepository();
+        return await schoolRepo.isSchoolAdmin(schoolId, userId);
+    }
+
+    /**
+     * Get schools where user is admin
+     */
+    static async getAdminSchools(userId: string) {
+        const { SchoolRepository } = await import("@/lib/repositories/SchoolRepository");
+        const schoolRepo = new SchoolRepository();
+        return await schoolRepo.findByAdmin(userId);
     }
 }
 

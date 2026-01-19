@@ -114,9 +114,9 @@ export class AttemptService {
      * Récupère les détails d'une tentative
      */
     static async getAttempt(attemptId: string, userId: string) {
-        const attempt = await Attempt.findById(attemptId)
-            .populate('examId', 'title description duration config')
-            .lean()
+        const { AttemptRepository } = await import("@/lib/repositories/AttemptRepository");
+        const repo = new AttemptRepository();
+        const attempt = await repo.findById(attemptId);
 
         if (!attempt) throw new Error("Attempt not found")
 
@@ -132,7 +132,10 @@ export class AttemptService {
      * Reprend une tentative avec le token
      */
     static async resumeAttempt(attemptId: string, resumeToken: string, userId: string) {
-        const attempt = await Attempt.findById(attemptId)
+        const { AttemptRepository } = await import("@/lib/repositories/AttemptRepository");
+        const repo = new AttemptRepository();
+        const attempt = await repo.findById(attemptId); // Use findById since we just need data, not update
+
         if (!attempt) throw new Error("Attempt not found")
 
         // Vérifier le token
@@ -151,6 +154,7 @@ export class AttemptService {
         }
 
         // Récupérer les réponses déjà soumises
+        // We might want to move this to ResponseRepository eventually too, but for now stick to direct model or existing pattern
         const responses = await Response.find({ attemptId: attempt._id }).lean()
 
         return {
@@ -168,7 +172,12 @@ export class AttemptService {
         eventType: AntiCheatEventType,
         eventData?: any
     ) {
-        const attempt = await Attempt.findById(attemptId)
+        const { AttemptRepository } = await import("@/lib/repositories/AttemptRepository");
+        const repo = new AttemptRepository();
+
+        // Use findByIdForUpdate to get a mongoose document we can modify and save
+        const attempt = await repo.findByIdForUpdate(attemptId);
+
         if (!attempt) throw new Error("Attempt not found")
 
         // Vérifier que l'utilisateur est le propriétaire
@@ -191,23 +200,27 @@ export class AttemptService {
         attempt.antiCheatEvents.push(event)
 
         // Vérifier les violations critiques
+        // Note: We need exam config here. 
+        // We could fetch exam separately or ensure populate works on findByIdForUpdate if needed.
+        // But Attempt model has examId.
         const exam = await Exam.findById(attempt.examId)
+
         if (exam && exam.config.antiCheat.maxTabSwitches) {
             const tabSwitchCount = attempt.antiCheatEvents.filter(
-                e => e.type === AntiCheatEventType.TAB_SWITCH
+                (e: any) => e.type === AntiCheatEventType.TAB_SWITCH
             ).length
 
             if (tabSwitchCount > exam.config.antiCheat.maxTabSwitches) {
                 // Auto-soumettre la tentative
                 attempt.status = AttemptStatus.ABANDONED
                 attempt.submittedAt = new Date()
-                await attempt.save()
+                await repo.save(attempt); // Use repo save wrapper
 
                 throw new Error("Maximum tab switches exceeded. Attempt has been abandoned.")
             }
         }
 
-        await attempt.save()
+        await repo.save(attempt);
 
         return { success: true, event }
     }
@@ -225,7 +238,12 @@ export class AttemptService {
             timeSpent?: number
         }>
     ) {
-        const attempt = await Attempt.findById(attemptId)
+        const { AttemptRepository } = await import("@/lib/repositories/AttemptRepository");
+        const repo = new AttemptRepository();
+
+        // Use findByIdForUpdate to work with the mongoose document
+        const attempt = await repo.findByIdForUpdate(attemptId);
+
         if (!attempt) throw new Error("Attempt not found")
 
         // Vérifier que l'utilisateur est le propriétaire
@@ -353,6 +371,62 @@ export class AttemptService {
             evaluation,
             responses: savedResponses
         }
+    }
+
+    static async saveAnswer(
+        attemptId: string,
+        userId: string,
+        questionId: string,
+        selectedOptionId?: string,
+        textResponse?: string
+    ) {
+        const { AttemptRepository } = await import("@/lib/repositories/AttemptRepository");
+        const { ResponseRepository } = await import("@/lib/repositories/ResponseRepository");
+
+        const attemptRepo = new AttemptRepository();
+        const responseRepo = new ResponseRepository();
+
+        const attempt = await attemptRepo.findById(attemptId);
+
+        if (!attempt || attempt.userId.toString() !== userId) {
+            throw new Error("Invalid attempt");
+        }
+
+        if (attempt.status === AttemptStatus.COMPLETED) {
+            throw new Error("Attempt already completed");
+        }
+
+        let isCorrect = false;
+        // Check if the selected option is correct (if provided)
+        if (selectedOptionId) {
+            const option = await Option.findById(selectedOptionId);
+            isCorrect = option?.isCorrect || false;
+        } else if (textResponse) {
+            // Open questions are pending grading, so defaults to false or could be handled by AI later
+            isCorrect = false;
+        }
+
+        // Find existing response for this question in this attempt
+        const existingResponse = await responseRepo.findByAttemptAndQuestion(attemptId, questionId);
+
+        // Update existing response or create new one
+        if (existingResponse) {
+            await responseRepo.update(existingResponse._id.toString(), { // Convert to string if repo expects string or handle ObjectId
+                selectedOptionId: selectedOptionId ? new mongoose.Types.ObjectId(selectedOptionId) : undefined,
+                textResponse: textResponse || undefined,
+                isCorrect
+            } as any);
+        } else {
+            await responseRepo.create({
+                attemptId: new mongoose.Types.ObjectId(attemptId),
+                questionId: new mongoose.Types.ObjectId(questionId),
+                selectedOptionId: selectedOptionId ? new mongoose.Types.ObjectId(selectedOptionId) : undefined,
+                textResponse: textResponse || undefined,
+                isCorrect,
+            } as any);
+        }
+
+        return { message: "Saved" };
     }
 
     /**

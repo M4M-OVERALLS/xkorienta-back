@@ -46,4 +46,25 @@ export class SchoolController {
             );
         }
     }
+
+    static async validateSchool(req: Request, schoolId: string, adminId: string) {
+        try {
+            const body = await req.json();
+            const { status } = body;
+
+            // Optional: Role check could be here if not in Route
+            // But usually Route handles Auth/Role basics
+
+            await SchoolService.validateSchool(schoolId, adminId, status);
+
+            return NextResponse.json({ success: true, message: "School status updated" });
+
+        } catch (error: any) {
+            console.error("[School Controller] Validation Error:", error);
+            return NextResponse.json(
+                { success: false, message: error.message || "Internal server error" },
+                { status: 500 }
+            );
+        }
+    }
 }
