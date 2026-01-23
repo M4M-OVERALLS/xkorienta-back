@@ -255,4 +255,47 @@ export class AttemptController {
             );
         }
     }
+
+    /**
+     * POST /api/resume
+     * Get redirect URL for resume token
+     */
+    static async getResumeRedirect(req: Request, currentUserId?: string) {
+        try {
+            const body = await req.json();
+            const { token } = body;
+
+            if (!token) {
+                return NextResponse.json(
+                    { message: "Token is required" },
+                    { status: 400 }
+                );
+            }
+
+            const result = await AttemptService.getResumeRedirectUrl(token, currentUserId);
+            return NextResponse.json(result);
+        } catch (error: any) {
+            console.error("[Attempt Controller] Get Resume Redirect Error:", error);
+
+            // Map specific errors to appropriate status codes
+            if (error.message === "Invalid token") {
+                return NextResponse.json(
+                    { message: error.message },
+                    { status: 404 }
+                );
+            }
+
+            if (error.message.includes("wrong user")) {
+                return NextResponse.json(
+                    { message: error.message },
+                    { status: 403 }
+                );
+            }
+
+            return NextResponse.json(
+                { message: error.message || "Something went wrong" },
+                { status: 500 }
+            );
+        }
+    }
 }

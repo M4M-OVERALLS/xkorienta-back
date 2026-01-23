@@ -97,4 +97,31 @@ export class RegistrationService {
         await user.save();
         return user;
     }
+
+    /**
+     * Register user without role (for onboarding flow)
+     * User will complete role selection during onboarding
+     */
+    async registerUserWithoutRole(data: { name: string; email: string; password: string }) {
+        const { name, email, password } = data;
+
+        // 1. Check if user exists
+        const existingUser = await this.registrationRepository.findUserByEmail(email);
+        if (existingUser) {
+            throw new Error("User already exists");
+        }
+
+        // 2. Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // 3. Create user without role - will be set during onboarding
+        const user = await this.registrationRepository.createUser({
+            name,
+            email,
+            password: hashedPassword,
+            // role will be undefined, set during onboarding
+        });
+
+        return user;
+    }
 }

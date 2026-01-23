@@ -5,6 +5,9 @@ import LearningUnit from "@/models/LearningUnit"
 import Competency from "@/models/Competency"
 import { SubSystem, Cycle } from "@/models/enums"
 import { EducationalComponentFactory } from "@/lib/patterns/EducationalHierarchy"
+import { SubjectRepository } from "@/lib/repositories/SubjectRepository"
+import { LearningUnitRepository } from "@/lib/repositories/LearningUnitRepository"
+import { FieldRepository } from "@/lib/repositories/FieldRepository"
 
 /**
  * Service pour gérer la structure éducative
@@ -54,35 +57,24 @@ export class EducationStructureService {
         cycle?: Cycle
         category?: string
         isActive?: boolean
+        parentField?: string
     } = {}) {
-        const query: any = {}
-
-        if (filters.level) {
-            if (Array.isArray(filters.level)) {
-                query.applicableLevels = { $in: filters.level }
-            } else {
-                query.applicableLevels = filters.level
-            }
-        }
-        if (filters.cycle) query.cycle = filters.cycle
-        if (filters.category) query.category = filters.category
-        if (filters.isActive !== undefined) query.isActive = filters.isActive
-
-        return await Field.find(query)
-            .populate('applicableLevels', 'name code')
-            .populate('parentField', 'name code')
-            .lean()
+        const repo = new FieldRepository()
+        return await repo.find({
+            level: filters.level,
+            cycle: filters.cycle as string,
+            category: filters.category,
+            isActive: filters.isActive,
+            parentField: filters.parentField
+        })
     }
 
     /**
      * Récupère une filière par ID avec sa hiérarchie
      */
     static async getFieldById(id: string) {
-        const field = await Field.findById(id)
-            .populate('applicableLevels', 'name code cycle')
-            .populate('parentField', 'name code')
-            .populate('childFields', 'name code')
-            .lean()
+        const repo = new FieldRepository()
+        const field = await repo.findById(id)
 
         if (!field) return null
 
@@ -93,6 +85,35 @@ export class EducationStructureService {
             ...field,
             children: children.map(c => ({ _id: c._id, name: c.name, code: c.code }))
         }
+    }
+
+    /**
+     * Crée une nouvelle filière
+     */
+    static async createField(data: Partial<any>, createdBy: string) {
+        const repo = new FieldRepository()
+        // TODO: Add validation for data
+        // Note: Field model doesn't have a createdBy field, so we just pass the data as-is
+        return await repo.create(data)
+    }
+
+    /**
+     * Met à jour une filière
+     */
+    static async updateField(id: string, data: Partial<any>, userId: string) {
+        // TODO: Add authorization checks (e.g., only admin can update)
+        // TODO: Add validation for data
+        const repo = new FieldRepository()
+        return await repo.updateById(id, data)
+    }
+
+    /**
+     * Supprime (soft delete) une filière
+     */
+    static async deleteField(id: string, userId: string) {
+        // TODO: Add authorization checks
+        const repo = new FieldRepository()
+        return await repo.softDelete(id)
     }
 
     /**
@@ -128,22 +149,18 @@ export class EducationStructureService {
      * Récupère une matière par ID avec sa hiérarchie
      */
     static async getSubjectById(id: string) {
-        const subject = await Subject.findById(id)
-            .populate('applicableLevels', 'name code')
-            .populate('applicableFields', 'name code')
-            .populate('parentSubject', 'name code')
-            .populate('childSubjects', 'name code')
-            .lean()
+        const repo = new SubjectRepository();
+        const subject = await repo.findById(id);
 
-        if (!subject) return null
+        if (!subject) return null;
 
-        const component = EducationalComponentFactory.create('Subject', subject)
-        const children = await component.getChildren()
+        const component = EducationalComponentFactory.create('Subject', subject);
+        const children = await component.getChildren();
 
         return {
             ...subject,
             children: children.map(c => ({ _id: c._id, name: c.name, code: c.code }))
-        }
+        };
     }
 
     /**
@@ -151,36 +168,20 @@ export class EducationStructureService {
      */
     static async getLearningUnits(filters: {
         subject?: string
-        parentUnit?: string
+        parentUnit?: string | null
         unitType?: string
         isActive?: boolean
     } = {}) {
-        const query: any = {}
-
-        if (filters.subject) query.subject = filters.subject
-        if (filters.parentUnit) {
-            query.parentUnit = filters.parentUnit
-        } else if (filters.parentUnit === null) {
-            query.parentUnit = { $exists: false }
-        }
-        if (filters.unitType) query.unitType = filters.unitType
-        if (filters.isActive !== undefined) query.isActive = filters.isActive
-
-        return await LearningUnit.find(query)
-            .populate('subject', 'name code')
-            .populate('parentUnit', 'name code')
-            .lean()
+        const repo = new LearningUnitRepository()
+        return await repo.find(filters)
     }
 
     /**
      * Récupère une unité d'apprentissage par ID avec sa hiérarchie
      */
     static async getLearningUnitById(id: string) {
-        const unit = await LearningUnit.findById(id)
-            .populate('subject', 'name code')
-            .populate('parentUnit', 'name code')
-            .populate('childUnits', 'name code')
-            .lean()
+        const repo = new LearningUnitRepository()
+        const unit = await repo.findById(id)
 
         if (!unit) return null
 
@@ -191,6 +192,30 @@ export class EducationStructureService {
             ...unit,
             children: children.map(c => ({ _id: c._id, name: c.name, code: c.code }))
         }
+    }
+
+    /**
+     * Crée une nouvelle unité d'apprentissage
+     */
+    static async createLearningUnit(data: Partial<any>) {
+        const repo = new LearningUnitRepository()
+        return await repo.create(data)
+    }
+
+    /**
+     * Met à jour une unité d'apprentissage
+     */
+    static async updateLearningUnit(id: string, data: Partial<any>) {
+        const repo = new LearningUnitRepository()
+        return await repo.updateById(id, data)
+    }
+
+    /**
+     * Supprime (soft delete) une unité d'apprentissage
+     */
+    static async deleteLearningUnit(id: string) {
+        const repo = new LearningUnitRepository()
+        return await repo.softDelete(id)
     }
 
     /**

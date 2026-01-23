@@ -7,6 +7,11 @@ import mongoose from "mongoose"
 import "@/models/Subject"
 import "@/models/EducationLevel"
 import "@/models/Field"
+import { LearnerProfileRepository } from "@/lib/repositories/LearnerProfileRepository"
+import { PedagogicalProfileRepository } from "@/lib/repositories/PedagogicalProfileRepository"
+import { ExamRepository } from "@/lib/repositories/ExamRepository"
+import { ClassRepository } from "@/lib/repositories/ClassRepository"
+import { AttemptRepository } from "@/lib/repositories/AttemptRepository"
 
 export class ProfileService {
     /**
@@ -14,12 +19,8 @@ export class ProfileService {
      * Populates relevant references.
      */
     static async getLearnerProfile(userId: string): Promise<ILearnerProfile | null> {
-        return await LearnerProfile.findOne({ user: userId })
-            .populate('currentLevel', 'name code cycle')
-            .populate('currentField', 'name code')
-            .populate('stats.strongSubjects', 'name code')
-            .populate('stats.weakSubjects', 'name code')
-            .lean()
+        const repo = new LearnerProfileRepository();
+        return await repo.findByUserId(userId);
     }
 
     /**
@@ -27,35 +28,24 @@ export class ProfileService {
      * Populates relevant references.
      */
     static async getPedagogicalProfile(userId: string): Promise<IPedagogicalProfile | null> {
-        return await PedagogicalProfile.findOne({ user: userId })
-            .populate('teachingSubjects', 'name code')
-            .populate('interventionLevels', 'name code cycle')
-            .populate('interventionFields', 'name code')
-            .lean()
+        const repo = new PedagogicalProfileRepository();
+        return await repo.findByUserId(userId);
     }
 
     /**
      * Updates a learner profile.
      */
     static async updateLearnerProfile(userId: string, data: Partial<ILearnerProfile>): Promise<ILearnerProfile | null> {
-        const profile = await LearnerProfile.findOneAndUpdate(
-            { user: userId },
-            { $set: data },
-            { new: true, runValidators: true }
-        )
-        return profile
+        const repo = new LearnerProfileRepository();
+        return await repo.update(userId, data);
     }
 
     /**
      * Updates a pedagogical profile.
      */
     static async updatePedagogicalProfile(userId: string, data: Partial<IPedagogicalProfile>): Promise<IPedagogicalProfile | null> {
-        const profile = await PedagogicalProfile.findOneAndUpdate(
-            { user: userId },
-            { $set: data },
-            { new: true, runValidators: true }
-        )
-        return profile
+        const repo = new PedagogicalProfileRepository();
+        return await repo.update(userId, data);
     }
 
     /**
@@ -79,10 +69,8 @@ export class ProfileService {
      * Gets aggregated statistics for a learner profile
      */
     static async getLearnerStats(userId: string): Promise<any> {
-        const profile = await LearnerProfile.findOne({ user: userId })
-            .populate('stats.strongSubjects', 'name code')
-            .populate('stats.weakSubjects', 'name code')
-            .lean()
+        const repo = new LearnerProfileRepository();
+        const profile = await repo.findByUserIdWithStats(userId);
 
         if (!profile) return null
 
@@ -151,15 +139,10 @@ export class ProfileService {
      * Retrieves recent activities for a user (teacher/admin)
      */
     static async getRecentActivities(userId: string, limit: number = 5): Promise<any[]> {
-        const Exam = mongoose.model('Exam')
+        const examRepo = new ExamRepository();
 
         // 1. Fetch recent exams created
-        const recentExams = await Exam.find({ createdById: userId })
-            .sort({ createdAt: -1 })
-            .limit(limit)
-            .populate('subject', 'name')
-            .populate('targetLevels', 'name')
-            .lean()
+        const recentExams = await examRepo.findRecentExamsByUser(userId, limit);
 
         // Transform to activity format
         const activities = recentExams.map((exam: any) => ({
@@ -173,68 +156,47 @@ export class ProfileService {
                 examId: exam._id.toString(),
                 status: exam.status
             }
-        }))
+        }));
 
         // TODO: Add other types of activities (validations, publications, etc.)
         // For now, we just return exam creations
 
-        return activities
+        return activities;
     }
     /**
      * Calculates real-time statistics for a teacher by querying related collections directly.
      * This ensures the dashboard shows up-to-date information without relying on cached profile stats.
      */
     static async getRealTimeTeacherStats(userId: string): Promise<any> {
-        const Exam = mongoose.model('Exam')
-        const Class = mongoose.model('Class')
-        const Attempt = mongoose.model('Attempt')
+        const examRepo = new ExamRepository();
+        const classRepo = new ClassRepository();
+        const attemptRepo = new AttemptRepository();
 
         // 1. Total Exams Created
-        const totalExamsCreated = await Exam.countDocuments({ createdById: userId })
+        const totalExamsCreated = await examRepo.countExamsByTeacher(userId);
 
         // 2. Active Exams (Published and currently ongoing)
-        const now = new Date()
-        const activeExams = await Exam.countDocuments({
-            createdById: userId,
-            status: 'PUBLISHED',
-            startTime: { $lte: now },
-            endTime: { $gte: now }
-        })
+        const activeExams = await examRepo.countActiveExamsByTeacher(userId);
 
         // 3. Total Students Reached (Unique students in teacher's classes)
-        // Find classes owned by teacher
-        const classes = await Class.find({ mainTeacher: userId }).select('_id')
-        const classIds = classes.map(c => c._id)
-
-        // Count distinct students in these classes
-        // Note: This assumes Class model has a 'students' array of IDs. 
-        // If it's a virtual or reverse relationship, this might need adjustment.
-        // Based on previous files, Class has `students` array.
-        const classesWithStudents = await Class.find({ mainTeacher: userId }).select('students')
-        const studentIds = new Set<string>()
+        const classesWithStudents = await classRepo.findByTeacherWithStudents(userId);
+        const studentIds = new Set<string>();
         classesWithStudents.forEach((c: any) => {
             if (c.students && Array.isArray(c.students)) {
-                c.students.forEach((s: any) => studentIds.add(s.toString()))
+                c.students.forEach((s: any) => studentIds.add(s.toString()));
             }
-        })
-        const totalStudentsReached = studentIds.size
+        });
+        const totalStudentsReached = studentIds.size;
 
         // 4. Average Class Score (across all attempts for teacher's exams)
-        // Find all exams by teacher
-        const teacherExams = await Exam.find({ createdById: userId }).select('_id')
-        const teacherExamIds = teacherExams.map(e => e._id)
-
-        const avgScoreResult = await Attempt.aggregate([
-            { $match: { examId: { $in: teacherExamIds }, status: 'COMPLETED' } },
-            { $group: { _id: null, avgScore: { $avg: '$score' } } }
-        ])
-        const averageClassScore = avgScoreResult.length > 0 ? Math.round(avgScoreResult[0].avgScore) : 0
+        const teacherExamIds = await examRepo.findExamIdsByTeacher(userId);
+        const averageClassScore = await attemptRepo.getAverageScoreForExams(teacherExamIds);
 
         // 5. Calculate Gamification Level (Mock logic based on activity)
         // 1 Exam = 50 XP, 1 Student = 10 XP, 1% Avg Score = 5 XP
-        const xp = (totalExamsCreated * 50) + (totalStudentsReached * 10) + (averageClassScore * 5)
-        const level = Math.floor(xp / 500) + 1
-        const nextLevelXp = level * 500
+        const xp = (totalExamsCreated * 50) + (totalStudentsReached * 10) + (averageClassScore * 5);
+        const level = Math.floor(xp / 500) + 1;
+        const nextLevelXp = level * 500;
 
         return {
             basic: {

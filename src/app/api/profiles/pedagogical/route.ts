@@ -5,7 +5,7 @@ import connectDB from "@/lib/mongodb";
 import { ProfileController } from "@/lib/controllers/ProfileController";
 import { UserRole } from "@/models/enums";
 
-export async function GET(req: Request) {
+export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
         return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     }
 
     await connectDB();
-    return ProfileController.getPedagogicalProfile(req, session.user.id);
+    return ProfileController.getPedagogicalProfile(session.user.id);
 }
 
 export async function PUT(req: Request) {

@@ -67,4 +67,115 @@ export class SchoolController {
             );
         }
     }
+
+    /**
+     * POST /api/schools/apply
+     * Apply to a school
+     */
+    static async applyToSchool(req: Request, userId: string) {
+        try {
+            if (!userId) {
+                return NextResponse.json(
+                    { error: "Unauthorized" },
+                    { status: 401 }
+                );
+            }
+
+            const body = await req.json();
+            const { schoolId } = body;
+
+            if (!schoolId) {
+                return NextResponse.json(
+                    { error: "School ID is required" },
+                    { status: 400 }
+                );
+            }
+
+            const result = await SchoolService.applyToSchool(schoolId, userId);
+
+            return NextResponse.json(result);
+
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "Internal server error";
+            console.error("[School Controller] Apply to School Error:", error);
+            
+            // Handle specific error cases
+            if (errorMessage === "School not found") {
+                return NextResponse.json(
+                    { error: errorMessage },
+                    { status: 404 }
+                );
+            }
+            
+            if (errorMessage.includes("already") || errorMessage.includes("member")) {
+                return NextResponse.json(
+                    { error: errorMessage },
+                    { status: 400 }
+                );
+            }
+
+            return NextResponse.json(
+                { error: "Internal Server Error" },
+                { status: 500 }
+            );
+        }
+    }
+
+    /**
+     * GET /api/schools/[id]/teachers
+     * Get all teachers for a school
+     */
+    static async getSchoolTeachers(schoolId: string) {
+        try {
+            // Validate ID
+            if (!schoolId || schoolId === 'undefined') {
+                return NextResponse.json(
+                    { error: "Invalid school ID" },
+                    { status: 400 }
+                );
+            }
+
+            const teachers = await SchoolService.getSchoolTeachers(schoolId);
+            return NextResponse.json(teachers);
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "Internal server error";
+            console.error("[School Controller] Get School Teachers Error:", error);
+            return NextResponse.json(
+                { error: "Internal Server Error" },
+                { status: 500 }
+            );
+        }
+    }
+
+    /**
+     * GET /api/schools/[id]/stats
+     * Get statistics for a school
+     */
+    static async getSchoolStats(schoolId: string) {
+        try {
+            // Validate ID
+            if (!schoolId || schoolId === 'undefined') {
+                return NextResponse.json(
+                    { error: "Invalid school ID" },
+                    { status: 400 }
+                );
+            }
+
+            const stats = await SchoolService.getSchoolStats(schoolId);
+            if (!stats) {
+                return NextResponse.json(
+                    { error: "School not found" },
+                    { status: 404 }
+                );
+            }
+
+            return NextResponse.json(stats);
+        } catch (error: unknown) {
+            console.error("[School Controller] Get School Stats Error:", error);
+            return NextResponse.json(
+                { error: "Internal Server Error" },
+                { status: 500 }
+            );
+        }
+    }
 }

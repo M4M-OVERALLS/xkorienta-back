@@ -42,4 +42,87 @@ export class ClassRepository {
             .sort({ createdAt: -1 })
             .lean();
     }
+
+    /**
+     * Find active class where student is enrolled
+     */
+    async findStudentClass(studentId: string) {
+        await connectDB();
+        return Class.findOne({
+            students: studentId,
+            isActive: true
+        }).populate('school').populate('level').lean();
+    }
+
+    /**
+     * Find all classes where student is enrolled
+     */
+    async findStudentClasses(studentId: string) {
+        await connectDB();
+        return Class.find({
+            students: studentId
+        })
+            .populate('level')
+            .populate('field')
+            .populate('specialty')
+            .lean();
+    }
+
+    /**
+     * Find all active classes where student is enrolled
+     */
+    async findActiveStudentClasses(studentId: string) {
+        await connectDB();
+        return Class.find({
+            students: studentId,
+            isActive: true
+        })
+            .populate('school', 'name logoUrl')
+            .populate('level', 'name')
+            .populate('field', 'name')
+            .populate('mainTeacher', 'name')
+            .lean();
+    }
+
+    /**
+     * Find classes by school ID with populated students and level
+     */
+    async findBySchoolWithDetails(schoolId: string) {
+        await connectDB();
+        return Class.find({ school: schoolId })
+            .populate('students', 'name')
+            .populate('level', 'name')
+            .lean();
+    }
+
+    /**
+     * Find classes by school ID with all necessary populate for school classes list
+     */
+    async findBySchool(schoolId: string) {
+        await connectDB();
+        return Class.find({ school: schoolId })
+            .populate('mainTeacher', 'name email')
+            .populate('level', 'name')
+            .populate('specialty', 'name')
+            .populate('field', 'code name')
+            .select('name level specialty field academicYear students mainTeacher')
+            .sort({ name: 1 })
+            .lean();
+    }
+
+    /**
+     * Find classes by teacher ID
+     */
+    async findByTeacher(teacherId: string) {
+        await connectDB();
+        return Class.find({ mainTeacher: teacherId }).select('_id').lean();
+    }
+
+    /**
+     * Find classes by teacher ID with students
+     */
+    async findByTeacherWithStudents(teacherId: string) {
+        await connectDB();
+        return Class.find({ mainTeacher: teacherId }).select('students').lean();
+    }
 }

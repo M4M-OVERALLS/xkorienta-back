@@ -1,30 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { SchoolService } from "@/lib/services/SchoolService";
-import mongoose from "mongoose";
+import { SchoolController } from "@/lib/controllers/SchoolController";
 
+/**
+ * GET /api/schools/[id]/teachers
+ * Get all teachers for a school
+ */
 export async function GET(
-    req: NextRequest,
+    req: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const session = await getServerSession(authOptions);
     if (!session) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return SchoolController.getSchoolTeachers("");
     }
 
     const { id } = await params;
-
-    // Validate ID
-    if (!id || id === 'undefined' || !mongoose.Types.ObjectId.isValid(id)) {
-        return NextResponse.json({ error: "Invalid school ID" }, { status: 400 });
-    }
-
-    try {
-        const teachers = await SchoolService.getSchoolTeachers(id);
-        return NextResponse.json(teachers);
-    } catch (error) {
-        console.error("Error fetching teachers:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-    }
+    return SchoolController.getSchoolTeachers(id);
 }

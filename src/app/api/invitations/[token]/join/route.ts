@@ -1,37 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { InvitationService } from "@/lib/services/InvitationService";
 import connectDB from "@/lib/mongodb";
+import { InvitationController } from "@/lib/controllers/InvitationController";
 
-export async function GET(
-    req: NextRequest,
-    props: { params: Promise<{ token: string }> }
-) {
-    try {
-        const { token } = await props.params;
-        await connectDB();
-        const session = await getServerSession(authOptions);
+interface RouteParams {
+    params: Promise<{ token: string }>;
+}
 
-        // If not logged in, redirect to login with callback
-        // The callback will be THIS url, so after login, user comes back here
-        if (!session?.user) {
-            const callbackUrl = encodeURIComponent(req.url);
-            const loginUrl = `/login?callbackUrl=${callbackUrl}`;
-            return NextResponse.redirect(new URL(loginUrl, req.url));
-        }
+/**
+ * GET /api/invitations/[token]/join
+ * Accept an invitation and redirect to appropriate page
+ */
+export async function GET(req: NextRequest, { params }: RouteParams) {
+    const { token } = await params;
+    await connectDB();
 
-        // If logged in, accept invitation
-        const result = await InvitationService.acceptInvitation(token, session.user.id);
+    const session = await getServerSession(authOptions);
 
-        // Redirect to class page
-        const classUrl = `/student/classes/${result.classId}`;
-        return NextResponse.redirect(new URL(classUrl, req.url));
-
-    } catch (error: any) {
-        console.error("Error joining class:", error);
-        // Redirect to dashboard with error? or show error page
-        const errorUrl = `/dashboard?error=${encodeURIComponent(error.message)}`;
-        return NextResponse.redirect(new URL(errorUrl, req.url));
+    // If not logged in, redirect to login with callback
+    // The callback will be THIS url, so after login, user comes back here
+    if (!session?.user) {
+        const callbackUrl = encodeURIComponent(req.url);
+        const loginUrl = `/login?callbackUrl=${callbackUrl}`;
+        return NextResponse.redirect(new URL(loginUrl, req.url));
     }
+
+    // If logged in, accept invitation via controller
+    return InvitationController.acceptInvitationAndRedirect(req, token, session.user.id);
 }

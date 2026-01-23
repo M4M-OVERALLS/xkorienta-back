@@ -1,11 +1,12 @@
-import LateCode, { ILateCode, LateCodeStatus } from "@/models/LateCode"
-import Exam from "@/models/Exam"
-import User from "@/models/User"
+import { ILateCode, LateCodeStatus } from "@/models/LateCode"
 import { UserRole } from "@/models/enums"
 import { publishEvent } from "@/lib/events/EventPublisher"
 import { EventType } from "@/lib/events/types"
 import mongoose from "mongoose"
 import crypto from "crypto"
+import { LateCodeRepository } from "@/lib/repositories/LateCodeRepository"
+import { ExamRepository } from "@/lib/repositories/ExamRepository"
+import { UserRepository } from "@/lib/repositories/UserRepository"
 
 /**
  * Service pour gérer les codes d'accès tardif (Late Codes)
@@ -25,13 +26,17 @@ export class LateCodeService {
             reason?: string
         } = {}
     ) {
+        const examRepo = new ExamRepository();
+        const userRepo = new UserRepository();
+        const lateCodeRepo = new LateCodeRepository();
+
         // Vérifier que l'examen existe
-        const exam = await Exam.findById(examId)
-        if (!exam) throw new Error("Exam not found")
+        const exam = await examRepo.findById(examId);
+        if (!exam) throw new Error("Exam not found");
 
         // Vérifier que l'utilisateur est enseignant ou admin
-        const user = await User.findById(generatedBy)
-        if (!user) throw new Error("User not found")
+        const user = await userRepo.findById(generatedBy);
+        if (!user) throw new Error("User not found");
 
         const allowedRoles = [
             UserRole.TEACHER,
@@ -39,22 +44,22 @@ export class LateCodeService {
             UserRole.SURVEILLANT,
             UserRole.PREFET,
             UserRole.PRINCIPAL
-        ]
+        ];
 
         if (!allowedRoles.includes(user.role as UserRole)) {
-            throw new Error("Unauthorized: Only teachers and admins can generate late codes")
+            throw new Error("Unauthorized: Only teachers and admins can generate late codes");
         }
 
         // Vérifier que l'enseignant est le créateur de l'examen
         if (exam.createdById.toString() !== generatedBy && user.role !== UserRole.INSPECTOR) {
-            throw new Error("Unauthorized: Only the exam creator or inspector can generate late codes")
+            throw new Error("Unauthorized: Only the exam creator or inspector can generate late codes");
         }
 
         // Générer un code unique (8 caractères alphanumériques)
-        const code = this.generateUniqueCode()
+        const code = this.generateUniqueCode();
 
         // Créer le late code
-        const lateCode = await LateCode.create({
+        const lateCode = await lateCodeRepo.create({
             code,
             examId: new mongoose.Types.ObjectId(examId),
             generatedBy: new mongoose.Types.ObjectId(generatedBy),
@@ -65,7 +70,7 @@ export class LateCodeService {
             expiresAt: options.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 jours par défaut
             reason: options.reason || "Late access granted",
             status: LateCodeStatus.ACTIVE
-        })
+        });
 
         // Publier un événement
         await publishEvent({
@@ -74,28 +79,28 @@ export class LateCodeService {
                 lateCodeId: lateCode._id,
                 code: lateCode.code,
                 examId: exam._id,
-                examTitle: exam.title,
+                examTitle: (exam as any).title,
                 assignedUserId: options.assignedUserId,
                 expiresAt: lateCode.expiresAt
             },
             userId: new mongoose.Types.ObjectId(generatedBy),
             timestamp: new Date()
-        })
+        });
 
-        return lateCode
+        return lateCode;
     }
 
     /**
      * Valide et utilise un code d'accès tardif
      */
     static async validateLateCode(code: string, examId: string, userId: string) {
+        const lateCodeRepo = new LateCodeRepository();
+
         // Rechercher le code
-        const lateCode = await LateCode.findOne({ code, examId })
-            .populate('examId', 'title endTime')
-            .populate('generatedBy', 'name email')
+        const lateCode = await lateCodeRepo.findByCodeAndExamId(code, examId);
 
         if (!lateCode) {
-            throw new Error("Invalid late code")
+            throw new Error("Invalid late code");
         }
 
         // Vérifier que le code est actif
@@ -135,7 +140,7 @@ export class LateCodeService {
         })
 
         // Le pre-save hook du modèle mettra à jour usagesRemaining et status automatiquement
-        await lateCode.save()
+        await lateCodeRepo.save(lateCode);
 
         // Publier un événement
         await publishEvent({
@@ -161,38 +166,37 @@ export class LateCodeService {
      * Récupère tous les codes pour un examen
      */
     static async getLateCodesForExam(examId: string, userId: string) {
+        const examRepo = new ExamRepository();
+        const lateCodeRepo = new LateCodeRepository();
+
         // Vérifier que l'utilisateur est le créateur de l'examen
-        const exam = await Exam.findById(examId)
-        if (!exam) throw new Error("Exam not found")
+        const exam = await examRepo.findById(examId);
+        if (!exam) throw new Error("Exam not found");
 
         if (exam.createdById.toString() !== userId) {
-            throw new Error("Unauthorized: Only the exam creator can view late codes")
+            throw new Error("Unauthorized: Only the exam creator can view late codes");
         }
 
-        const lateCodes = await LateCode.find({ examId })
-            .populate('generatedBy', 'name email')
-            .populate('assignedUserId', 'name email')
-            .sort({ createdAt: -1 })
-            .lean()
-
-        return lateCodes
+        return await lateCodeRepo.findByExamId(examId);
     }
 
     /**
      * Désactive un code d'accès tardif
      */
     static async deactivateLateCode(lateCodeId: string, userId: string) {
-        const lateCode = await LateCode.findById(lateCodeId)
-        if (!lateCode) throw new Error("Late code not found")
+        const lateCodeRepo = new LateCodeRepository();
+
+        const lateCode = await lateCodeRepo.findById(lateCodeId);
+        if (!lateCode) throw new Error("Late code not found");
 
         // Vérifier que l'utilisateur est le créateur
         if (lateCode.generatedBy.toString() !== userId) {
-            throw new Error("Unauthorized: Only the code generator can deactivate it")
+            throw new Error("Unauthorized: Only the code generator can deactivate it");
         }
 
-        await lateCode.revoke(new mongoose.Types.ObjectId(userId))
+        await lateCode.revoke(new mongoose.Types.ObjectId(userId));
 
-        return { success: true, message: "Late code deactivated" }
+        return { success: true, message: "Late code deactivated" };
     }
 
     /**
@@ -214,13 +218,8 @@ export class LateCodeService {
      * Vérifie si un utilisateur a un accès tardif valide pour un examen
      */
     static async hasValidLateAccess(examId: string, userId: string): Promise<boolean> {
-        const lateCode = await LateCode.findOne({
-            examId,
-            status: LateCodeStatus.ACTIVE,
-            expiresAt: { $gt: new Date() },
-            'usageHistory.userId': new mongoose.Types.ObjectId(userId)
-        })
-
-        return !!lateCode
+        const lateCodeRepo = new LateCodeRepository();
+        const lateCode = await lateCodeRepo.findValidLateAccess(examId, userId);
+        return !!lateCode;
     }
 }

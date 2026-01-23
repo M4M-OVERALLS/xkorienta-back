@@ -1,83 +1,49 @@
-import { NextResponse } from "next/server"
-import connectDB from "@/lib/mongodb"
-import { EducationStructureService } from "@/lib/services/EducationStructureService"
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import connectDB from "@/lib/mongodb";
+import { EducationStructureController } from "@/lib/controllers/EducationStructureController";
+
+interface RouteParams {
+    params: Promise<{ id: string }>;
+}
 
 /**
  * GET /api/fields/[id]
  * Récupère une filière par ID avec sa hiérarchie
  */
-export async function GET(
-    req: Request,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    try {
-                const { id } = await params
-await connectDB()
-
-        const field = await EducationStructureService.getFieldById(id)
-
-        if (!field) {
-            return NextResponse.json(
-                { success: false, message: "Field not found" },
-                { status: 404 }
-            )
-        }
-
-        return NextResponse.json({
-            success: true,
-            data: field
-        })
-    } catch (error) {
-        console.error("[Field API] Error:", error)
-        return NextResponse.json(
-            { success: false, message: "Internal server error" },
-            { status: 500 }
-        )
-    }
+export async function GET(req: NextRequest, { params }: RouteParams) {
+    await connectDB();
+    const { id } = await params;
+    return EducationStructureController.getFieldById(id);
 }
 
 /**
  * PUT /api/fields/[id]
  * Met à jour une filière (Admin only)
  */
-export async function PUT(
-    req: Request,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    try {
-        // TODO: Implémenter la mise à jour
-        return NextResponse.json(
-            { success: true, message: "Not implemented yet" },
-            { status: 501 }
-        )
-    } catch (error) {
-        console.error("[Field API] Error:", error)
-        return NextResponse.json(
-            { success: false, message: "Internal server error" },
-            { status: 500 }
-        )
+export async function PUT(req: NextRequest, { params }: RouteParams) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
+
+    await connectDB();
+    const { id } = await params;
+    return EducationStructureController.updateField(req, id, session.user.id);
 }
 
 /**
  * DELETE /api/fields/[id]
  * Supprime (soft delete) une filière (Admin only)
  */
-export async function DELETE(
-    req: Request,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    try {
-        // TODO: Implémenter la suppression
-        return NextResponse.json(
-            { success: true, message: "Not implemented yet" },
-            { status: 501 }
-        )
-    } catch (error) {
-        console.error("[Field API] Error:", error)
-        return NextResponse.json(
-            { success: false, message: "Internal server error" },
-            { status: 500 }
-        )
+export async function DELETE(req: NextRequest, { params }: RouteParams) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
+
+    await connectDB();
+    const { id } = await params;
+    return EducationStructureController.deleteField(id, session.user.id);
 }

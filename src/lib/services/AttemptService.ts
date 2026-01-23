@@ -164,6 +164,29 @@ export class AttemptService {
     }
 
     /**
+     * Get redirect URL for resume token
+     * Validates token and user session, returns redirect URL
+     */
+    static async getResumeRedirectUrl(token: string, currentUserId?: string) {
+        const { AttemptRepository } = await import("@/lib/repositories/AttemptRepository");
+        const repo = new AttemptRepository();
+        const attempt = await repo.findByResumeToken(token);
+
+        if (!attempt) {
+            throw new Error("Invalid token");
+        }
+
+        // If user is logged in, check if it's the right user
+        if (currentUserId && attempt.userId.toString() !== currentUserId) {
+            throw new Error("Logged in as wrong user. Please logout first.");
+        }
+
+        return {
+            redirectUrl: `/student/exam/${attempt.examId.toString()}/take`
+        };
+    }
+
+    /**
      * Enregistre un événement anti-triche
      */
     static async recordAntiCheatEvent(

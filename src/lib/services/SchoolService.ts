@@ -3,6 +3,11 @@ import User, { IUser } from "@/models/User";
 import Class from "@/models/Class";
 import Attempt from "@/models/Attempt";
 import Exam from "@/models/Exam";
+import { SchoolRepository } from "@/lib/repositories/SchoolRepository";
+import { TeacherRepository } from "@/lib/repositories/TeacherRepository";
+import { ClassRepository } from "@/lib/repositories/ClassRepository";
+import { AttemptRepository } from "@/lib/repositories/AttemptRepository";
+import { ExamRepository } from "@/lib/repositories/ExamRepository";
 import mongoose from "mongoose";
 
 export class SchoolService {
@@ -29,37 +34,31 @@ export class SchoolService {
             .lean();
     }
     static async getSchoolStats(schoolId: string) {
-        // 1. Basic Counts
-        const school = await School.findById(schoolId).select('-teachers -admins');
+        const schoolRepo = new SchoolRepository();
+        const teacherRepo = new TeacherRepository();
+        const classRepo = new ClassRepository();
+        const examRepo = new ExamRepository();
+        const attemptRepo = new AttemptRepository();
+
+        // 1. Get school basic info
+        const school = await schoolRepo.findByIdBasic(schoolId);
         if (!school) return null;
 
-        // Count teachers reliably and get their IDs
-        const schoolTeachers = await User.find({
-            schools: schoolId,
-            role: 'TEACHER',
-            isActive: true
-        }).select('_id');
+        // 2. Get teachers count and IDs
+        const teacherIds = await teacherRepo.findTeacherIdsBySchool(schoolId);
+        const teachersCount = teacherIds.length;
 
-        const teachersCount = schoolTeachers.length;
-        const teacherIds = schoolTeachers.map(t => t._id);
+        // 3. Get admins count
+        const adminsCount = await schoolRepo.getAdminsCount(schoolId);
 
-        // Count admins reliably
-        // Assuming admins rely on similar logic or we keep the school array if no better way.
-        // But for consistency let's try to query Users if they have ADMIN role and are in this school?
-        // Actually, admins are often stored in school.admins too. Let's fallback to User query if possible.
-        // Assuming 'SCHOOL_ADMIN' role or similar. If not sure, let's keep array for admins but fix teachers.
-        // Let's stick to array for admins for now as getSchoolTeachers query is specific.
-        const adminsCount = await School.findById(schoolId).select('admins').then(s => s?.admins.length || 0);
-
-        const classes = await Class.find({ school: new mongoose.Types.ObjectId(schoolId) })
-            .populate('students', 'name')
-            .populate('level', 'name');
+        // 4. Get classes with students and level populated
+        const classes = await classRepo.findBySchoolWithDetails(schoolId);
         const classesCount = classes.length;
 
         console.log(`[SchoolStats] Found ${classesCount} classes for school ${schoolId}`); // Debug log
 
-        // 2. Students Count (Unique students across all classes)
-        const allStudents = classes.flatMap((c: any) => c.students);
+        // 5. Students Count (Unique students across all classes)
+        const allStudents = classes.flatMap((c: any) => c.students || []);
         const uniqueStudentsMap = new Map();
         allStudents.forEach((student: any) => {
             if (student && student._id) {
@@ -69,16 +68,10 @@ export class SchoolService {
         const studentsCount = uniqueStudentsMap.size;
         const studentIds = Array.from(uniqueStudentsMap.keys());
 
-        // 3. Get class IDs for exam queries
-        // const classIds = classes.map((c: any) => c._id); // Removed as per instruction
+        // 6. Count exams created by school teachers
+        const examsCount = await examRepo.countExamsByTeachers(teacherIds);
 
-        // 4. Count exams created by school teachers
-        const examsCount = await Exam.countDocuments({
-            createdById: { $in: teacherIds },
-            status: { $in: ['ACTIVE', 'COMPLETED', 'PUBLISHED', 'VALIDATED'] } // Include PUBLISHED/VALIDATED
-        });
-
-        // 5. Calculate average score & get performance data
+        // 7. Calculate average score & get performance data
         let averageScore = 0;
         let scoreDistribution = [
             { range: '0-20%', count: 0, color: '#ef4444' },
@@ -91,39 +84,10 @@ export class SchoolService {
 
         if (studentIds.length > 0) {
             // Get average score
-            const avgStats = await Attempt.aggregate([
-                {
-                    $match: {
-                        userId: { $in: studentIds.map(id => new mongoose.Types.ObjectId(id)) },
-                        status: 'COMPLETED'
-                    }
-                },
-                {
-                    $group: {
-                        _id: null,
-                        avg: { $avg: "$percentage" }
-                    }
-                }
-            ]);
-            averageScore = avgStats.length > 0 ? avgStats[0].avg : 0;
+            averageScore = await attemptRepo.getAverageScoreForUsers(studentIds);
 
             // Get score distribution
-            const distribution = await Attempt.aggregate([
-                {
-                    $match: {
-                        userId: { $in: studentIds.map(id => new mongoose.Types.ObjectId(id)) },
-                        status: 'COMPLETED'
-                    }
-                },
-                {
-                    $bucket: {
-                        groupBy: "$percentage",
-                        boundaries: [0, 20, 40, 60, 80, 101],
-                        default: "Other",
-                        output: { count: { $sum: 1 } }
-                    }
-                }
-            ]);
+            const distribution = await attemptRepo.getScoreDistributionForUsers(studentIds);
 
             // Map distribution to our format
             distribution.forEach((bucket: any) => {
@@ -135,27 +99,7 @@ export class SchoolService {
             });
 
             // Get weekly performance trend (last 8 weeks)
-            const eightWeeksAgo = new Date();
-            eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
-
-            const weeklyPerformance = await Attempt.aggregate([
-                {
-                    $match: {
-                        userId: { $in: studentIds.map(id => new mongoose.Types.ObjectId(id)) },
-                        status: 'COMPLETED',
-                        submittedAt: { $gte: eightWeeksAgo }
-                    }
-                },
-                {
-                    $group: {
-                        _id: { $week: "$submittedAt" },
-                        avgScore: { $avg: "$percentage" },
-                        count: { $sum: 1 }
-                    }
-                },
-                { $sort: { _id: 1 } },
-                { $limit: 8 }
-            ]);
+            const weeklyPerformance = await attemptRepo.getWeeklyPerformanceForUsers(studentIds, 8);
 
             // Transform to chart format
             const weekNames = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'];
@@ -175,17 +119,10 @@ export class SchoolService {
             }
         }
 
-        // 6. Get recent activity (last 5 exam results created by these teachers)
-        const recentExams = await Exam.find({
-            createdById: { $in: teacherIds },
-            status: { $nin: ['DRAFT', 'ARCHIVED'] } // Show non-draft/archived
-        })
-            .sort({ createdAt: -1 })
-            .limit(5)
-            .select('title subject startTime status')
-            .populate('subject', 'name');
+        // 8. Get recent activity (last 5 exam results created by these teachers)
+        const recentExams = await examRepo.findRecentExamsByTeachers(teacherIds, 5);
 
-        // 7. Calculate class distribution by level
+        // 9. Calculate class distribution by level
         const classDistribution = classes.reduce((acc: any[], cls: any) => {
             const levelName = cls.level?.name || 'Non défini';
             const existing = acc.find(item => item.name === levelName);
@@ -197,14 +134,9 @@ export class SchoolService {
             return acc;
         }, []);
 
-        // 8. Calculate completion rate
-        const totalAttempts = await Attempt.countDocuments({
-            userId: { $in: studentIds.map(id => new mongoose.Types.ObjectId(id)) }
-        });
-        const completedAttempts = await Attempt.countDocuments({
-            userId: { $in: studentIds.map(id => new mongoose.Types.ObjectId(id)) },
-            status: 'COMPLETED'
-        });
+        // 10. Calculate completion rate
+        const totalAttempts = await attemptRepo.countAttemptsForUsers(studentIds);
+        const completedAttempts = await attemptRepo.countAttemptsForUsers(studentIds, 'COMPLETED');
         const completionRate = totalAttempts > 0 ? Math.round((completedAttempts / totalAttempts) * 100) : 0;
 
         return {
@@ -237,14 +169,8 @@ export class SchoolService {
      * Get Teachers List
      */
     static async getSchoolTeachers(schoolId: string) {
-        // Find all users who have this school in their schools array
-        const teachers = await User.find({
-            schools: schoolId,
-            role: 'TEACHER',
-            isActive: true
-        }).select('name email role isActive metadata.avatar lastLogin createdAt');
-
-        return teachers;
+        const teacherRepo = new TeacherRepository();
+        return await teacherRepo.findTeachersBySchool(schoolId);
     }
 
     /**
@@ -289,27 +215,17 @@ export class SchoolService {
      * Get Teacher's Schools (Owned or Member)
      */
     static async getTeacherSchools(userId: string) {
-        // Find schools where user is owner or in teachers list
-        return await School.find({
-            $or: [
-                { owner: userId },
-                { teachers: userId },
-                { admins: userId }
-            ]
-        }).select('name type logoUrl status type address');
+        const { SchoolRepository } = await import("@/lib/repositories/SchoolRepository");
+        const repo = new SchoolRepository();
+        return await repo.findByTeacher(userId);
     }
 
     /**
      * Get School Classes
      */
     static async getSchoolClasses(schoolId: string) {
-        return await Class.find({ school: schoolId })
-            .populate('mainTeacher', 'name email') // Main teacher
-            .populate('level', 'name')
-            .populate('specialty', 'name')
-            .populate('field', 'code name')
-            .select('name level specialty field academicYear students mainTeacher')
-            .sort({ name: 1 });
+        const classRepo = new ClassRepository();
+        return await classRepo.findBySchool(schoolId);
     }
 
     // ==========================================
@@ -400,6 +316,36 @@ export class SchoolService {
         const { SchoolRepository } = await import("@/lib/repositories/SchoolRepository");
         const schoolRepo = new SchoolRepository();
         return await schoolRepo.findByAdmin(userId);
+    }
+
+    /**
+     * Apply to a school
+     */
+    static async applyToSchool(schoolId: string, userId: string) {
+        const repo = new SchoolRepository();
+
+        // 1. Check if school exists
+        const school = await repo.findById(schoolId);
+        if (!school) {
+            throw new Error("School not found");
+        }
+
+        // 2. Check if user is already a member
+        const isMember = await repo.isUserMember(schoolId, userId);
+        if (isMember) {
+            throw new Error("You are already a member of this school");
+        }
+
+        // 3. Check if user has already applied
+        const hasApplied = await repo.isUserApplicant(schoolId, userId);
+        if (hasApplied) {
+            throw new Error("You have already applied to this school");
+        }
+
+        // 4. Add user to applicants
+        await repo.addApplicant(schoolId, userId);
+
+        return { success: true, message: "Application submitted successfully" };
     }
 }
 

@@ -1,36 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth"; // Verifier le path
-import ConceptEvaluation from "@/models/ConceptEvaluation";
+import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
+import { ConceptController } from "@/lib/controllers/ConceptController";
 
-export async function POST(req: NextRequest) {
+/**
+ * POST /api/syllabus/concepts/evaluate
+ * Submit a concept self-evaluation
+ */
+export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
-    if (!session) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    
+    if (!session?.user?.id) {
+        return NextResponse.json(
+            { success: false, message: "Unauthorized" },
+            { status: 401 }
+        );
     }
 
-    try {
-        await connectDB();
-        const { conceptId, syllabusId, level, reflection } = await req.json();
-
-        if (!conceptId || !syllabusId || !level) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-        }
-
-        const evaluation = await ConceptEvaluation.create({
-            student: session.user.id,
-            concept: conceptId,
-            syllabus: syllabusId,
-            level,
-            reflection,
-            evaluatedAt: new Date()
-        });
-
-        return NextResponse.json({ success: true, data: evaluation });
-
-    } catch (error) {
-        console.error("Error submitting concept evaluation:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-    }
+    await connectDB();
+    return ConceptController.evaluateConcept(req, session.user.id);
 }

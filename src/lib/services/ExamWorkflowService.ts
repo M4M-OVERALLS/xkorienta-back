@@ -6,6 +6,7 @@ import { AccessHandlerChain, AccessRequest } from "@/lib/patterns/AccessHandler"
 import { publishEvent } from "@/lib/events/EventPublisher"
 import { EventType } from "@/lib/events/types"
 import mongoose from "mongoose"
+import { ExamRepository } from "@/lib/repositories/ExamRepository"
 
 /**
  * Service pour gérer le workflow de validation et publication des examens
@@ -154,7 +155,8 @@ export class ExamWorkflowService {
      * PUBLISHED → ARCHIVED
      */
     static async archiveExam(examId: string, userId: string, userRole: UserRole) {
-        const exam = await Exam.findById(examId)
+        const repo = new ExamRepository()
+        const exam = await repo.findById(examId)
         if (!exam) throw new Error("Exam not found")
 
         // Vérifier que l'examen est PUBLISHED
@@ -173,7 +175,7 @@ export class ExamWorkflowService {
         // Mettre à jour le statut
         exam.status = ExamStatus.ARCHIVED
         exam.isPublished = false
-        await exam.save()
+        await repo.save(exam)
 
         // Publier un événement
         await publishEvent({

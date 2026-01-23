@@ -9,6 +9,8 @@ import { ClassService } from "./ClassService";
 import { SchoolService } from "./SchoolService";
 import bcrypt from "bcryptjs";
 import { UserRole } from "@/models/enums";
+import { InvitationRepository } from "@/lib/repositories/InvitationRepository";
+import { UserRepository } from "@/lib/repositories/UserRepository";
 
 export interface CreateLinkOptions {
     expiresIn?: '24h' | '7d' | '30d' | 'never'
@@ -263,16 +265,15 @@ export class InvitationService {
      * Accept an invitation (Link or Individual) - Enhanced with notifications
      */
     static async acceptInvitation(token: string, userId: string) {
-        const invitation = await Invitation.findOne({ token, status: 'PENDING' })
-            .populate({
-                path: 'classId',
-                populate: { path: 'mainTeacher', select: 'name email' }
-            });
+        const invitationRepo = new InvitationRepository();
+        const userRepo = new UserRepository();
+
+        const invitation = await invitationRepo.findByToken(token);
 
         if (!invitation) throw new Error("Invitation invalide ou expirée");
         if (invitation.expiresAt && invitation.expiresAt < new Date()) {
             invitation.status = 'EXPIRED';
-            await invitation.save();
+            await invitationRepo.save(invitation);
             throw new Error("Invitation expirée");
         }
 
@@ -297,18 +298,18 @@ export class InvitationService {
         if (invitation.type === 'LINK') {
             invitation.currentUses += 1;
             invitation.registeredStudents.push(userId as any);
-            await invitation.save();
+            await invitationRepo.save(invitation);
         }
 
         if (invitation.type === 'INDIVIDUAL') {
             invitation.status = 'ACCEPTED';
-            await invitation.save();
+            await invitationRepo.save(invitation);
 
-            const user = await User.findById(userId);
+            const user = await userRepo.findById(userId);
             if (user && !user.isActive) {
                 user.isActive = true;
                 user.emailVerified = true;
-                await user.save();
+                await userRepo.save(user);
             }
         }
 
