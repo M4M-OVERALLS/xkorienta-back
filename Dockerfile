@@ -17,19 +17,24 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Build argument for environment
-ARG NODE_ENV=production
+ARG NODE_ENV=dev
 ENV NODE_ENV=${NODE_ENV}
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Dummy env vars for build time (real values injected at runtime)
+ENV DATABASE_URL="mongodb://placeholder:27017/placeholder"
+ENV NEXTAUTH_SECRET="build-time-placeholder-secret"
+ENV NEXTAUTH_URL="http://localhost:3001"
+
 # Build the application
-RUN npm run build
+RUN npm run build 2>&1 || (echo "Build failed" && exit 1)
 
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
 
 # Set environment variables
-ENV NODE_ENV=production
+ENV NODE_ENV=dev
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Create non-root user for security
