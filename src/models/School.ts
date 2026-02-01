@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document, Model } from 'mongoose'
-import { SchoolStatus } from './enums'
+import { SchoolStatus, ModalityStatus, LanguageStatus, SpecialtyLevel, certificationType } from './enums'
 
 export enum SchoolType {
     PRIMARY = 'PRIMARY',
@@ -14,11 +14,44 @@ export interface ISchool extends Document {
     name: string
     type: SchoolType
     address?: string
+    city: mongoose.Types.ObjectId, // clé étrangère city
+    country: mongoose.Types.ObjectId, // clé étrangère country
+    logoUrl?: string,
+    status: SchoolStatus
     contactInfo?: {
         email?: string
         phone?: string
         website?: string
+    },
+
+    // Données pour l'orientation
+    specialties: mongoose.Types.ObjectId, //clé étrangère du modèle Specialty
+    accreditation: mongoose.Types.ObjectId, // clé étrangère du modèle Partner
+    tuitionFee: { min: number; max: number; currency: string },
+    modality: ModalityStatus,
+    Languages: LanguageStatus[],
+    // xkorientaScore: number, //Sa valeur est dans le table SchoolScore
+    badges: {
+        employment: boolean,
+        alternance: boolean,
+        certification: certificationType[] // Présent dans la table Badge
     }
+    academicLevel: mongoose.Types.ObjectId[], // Présent dans la table EducationLevel
+
+    // Données pour la comparaison
+    degrees: SpecialtyLevel[],
+    //speciality.durationYears?: { min: number; max: number; unit: 'mois' | 'ans' }partnerships?: string[] // Partenariats avec entreprises/universités
+    partnerships: mongoose.Types.ObjectId[], // Partenariats avec entreprises/universités
+    studentCount: number,
+    foundedYear: number,
+
+    //Données pour la page des détails
+    description: string,
+    learningOutcomes: string[], // mongoose.Types.ObjectId
+    careerPaths: mongoose.Types.ObjectId[], // clé étrangère de la table CareerOutcome
+
+    //Débouchés professionneles
+    // programs: mongoose.Types.ObjectId[], // Présent dans la table SchoolProgram
 
     // Relationships
     teachers: mongoose.Types.ObjectId[] // Refs to User
@@ -26,9 +59,7 @@ export interface ISchool extends Document {
     applicants: mongoose.Types.ObjectId[] // Refs to User
 
     // Metadata
-    logoUrl?: string
-    certificationBadge?: string // URL or Badge ID
-    status: SchoolStatus
+    certificationBadge?: string // URL or Badge ID 
     owner: mongoose.Types.ObjectId // Ref to User (Teacher who created it)
     isActive: boolean
     createdAt: Date
@@ -52,11 +83,70 @@ const SchoolSchema = new Schema<ISchool>(
             type: String,
             trim: true
         },
+        city: {
+            type: Schema.Types.ObjectId,
+            ref: 'City'
+        },
+        country: {
+            type: Schema.Types.ObjectId,
+            ref: 'Country'
+        },
         contactInfo: {
             email: String,
             phone: String,
             website: String
         },
+        specialties: {
+            type: Schema.Types.ObjectId,
+            ref: 'Specialty'
+        },
+        accreditation: {
+            type: Schema.Types.ObjectId,
+            ref: 'Partner'
+        },
+        tuitionFee: {
+            min: Number,
+            max: Number,
+            currency: String
+        },
+        modality: {
+            type: String,
+            enum: Object.values(ModalityStatus)
+        },
+        Languages: [{
+            type: String,
+            enum: Object.values(LanguageStatus)
+        }],
+        badges: {
+            employment: Boolean,
+            alternance: Boolean,
+            certification: [{
+                type: Schema.Types.ObjectId,
+                ref: 'Badge'
+            }]
+        },
+        academicLevel: [{
+            type: Schema.Types.ObjectId,
+            ref: 'EducationLevel'
+        }],
+        degrees: [{
+            type: String,
+            enum: Object.values(SpecialtyLevel)
+        }],
+        partnerships: [{
+            type: Schema.Types.ObjectId,
+            ref: 'Partner'
+        }],
+        studentCount: Number,
+        foundedYear: Number,
+        description: String,
+        learningOutcomes: [{
+            type: String
+        }],
+        careerPaths: [{
+            type: Schema.Types.ObjectId,
+            ref: 'CareerOutcome'
+        }],
         teachers: [{
             type: Schema.Types.ObjectId,
             ref: 'User'
@@ -92,6 +182,8 @@ const SchoolSchema = new Schema<ISchool>(
 )
 
 // Indexes
+SchoolSchema.index({ city: 1 })
+SchoolSchema.index({ country: 1 })
 SchoolSchema.index({ teachers: 1 })
 SchoolSchema.index({ admins: 1 })
 SchoolSchema.index({ status: 1 })

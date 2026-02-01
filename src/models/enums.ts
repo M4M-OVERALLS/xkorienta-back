@@ -9,6 +9,55 @@ export enum CloseMode {
     PERMISSIVE = 'PERMISSIVE' // Autorise les soumissions tardives avec code
 }
 
+export enum certificationType {
+    CERTIFICATE = 'CERTIFICATE',
+    DIPLOMA = 'DIPLOMA',
+    HONOR = 'HONOR',
+    SPECIALIZATION = 'SPECIALIZATION',
+    CERTIFICATION = 'CERTIFICATION'
+}
+
+export enum DemandStatus {
+    HIGH = 'HIGH',
+    MEDIUM = 'MEDIUM',
+    LOW = 'LOW'
+}
+
+export enum degreeAwardedStatus {
+    PRESENTIEL = 'PRESENTIEL',
+    HYBRIDE = 'HYBRIDE',
+    DISTANCE = 'DISTANCE'
+}
+
+export enum ModalityStatus {
+    PRESENTIEL = 'PRESENTIEL',
+    HYBRIDE = 'HYBRIDE',
+    DISTANCE = 'DISTANCE'
+}
+
+export enum LanguageStatus {
+    FRANCAIS = 'FRANCAIS',
+    ANGLAIS = 'ANGLAIS',
+    CHINOIS = 'CHINOIS',
+    ALLEMAND = 'ALLEMAND',
+    ESPAGNOL = 'ESPAGNOL'
+}
+
+export enum SpecialtyLevel {
+    BTS = 'BTS',
+    HND = 'HND',
+    LICENCE = 'Licence',
+    MASTER = 'Master',
+    DOCTORAT = 'Doctorat',
+    CERTIFICATE = 'Certificate'
+}
+
+export enum SpecialtyMode {
+    ONSITE = 'Onsite',
+    HYBRID = 'Hybrid',
+    ONLINE = 'Online'
+}
+
 export enum Cycle {
     COLLEGE = 'COLLEGE',      // 6ème → 3ème
     LYCEE = 'LYCEE',          // 2nde → Tle

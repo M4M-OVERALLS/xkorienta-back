@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { SchoolService } from "@/lib/services/SchoolService";
+import { SchoolService, StudentSchoolFilters } from "@/lib/services/SchoolService";
 
 export class SchoolController {
     static async getSchools(req: Request) {
@@ -40,6 +40,20 @@ export class SchoolController {
             return NextResponse.json({ success: true, data: schools });
         } catch (error: any) {
             console.error("[School Controller] Get Teacher Schools Error:", error);
+            return NextResponse.json(
+                { success: false, message: error.message || "Internal server error" },
+                { status: 500 }
+            );
+        }
+    }
+
+    // Controller pour la liste des écoles côté apprenant
+    static async getStudentSchools(studentId: string, filters?: StudentSchoolFilters) {
+        try {
+            const schools = await SchoolService.getStudentSchools(studentId, filters);
+            return NextResponse.json({ success: true, data: schools });
+        } catch (error: any) {
+            console.error("[School Controller] Get Student Schools Error:", error);
             return NextResponse.json(
                 { success: false, message: error.message || "Internal server error" },
                 { status: 500 }

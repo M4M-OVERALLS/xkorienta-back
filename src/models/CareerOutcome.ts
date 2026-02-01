@@ -1,9 +1,11 @@
 import mongoose, { Schema, Document, Model } from 'mongoose'
+import { DemandStatus } from './enums'
 
 export interface ICareerOutcome extends Document {
     _id: mongoose.Types.ObjectId
     name: string
-    sector: string // Secteur d'activité
+    sector: string // Secteur d'activité,
+    demand: DemandStatus
     createdAt: Date
     updatedAt: Date
 }

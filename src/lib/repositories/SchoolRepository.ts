@@ -2,6 +2,7 @@ import School, { ISchool } from "@/models/School";
 import { SchoolStatus } from "@/models/enums";
 import connectDB from "@/lib/mongodb";
 import mongoose from "mongoose";
+import SchoolScore from "@/models/SchoolScore";
 
 export class SchoolRepository {
     /**
@@ -93,6 +94,67 @@ export class SchoolRepository {
             .sort({ name: 1 })
             .limit(50)
             .lean();
+    }
+
+    /**
+     * Find schools for student list (no backend filters).
+     */
+    async findSchoolsForStudents() {
+        await connectDB();
+        const schools = await School.find({})
+            .select([
+                'name',
+                'type',
+                'address',
+                'city',
+                'country',
+                'logoUrl',
+                'status',
+                'contactInfo',
+                'specialties',
+                'accreditation',
+                'tuitionFee',
+                'modality',
+                'Languages',
+                'badges',
+                'academicLevel',
+                'degrees',
+                'partnerships',
+                'studentCount',
+                'foundedYear',
+                'description',
+                'learningOutcomes',
+                'careerPaths'
+            ].join(' '))
+            .populate({ path: 'city', select: 'name', options: { strictPopulate: false } })
+            .populate({ path: 'country', select: 'name isoCode currency', options: { strictPopulate: false } })
+            .populate({ path: 'specialties', select: 'name', options: { strictPopulate: false } })
+            .populate({ path: 'accreditation', select: 'name', options: { strictPopulate: false } })
+            .populate({ path: 'badges.certification', select: 'name', options: { strictPopulate: false } })
+            .populate({ path: 'academicLevel', select: 'name', options: { strictPopulate: false } })
+            .populate({ path: 'partnerships', select: 'name', options: { strictPopulate: false } })
+            .populate({ path: 'careerPaths', select: 'title salary demand', options: { strictPopulate: false } })
+            .sort({ name: 1 })
+            .lean();
+
+        const schoolIds = schools.map(s => s._id as mongoose.Types.ObjectId);
+        const scores = await SchoolScore.find({ school: { $in: schoolIds } })
+            .select('school globalScore')
+            .lean();
+
+        const scoreBySchoolId = new Map<string, number>();
+        for (const score of scores) {
+            const scoreData = score as unknown as { school: { toString: () => string }, globalScore: number };
+            scoreBySchoolId.set(scoreData.school.toString(), scoreData.globalScore);
+        }
+
+        return schools.map((s) => {
+            const id = (s._id as { toString: () => string }).toString();
+            return {
+                ...s,
+                xkorientaScore: scoreBySchoolId.get(id)
+            };
+        });
     }
 
     /**

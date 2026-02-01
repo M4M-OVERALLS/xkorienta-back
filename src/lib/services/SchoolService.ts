@@ -10,6 +10,21 @@ import { AttemptRepository } from "@/lib/repositories/AttemptRepository";
 import { ExamRepository } from "@/lib/repositories/ExamRepository";
 import mongoose from "mongoose";
 
+export type StudentSchoolFilters = {
+    query?: string;
+    country?: string;
+    city?: string;
+    level?: string;
+    type?: string;
+    specialty?: string;
+    accreditation?: string;
+    modality?: string;
+    language?: string;
+    costMin?: number;
+    costMax?: number;
+    scoreMin?: number;
+};
+
 export class SchoolService {
 
     /**
@@ -33,6 +48,169 @@ export class SchoolService {
             .sort({ name: 1 })
             .lean();
     }
+
+    // service pour la liste des écoles côté apprenant
+    static async getStudentSchools(studentId: string, filters?: StudentSchoolFilters) {
+        if (!studentId) {
+            throw new Error("Unauthorized");
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(studentId)) {
+            throw new Error("Invalid studentId");
+        }
+
+        const repo = new SchoolRepository();
+        const schools = await repo.findSchoolsForStudents();
+
+        const mapped = schools.map((school) => {
+            const schoolData = school as unknown as Record<string, unknown>;
+            const city = schoolData.city as Record<string, unknown> | undefined;
+            const country = schoolData.country as Record<string, unknown> | undefined;
+
+            const specialtiesRaw = schoolData.specialties;
+            const specialtiesArray = Array.isArray(specialtiesRaw) ? specialtiesRaw : (specialtiesRaw ? [specialtiesRaw] : []);
+            const specialties = specialtiesArray
+                .map((s) => (s as Record<string, unknown>).name as string | undefined)
+                .filter(Boolean) as string[];
+
+            const accreditationRaw = schoolData.accreditation;
+            const accreditationArray = Array.isArray(accreditationRaw) ? accreditationRaw : (accreditationRaw ? [accreditationRaw] : []);
+            const accreditation = accreditationArray
+                .map((a) => (a as Record<string, unknown>).name as string | undefined)
+                .filter(Boolean) as string[];
+
+            const badges = schoolData.badges as Record<string, unknown> | undefined;
+            const certifications = (badges?.certification as Array<Record<string, unknown>> | undefined)
+                ?.map((c) => c.name as string | undefined)
+                .filter(Boolean) as string[] | undefined;
+
+            const academicLevel = (schoolData.academicLevel as Array<Record<string, unknown>> | undefined)
+                ?.map((l) => l.name as string | undefined)
+                .filter(Boolean) as string[] | undefined;
+
+            const partnerships = (schoolData.partnerships as Array<Record<string, unknown>> | undefined)
+                ?.map((p) => p.name as string | undefined)
+                .filter(Boolean) as string[] | undefined;
+
+            const careerPaths = (schoolData.careerPaths as Array<Record<string, unknown>> | undefined)
+                ?.map((c) => ({
+                    title: c.title as string,
+                    salary: c.salary as string,
+                    demand: c.demand as 'high' | 'medium' | 'low'
+                }));
+
+            return {
+                _id: (schoolData._id as { toString: () => string }).toString(),
+                name: (schoolData.name as string) || '',
+                type: (schoolData.type as string) || '',
+                address: schoolData.address as string | undefined,
+                city: city?.name as string | undefined,
+                country: country?.name as string | undefined,
+                logoUrl: schoolData.logoUrl as string | undefined,
+                status: schoolData.status as string | undefined,
+                contactInfo: schoolData.contactInfo as Record<string, unknown> | undefined,
+                specialties: specialties.length > 0 ? specialties : undefined,
+                accreditation: accreditation.length > 0 ? accreditation : undefined,
+                tuitionFee: schoolData.tuitionFee as { min: number; max: number; currency: string } | undefined,
+                modality: schoolData.modality as string | undefined,
+                languages: schoolData.Languages as string[] | undefined,
+                xkorientaScore: schoolData.xkorientaScore as number | undefined,
+                badges: {
+                    employment: badges?.employment as boolean | undefined,
+                    alternance: badges?.alternance as boolean | undefined,
+                    certifications: certifications && certifications.length > 0 ? certifications : undefined
+                },
+                academicLevel: academicLevel && academicLevel.length > 0 ? academicLevel : undefined,
+                degrees: schoolData.degrees as string[] | undefined,
+                partnerships: partnerships && partnerships.length > 0 ? partnerships : undefined,
+                studentCount: schoolData.studentCount as number | undefined,
+                foundedYear: schoolData.foundedYear as number | undefined,
+                description: schoolData.description as string | undefined,
+                learningOutcomes: schoolData.learningOutcomes as string[] | undefined,
+                careerPaths
+            };
+        });
+
+        if (!filters) {
+            return mapped;
+        }
+
+        const normalize = (value: string | undefined) => (value || '').trim().toLowerCase();
+        const query = normalize(filters.query);
+        const countryFilter = normalize(filters.country);
+        const cityFilter = normalize(filters.city);
+        const levelFilter = normalize(filters.level);
+        const typeFilter = normalize(filters.type);
+        const specialtyFilter = normalize(filters.specialty);
+        const accreditationFilter = normalize(filters.accreditation);
+        const modalityFilter = normalize(filters.modality);
+        const languageFilter = normalize(filters.language);
+        const costMin = typeof filters.costMin === 'number' ? filters.costMin : undefined;
+        const costMax = typeof filters.costMax === 'number' ? filters.costMax : undefined;
+        const scoreMin = typeof filters.scoreMin === 'number' ? filters.scoreMin : undefined;
+
+        return mapped.filter((school) => {
+            if (query && !normalize(school.name).includes(query)) {
+                return false;
+            }
+            if (countryFilter && normalize(school.country).includes(countryFilter) === false) {
+                return false;
+            }
+            if (cityFilter && normalize(school.city).includes(cityFilter) === false) {
+                return false;
+            }
+            if (typeFilter && normalize(school.type).includes(typeFilter) === false) {
+                return false;
+            }
+            if (modalityFilter && normalize(school.modality).includes(modalityFilter) === false) {
+                return false;
+            }
+            if (languageFilter) {
+                const languages = (school.languages || []).map((l) => normalize(l));
+                if (!languages.includes(languageFilter)) {
+                    return false;
+                }
+            }
+            if (levelFilter) {
+                const levels = (school.academicLevel || []).map((l) => normalize(l));
+                if (!levels.includes(levelFilter)) {
+                    return false;
+                }
+            }
+            if (specialtyFilter) {
+                const specialties = (school.specialties || []).map((s) => normalize(s));
+                if (!specialties.includes(specialtyFilter)) {
+                    return false;
+                }
+            }
+            if (accreditationFilter) {
+                const acc = (school.accreditation || []).map((a) => normalize(a));
+                if (!acc.includes(accreditationFilter)) {
+                    return false;
+                }
+            }
+            if (costMin !== undefined || costMax !== undefined) {
+                const tuition = school.tuitionFee;
+                if (!tuition) {
+                    return false;
+                }
+                if (costMin !== undefined && tuition.max < costMin) {
+                    return false;
+                }
+                if (costMax !== undefined && tuition.min > costMax) {
+                    return false;
+                }
+            }
+            if (scoreMin !== undefined) {
+                const score = school.xkorientaScore;
+                if (typeof score !== 'number' || score < scoreMin) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    }
+    
     static async getSchoolStats(schoolId: string) {
         const schoolRepo = new SchoolRepository();
         const teacherRepo = new TeacherRepository();

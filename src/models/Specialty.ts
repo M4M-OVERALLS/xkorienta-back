@@ -1,19 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose'
+import { SpecialtyLevel, SpecialtyMode, LanguageStatus, degreeAwardedStatus  } from './enums'
 
-export enum SpecialtyLevel {
-    BTS = 'BTS',
-    HND = 'HND',
-    LICENCE = 'Licence',
-    MASTER = 'Master',
-    DOCTORAT = 'Doctorat',
-    CERTIFICATE = 'Certificate'
-}
 
-export enum SpecialtyMode {
-    ONSITE = 'Onsite',
-    HYBRID = 'Hybrid',
-    ONLINE = 'Online'
-}
 
 export interface ISpecialty extends Document {
     _id: mongoose.Types.ObjectId
@@ -21,11 +9,12 @@ export interface ISpecialty extends Document {
     field: string // Filière
     specialtyName: string
     level: SpecialtyLevel
-    degreeAwarded: string // Diplôme délivré
+    degreeAwarded: degreeAwardedStatus // Diplôme délivré
     durationYears: number // Durée en années
-    language: string // Langue d'enseignement
+    employability: number // Taux d'employabilité en %
+    language: LanguageStatus[] // Langue d'enseignement
     mode: SpecialtyMode
-    prerequisites?: string // Prérequis
+    prerequisites?: string[] // Prérequis
     generalObjective?: string // Objectif général
     specificObjectives?: string[] // Objectifs spécifiques
     valueProposition?: string // Proposition de valeur
