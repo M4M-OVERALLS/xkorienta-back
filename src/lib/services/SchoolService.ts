@@ -423,6 +423,7 @@ export class SchoolService {
 
     /**
      * Approve a teacher application
+     * Also grafts independent classes to the school
      */
     static async approveTeacher(schoolId: string, teacherId: string) {
         // Move from applicants to teachers
@@ -440,7 +441,42 @@ export class SchoolService {
             $addToSet: { schools: schoolId }
         });
 
+        // Graft independent classes to this school
+        await this.graftTeacherClassesToSchool(teacherId, schoolId);
+
         return school;
+    }
+
+    /**
+     * Graft independent classes to a school when teacher is approved
+     */
+    static async graftTeacherClassesToSchool(teacherId: string, schoolId: string) {
+        const { ClassValidationStatus } = await import("@/models/enums");
+        
+        // Find all independent classes by this teacher that were waiting for this school
+        const classesToGraft = await Class.find({
+            mainTeacher: teacherId,
+            isIndependent: true,
+            $or: [
+                { pendingSchoolId: schoolId },
+                { school: null }
+            ]
+        });
+
+        console.log(`[GraftClasses] Found ${classesToGraft.length} independent classes to graft for teacher ${teacherId} to school ${schoolId}`);
+
+        // Update each class to link it to the school
+        for (const cls of classesToGraft) {
+            await Class.findByIdAndUpdate(cls._id, {
+                school: schoolId,
+                isIndependent: false,
+                pendingSchoolId: null,
+                validationStatus: ClassValidationStatus.VALIDATED // Auto-validate since teacher is now approved
+            });
+            console.log(`[GraftClasses] Grafted class ${cls._id} (${cls.name}) to school ${schoolId}`);
+        }
+
+        return classesToGraft.length;
     }
 
     /**

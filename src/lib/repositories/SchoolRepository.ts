@@ -62,17 +62,28 @@ export class SchoolRepository {
     }
 
     /**
-     * Find schools where user is owner, teacher, or admin
+     * Find schools where user is owner, teacher, admin, or applicant (pending approval)
      */
     async findByTeacher(teacherId: string) {
         await connectDB();
-        return School.find({
+        const schools = await School.find({
             $or: [
                 { owner: teacherId },
                 { teachers: teacherId },
-                { admins: teacherId }
+                { admins: teacherId },
+                { applicants: teacherId }
             ]
-        }).select('name type logoUrl status address').lean();
+        }).select('name type logoUrl status address applicants').lean();
+
+        // Add isPending flag for schools where user is an applicant
+        return schools.map((school: any) => {
+            const isPending = school.applicants?.some((id: any) => id.toString() === teacherId);
+            const { applicants, ...schoolData } = school;
+            return {
+                ...schoolData,
+                isPending: !!isPending
+            };
+        });
     }
 
     /**

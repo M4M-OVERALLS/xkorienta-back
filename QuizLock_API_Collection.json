@@ -1,0 +1,2041 @@
+{
+  "info": {
+    "name": "QuizLock API",
+    "description": "Collection Postman pour l'API QuizLock",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "quizlock-api-collection"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "classId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "examId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "studentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "teacherId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "schoolId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "subjectId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "notificationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "invitationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "linkId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "syllabusId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "forumId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "postId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "conversationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "requestId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attemptId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signin",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signin"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/register/v2",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "register", "v2"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"role\": \"STUDENT\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👥 Classes",
+      "item": [
+        {
+          "name": "Get All Classes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes"]
+            }
+          }
+        },
+        {
+          "name": "Get Class By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Class",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Math Class 2024\",\n  \"description\": \"Advanced mathematics course\",\n  \"subjectId\": \"{{subjectId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Class",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Class Name\",\n  \"description\": \"Updated description\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Class",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Class Students",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "students"]
+            }
+          }
+        },
+        {
+          "name": "Add Students to Class",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "students"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentIds\": [\"student-id-1\", \"student-id-2\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Class Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Get Class Exams",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/exams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "exams"]
+            }
+          }
+        },
+        {
+          "name": "Get Class Teachers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/teachers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "teachers"]
+            }
+          }
+        },
+        {
+          "name": "Remove Student from Class",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/students/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "students", "{{studentId}}"]
+            }
+          }
+        },
+        {
+          "name": "Remove Teacher from Class",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/teachers?teacherId={{teacherId}}&subjectId={{subjectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "teachers"],
+              "query": [
+                {
+                  "key": "teacherId",
+                  "value": "{{teacherId}}"
+                },
+                {
+                  "key": "subjectId",
+                  "value": "{{subjectId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📝 Exams",
+      "item": [
+        {
+          "name": "Get All Exams",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams"]
+            }
+          }
+        },
+        {
+          "name": "Get All Exams V2",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/v2",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "v2"]
+            }
+          }
+        },
+        {
+          "name": "Get Exam By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Exam By ID V2",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/v2/{{examId}}?includeQuestions=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "v2", "{{examId}}"],
+              "query": [
+                {
+                  "key": "includeQuestions",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Exam",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Final Exam\",\n  \"description\": \"End of semester exam\",\n  \"duration\": 120,\n  \"classId\": \"{{classId}}\",\n  \"subjectId\": \"{{subjectId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Exam V2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/v2",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "v2"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Final Exam V2\",\n  \"description\": \"End of semester exam\",\n  \"duration\": 120,\n  \"classId\": \"{{classId}}\",\n  \"subjectId\": \"{{subjectId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Exam",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Exam Title\",\n  \"description\": \"Updated description\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Exam V2",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/v2/{{examId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "v2", "{{examId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Exam Title V2\",\n  \"description\": \"Updated description\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Exam Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "status"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PUBLISHED\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Duplicate Exam",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/duplicate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "duplicate"]
+            }
+          }
+        },
+        {
+          "name": "Delete Exam",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}"]
+            }
+          }
+        },
+        {
+          "name": "Submit for Validation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/submit-validation",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "submit-validation"]
+            }
+          }
+        },
+        {
+          "name": "Publish Exam",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/publish",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "publish"]
+            }
+          }
+        },
+        {
+          "name": "Archive Exam",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/archive",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "archive"]
+            }
+          }
+        },
+        {
+          "name": "Unarchive Exam",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "status"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"DRAFT\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Exam Results",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/results",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "results"]
+            }
+          }
+        },
+        {
+          "name": "Get Exam Monitor Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/monitor",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "monitor"]
+            }
+          }
+        },
+        {
+          "name": "Get Exam Questions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/questions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "questions"]
+            }
+          }
+        },
+        {
+          "name": "Start Exam",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "start"]
+            }
+          }
+        },
+        {
+          "name": "Submit Exam",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": [\n    {\"questionId\": \"q1\", \"answer\": \"A\"},\n    {\"questionId\": \"q2\", \"answer\": \"B\"}\n  ]\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎯 Attempts",
+      "item": [
+        {
+          "name": "Get All Attempts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts"]
+            }
+          }
+        },
+        {
+          "name": "Get Attempt By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/{{attemptId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "{{attemptId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Attempt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"examId\": \"{{examId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Submit Attempt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/{{attemptId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "{{attemptId}}", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": []\n}"
+            }
+          }
+        },
+        {
+          "name": "Save Answer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "answer"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attemptId\": \"{{attemptId}}\",\n  \"questionId\": \"question-id\",\n  \"answer\": \"A\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎓 Students",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "profile"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Student Exams",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/exams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "exams"]
+            }
+          }
+        },
+        {
+          "name": "Get Student Attempts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/attempts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "attempts"]
+            }
+          }
+        },
+        {
+          "name": "Get Schools",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/schools?country=FR&level=highschool",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "schools"],
+              "query": [
+                {
+                  "key": "country",
+                  "value": "FR"
+                },
+                {
+                  "key": "level",
+                  "value": "highschool"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👨‍🏫 Teachers",
+      "item": [
+        {
+          "name": "Get All Teachers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/teachers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teachers"]
+            }
+          }
+        },
+        {
+          "name": "Get Teacher By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/teachers/{{teacherId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teachers", "{{teacherId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get My Schools",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/teacher/schools",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teacher", "schools"]
+            }
+          }
+        },
+        {
+          "name": "Get Teacher Students",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/teachers/students?search=john&classId={{classId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teachers", "students"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "john"
+                },
+                {
+                  "key": "classId",
+                  "value": "{{classId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏫 Schools",
+      "item": [
+        {
+          "name": "Get All Schools",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools"]
+            }
+          }
+        },
+        {
+          "name": "Get School By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/{{schoolId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "{{schoolId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Public Schools",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/public",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "public"]
+            }
+          }
+        },
+        {
+          "name": "Get School Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/{{schoolId}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "{{schoolId}}", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Get School Teachers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/{{schoolId}}/teachers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "{{schoolId}}", "teachers"]
+            }
+          }
+        },
+        {
+          "name": "Get School Classes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/{{schoolId}}/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "{{schoolId}}", "classes"]
+            }
+          }
+        },
+        {
+          "name": "Apply to School",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/apply",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "apply"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schoolId\": \"{{schoolId}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📚 Subjects",
+      "item": [
+        {
+          "name": "Get All Subjects",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/subjects",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subjects"]
+            }
+          }
+        },
+        {
+          "name": "Get Subject By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/subjects/{{subjectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subjects", "{{subjectId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 Notifications",
+      "item": [
+        {
+          "name": "Get All Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"]
+            }
+          }
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notificationId\": \"{{notificationId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Mark All Notifications as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"markAllAsRead\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?id={{notificationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "{{notificationId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 User",
+      "item": [
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Update User Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "profile"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john@example.com\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Profiles",
+      "item": [
+        {
+          "name": "Get Pedagogical Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/pedagogical",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "pedagogical"]
+            }
+          }
+        },
+        {
+          "name": "Update Pedagogical Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/pedagogical",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "pedagogical"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"learningStyle\": \"visual\",\n  \"difficulties\": []\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Profile Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📧 Invitations",
+      "item": [
+        {
+          "name": "Get Invitation Link",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "invitations"]
+            }
+          }
+        },
+        {
+          "name": "Create Invitation Link",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "invitations"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"LINK\",\n  \"options\": {\n    \"expiresIn\": \"7d\",\n    \"maxUses\": 50,\n    \"description\": \"Class invitation\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Invite Individual Student",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "invitations"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"INDIVIDUAL\",\n  \"email\": \"student@example.com\",\n  \"name\": \"John Doe\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Batch Invite Students",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "invitations"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"BATCH\",\n  \"students\": [\n    {\"name\": \"John Doe\", \"email\": \"john@example.com\"},\n    {\"name\": \"Jane Doe\", \"email\": \"jane@example.com\"}\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get All Invitation Links",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/invitations/links",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "invitations", "links"]
+            }
+          }
+        },
+        {
+          "name": "Revoke Invitation Link",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/invitations/links/{{linkId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "invitations", "links", "{{linkId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📖 Syllabus",
+      "item": [
+        {
+          "name": "Get All Syllabus",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/syllabus",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "syllabus"]
+            }
+          }
+        },
+        {
+          "name": "Get Syllabus By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/syllabus/{{syllabusId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "syllabus", "{{syllabusId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Syllabus",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/syllabus",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "syllabus"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mathematics Syllabus\",\n  \"description\": \"Complete math curriculum\",\n  \"subjectId\": \"{{subjectId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Syllabus",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/syllabus/{{syllabusId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "syllabus", "{{syllabusId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Syllabus\",\n  \"description\": \"Updated description\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Syllabus",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/syllabus/{{syllabusId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "syllabus", "{{syllabusId}}"]
+            }
+          }
+        },
+        {
+          "name": "Clone Syllabus",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/syllabus/{{syllabusId}}/clone",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "syllabus", "{{syllabusId}}", "clone"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚀 Onboarding",
+      "item": [
+        {
+          "name": "Submit Onboarding",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/onboarding",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "onboarding"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"STUDENT\",\n  \"details\": {\n    \"grade\": \"10th\",\n    \"subjects\": [\"math\", \"science\"]\n  }\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💬 Forums",
+      "item": [
+        {
+          "name": "Get All Forums",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums?classId={{classId}}&type=general",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums"],
+              "query": [
+                {
+                  "key": "classId",
+                  "value": "{{classId}}"
+                },
+                {
+                  "key": "type",
+                  "value": "general"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Forum By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Forum",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"General Discussion\",\n  \"description\": \"General class discussion forum\",\n  \"type\": \"GENERAL\",\n  \"classId\": \"{{classId}}\",\n  \"isPrivate\": false,\n  \"allowStudentPosts\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Forum Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}/posts?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}", "posts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}", "posts"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"New Discussion\",\n  \"content\": \"This is the content of my post\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Add Reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}/posts/{{postId}}/replies",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}", "posts", "{{postId}}", "replies"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"This is my reply\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💭 Conversations",
+      "item": [
+        {
+          "name": "Get All Conversations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations?status=active&limit=20&page=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "active"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Conversation By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations/{{conversationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations", "{{conversationId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participantIds\": [\"user-id-1\", \"user-id-2\"],\n  \"type\": \"DIRECT\",\n  \"title\": \"Discussion\",\n  \"subject\": \"Math Homework\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations/{{conversationId}}/messages?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations", "{{conversationId}}", "messages"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations/{{conversationId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations", "{{conversationId}}", "messages"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Hello, how are you?\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🆘 Assistance Requests",
+      "item": [
+        {
+          "name": "Get All Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests?status=PENDING&type=SUPPORT",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                },
+                {
+                  "key": "type",
+                  "value": "SUPPORT"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Request By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests", "{{requestId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"SUPPORT\",\n  \"title\": \"Need help with exam\",\n  \"message\": \"I have a question about...\",\n  \"subjectId\": \"{{subjectId}}\",\n  \"priority\": \"HIGH\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Request",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests", "{{requestId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"RESOLVED\",\n  \"responseMessage\": \"Your request has been resolved\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Cancel Request",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests", "{{requestId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

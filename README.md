@@ -81,7 +81,7 @@ src/
 
 ## 🔗 Communication avec le Frontend
 
-Le frontend (`quizlock-app`) communique avec ce backend via des requêtes HTTP.
+Le frontend (`xkorienta-front`) communique avec ce backend via des requêtes HTTP.
 
 **Base URL**: `http://localhost:3001` (développement)
 

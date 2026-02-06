@@ -44,11 +44,25 @@ export class ExamRepository {
     }
 
     /**
-     * Count exams created by a teacher
+     * Count exams created by a teacher (all exams including drafts)
      */
     async countExamsByTeacher(teacherId: string): Promise<number> {
         await connectDB();
         return Exam.countDocuments({ createdById: new mongoose.Types.ObjectId(teacherId) });
+    }
+
+    /**
+     * Count published exams by a teacher (all exams with status PUBLISHED)
+     */
+    async countPublishedExamsByTeacher(teacherId: string): Promise<number> {
+        await connectDB();
+        return Exam.countDocuments({
+            createdById: new mongoose.Types.ObjectId(teacherId),
+            $or: [
+                { status: 'PUBLISHED' },
+                { isPublished: true }
+            ]
+        });
     }
 
     /**
@@ -59,18 +73,27 @@ export class ExamRepository {
         const now = new Date();
         return Exam.countDocuments({
             createdById: new mongoose.Types.ObjectId(teacherId),
-            status: 'PUBLISHED',
+            $or: [
+                { status: 'PUBLISHED' },
+                { isPublished: true }
+            ],
             startTime: { $lte: now },
             endTime: { $gte: now }
         });
     }
 
     /**
-     * Find exam IDs created by a teacher
+     * Find exam IDs created by a teacher (published/active exams only)
      */
     async findExamIdsByTeacher(teacherId: string): Promise<string[]> {
         await connectDB();
-        const exams = await Exam.find({ createdById: new mongoose.Types.ObjectId(teacherId) }).select('_id').lean();
+        const exams = await Exam.find({
+            createdById: new mongoose.Types.ObjectId(teacherId),
+            $or: [
+                { status: { $in: ['PUBLISHED', 'VALIDATED', 'ACTIVE'] } },
+                { isPublished: true }
+            ]
+        }).select('_id').lean();
         return exams.map((e: any) => e._id.toString());
     }
 

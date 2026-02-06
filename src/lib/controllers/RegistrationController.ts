@@ -9,8 +9,21 @@ export class RegistrationController {
     static async register(req: Request) {
         try {
             const data = await req.json();
-            await registrationService.registerUser(data);
-            return NextResponse.json({ success: true, message: "Registration successful" });
+            const result = await registrationService.registerUser(data);
+            
+            const response: any = { success: true, message: "Registration successful" };
+            
+            // If a new school was created, include it in the response
+            if (result.createdSchool) {
+                response.createdSchool = {
+                    id: result.createdSchool._id,
+                    name: result.createdSchool.name,
+                    status: result.createdSchool.status
+                };
+                response.message = "Registration successful. Your school has been created and you are now the owner.";
+            }
+            
+            return NextResponse.json(response);
 
         } catch (error: any) {
             console.error("Registration Error:", error);

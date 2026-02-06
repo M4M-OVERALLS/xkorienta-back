@@ -1,6 +1,8 @@
 import { RegistrationRepository } from "@/lib/repositories/RegistrationRepository";
 import { UserRole, SchoolStatus } from "@/models/enums";
 import bcrypt from "bcryptjs";
+import School from "@/models/School";
+import mongoose from "mongoose";
 
 export class RegistrationService {
     private registrationRepository: RegistrationRepository;
@@ -10,7 +12,7 @@ export class RegistrationService {
     }
 
     async registerUser(data: any) {
-        const { name, email, password, role, schoolId, classId, levelId, fieldId, subjects } = data;
+        const { name, email, password, role, schoolId, classId, levelId, fieldId, subjects, newSchoolData, isCreatingSchool } = data;
 
         // 1. Check if user exists
         const existingUser = await this.registrationRepository.findUserByEmail(email);
@@ -23,13 +25,36 @@ export class RegistrationService {
             throw new Error("Invalid role");
         }
 
-        // 3. School Validation for TEACHER and SCHOOL_ADMIN
-        if (role === UserRole.TEACHER || role === UserRole.SCHOOL_ADMIN) {
-            if (!schoolId) {
+        let finalSchoolId = schoolId;
+        let createdSchool = null;
+
+        // 3. Handle School Creation for TEACHER
+        if (role === UserRole.TEACHER && isCreatingSchool && newSchoolData) {
+            // Create the new school with teacher as owner
+            createdSchool = await School.create({
+                name: newSchoolData.name,
+                type: newSchoolData.type || "PUBLIC",
+                address: newSchoolData.address,
+                city: newSchoolData.city,
+                country: newSchoolData.country,
+                status: SchoolStatus.PENDING, // New schools need validation by QuizLock admin
+                isActive: true,
+                owner: null, // Will be set after user creation
+                teachers: [], // Will be set after user creation
+                admins: [],
+                applicants: []
+            });
+            
+            finalSchoolId = createdSchool._id.toString();
+        }
+
+        // 4. School Validation for TEACHER (existing school) and SCHOOL_ADMIN
+        if ((role === UserRole.TEACHER && !isCreatingSchool) || role === UserRole.SCHOOL_ADMIN) {
+            if (!finalSchoolId) {
                 throw new Error("School selection is required");
             }
 
-            const school = await this.registrationRepository.findSchoolById(schoolId);
+            const school = await this.registrationRepository.findSchoolById(finalSchoolId);
             if (!school) {
                 throw new Error("Selected school does not exist");
             }
@@ -40,7 +65,7 @@ export class RegistrationService {
             }
         }
 
-        // 4. Create User
+        // 5. Create User
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await this.registrationRepository.createUser({
             name,
@@ -48,10 +73,19 @@ export class RegistrationService {
             password: hashedPassword,
             role,
             isActive: true,
-            schools: schoolId ? [schoolId] : []
+            schools: finalSchoolId ? [finalSchoolId] : []
         });
 
-        // 5. Handle Role Specific Logic
+        // 6. Handle School Creation Post-User (set owner)
+        if (createdSchool) {
+            await School.findByIdAndUpdate(createdSchool._id, {
+                owner: user._id,
+                teachers: [user._id], // Teacher is immediately official
+                admins: [user._id]
+            });
+        }
+
+        // 7. Handle Role Specific Logic
         if (role === UserRole.STUDENT) {
             const profile = await this.registrationRepository.createLearnerProfile({
                 user: user._id,
@@ -75,10 +109,16 @@ export class RegistrationService {
 
             user.pedagogicalProfile = profile._id;
 
-            // Add teacher to school's applicants list
-            await this.registrationRepository.updateSchool(schoolId, {
-                $addToSet: { applicants: user._id }
-            });
+            if (isCreatingSchool && createdSchool) {
+                // Teacher created their own school - they are already owner and official teacher
+                // No need to add to applicants
+                console.log(`[Registration] Teacher ${user._id} created school ${createdSchool._id} and is now owner`);
+            } else {
+                // Teacher selected existing school - add to applicants
+                await this.registrationRepository.updateSchool(finalSchoolId, {
+                    $addToSet: { applicants: user._id }
+                });
+            }
 
         } else if (role === UserRole.SCHOOL_ADMIN) {
             const profile = await this.registrationRepository.createPedagogicalProfile({
@@ -89,13 +129,20 @@ export class RegistrationService {
             user.pedagogicalProfile = profile._id;
 
             // Add directly to school's admins array
-            await this.registrationRepository.updateSchool(schoolId, {
+            await this.registrationRepository.updateSchool(finalSchoolId, {
                 $addToSet: { admins: user._id }
             });
         }
 
         await user.save();
-        return user;
+        
+        // Return user with created school info if applicable
+        const result: any = user.toObject();
+        if (createdSchool) {
+            result.createdSchool = createdSchool.toObject();
+        }
+        
+        return result;
     }
 
     /**

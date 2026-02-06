@@ -29,15 +29,42 @@ export class ClassController {
             const body = await req.json();
             const { name, school, level, academicYear, field, specialty } = body;
 
-            if (!name || !school || !level || !academicYear) {
+            if (!name || !level || !academicYear) {
                 return NextResponse.json(
-                    { success: false, message: "Missing required fields" },
+                    { success: false, message: "Missing required fields: name, level, academicYear" },
                     { status: 400 }
                 );
             }
 
+            // Check if teacher has a pending school application
+            let pendingSchoolId = null;
+            let isIndependent = false;
+            
+            if (!school) {
+                // Teacher is creating an independent class (no school yet)
+                const { SchoolService } = await import("@/lib/services/SchoolService");
+                const teacherSchools = await SchoolService.getTeacherSchools(userId);
+                
+                // Find if teacher has any pending school
+                const pendingSchool = teacherSchools.find((s: any) => s.isPending);
+                if (pendingSchool) {
+                    pendingSchoolId = pendingSchool._id;
+                }
+                
+                isIndependent = true;
+            }
+
             const newClass = await ClassService.createClass(
-                { name, school, level, academicYear, field, specialty },
+                { 
+                    name, 
+                    school: school || null, 
+                    level, 
+                    academicYear, 
+                    field, 
+                    specialty,
+                    isIndependent,
+                    pendingSchoolId
+                },
                 userId
             );
 

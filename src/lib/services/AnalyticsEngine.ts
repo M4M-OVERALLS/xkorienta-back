@@ -1034,4 +1034,103 @@ export class AnalyticsEngine {
 
         return leaderboard
     }
+
+    /**
+     * Get engagement statistics for a teacher
+     * Calculates real metrics based on student attempts
+     */
+    static async getTeacherEngagementStats(teacherId: string): Promise<{
+        totalAttempts: number
+        completionRate: number
+        averageTimeSpent: number
+        activeStudentsThisWeek: number
+        totalStudents: number
+    }> {
+        const Class = mongoose.models.Class
+        const Attempt = mongoose.models.Attempt
+
+        // Get all classes for this teacher
+        const classes = await Class.find({ 
+            mainTeacher: new mongoose.Types.ObjectId(teacherId) 
+        }).lean()
+
+        const allStudentIds = classes.flatMap((c: any) => 
+            (c.students || []).map((s: any) => s.toString())
+        )
+        const uniqueStudentIds = [...new Set(allStudentIds)]
+        const totalStudents = uniqueStudentIds.length
+
+        if (totalStudents === 0) {
+            return {
+                totalAttempts: 0,
+                completionRate: 0,
+                averageTimeSpent: 0,
+                activeStudentsThisWeek: 0,
+                totalStudents: 0
+            }
+        }
+
+        const objectIds = uniqueStudentIds.map(id => new mongoose.Types.ObjectId(id))
+
+        // Get all attempts for these students
+        const allAttempts = await Attempt.find({
+            userId: { $in: objectIds }
+        }).lean()
+
+        // Calculate total attempts
+        const totalAttempts = allAttempts.length
+
+        // Calculate completion rate (completed vs started)
+        const completedAttempts = allAttempts.filter((a: any) => 
+            a.status === 'COMPLETED' || a.status === 'SUBMITTED'
+        ).length
+        const startedAttempts = allAttempts.filter((a: any) => 
+            a.status === 'STARTED' || a.status === 'IN_PROGRESS'
+        ).length
+        
+        const completionRate = totalAttempts > 0 
+            ? Math.round((completedAttempts / totalAttempts) * 100) 
+            : 0
+
+        // Calculate average time spent (in minutes)
+        const timeSpentValues: number[] = []
+        for (const attempt of allAttempts) {
+            if (attempt.startedAt && (attempt.submittedAt || attempt.completedAt)) {
+                const endTime = attempt.submittedAt || attempt.completedAt
+                const durationMinutes = Math.round(
+                    (new Date(endTime).getTime() - new Date(attempt.startedAt).getTime()) / (1000 * 60)
+                )
+                // Only count reasonable durations (1 min to 3 hours)
+                if (durationMinutes >= 1 && durationMinutes <= 180) {
+                    timeSpentValues.push(durationMinutes)
+                }
+            }
+        }
+        
+        const averageTimeSpent = timeSpentValues.length > 0
+            ? Math.round(timeSpentValues.reduce((a, b) => a + b, 0) / timeSpentValues.length)
+            : 0
+
+        // Calculate active students this week (7 days)
+        const oneWeekAgo = new Date()
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+
+        const activeStudentIds = new Set<string>()
+        for (const attempt of allAttempts) {
+            const attemptDate = attempt.submittedAt || attempt.completedAt || attempt.startedAt
+            if (attemptDate && new Date(attemptDate) >= oneWeekAgo) {
+                activeStudentIds.add(attempt.userId.toString())
+            }
+        }
+        
+        const activeStudentsThisWeek = activeStudentIds.size
+
+        return {
+            totalAttempts,
+            completionRate,
+            averageTimeSpent,
+            activeStudentsThisWeek,
+            totalStudents
+        }
+    }
 }

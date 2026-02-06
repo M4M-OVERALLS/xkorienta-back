@@ -172,13 +172,16 @@ export class ProfileService {
         const classRepo = new ClassRepository();
         const attemptRepo = new AttemptRepository();
 
-        // 1. Total Exams Created
+        // 1. Total Exams Created (all exams, including drafts)
         const totalExamsCreated = await examRepo.countExamsByTeacher(userId);
 
-        // 2. Active Exams (Published and currently ongoing)
+        // 2. Total Published Exams (all exams with status PUBLISHED or isPublished: true)
+        const publishedExams = await examRepo.countPublishedExamsByTeacher(userId);
+
+        // 3. Active Exams (Published and currently ongoing - between startTime and endTime)
         const activeExams = await examRepo.countActiveExamsByTeacher(userId);
 
-        // 3. Total Students Reached (Unique students in teacher's classes)
+        // 4. Total Students Reached (Unique students in teacher's classes)
         const classesWithStudents = await classRepo.findByTeacherWithStudents(userId);
         const studentIds = new Set<string>();
         classesWithStudents.forEach((c: any) => {
@@ -188,13 +191,13 @@ export class ProfileService {
         });
         const totalStudentsReached = studentIds.size;
 
-        // 4. Average Class Score (across all attempts for teacher's exams)
+        // 5. Average Class Score (across all attempts for teacher's exams)
         const teacherExamIds = await examRepo.findExamIdsByTeacher(userId);
         const averageClassScore = await attemptRepo.getAverageScoreForExams(teacherExamIds);
 
-        // 5. Calculate Gamification Level (Mock logic based on activity)
-        // 1 Exam = 50 XP, 1 Student = 10 XP, 1% Avg Score = 5 XP
-        const xp = (totalExamsCreated * 50) + (totalStudentsReached * 10) + (averageClassScore * 5);
+        // 6. Calculate Gamification Level (Mock logic based on activity)
+        // 1 Published Exam = 100 XP, 1 Draft Exam = 50 XP, 1 Student = 10 XP, 1% Avg Score = 5 XP
+        const xp = (publishedExams * 100) + ((totalExamsCreated - publishedExams) * 50) + (totalStudentsReached * 10) + (averageClassScore * 5);
         const level = Math.floor(xp / 500) + 1;
         const nextLevelXp = level * 500;
 
@@ -203,7 +206,12 @@ export class ProfileService {
                 totalExamsCreated,
                 totalStudentsReached,
                 averageStudentScore: averageClassScore,
-                activeExams
+                activeExams: publishedExams  // Show published exams as "active" on dashboard
+            },
+            details: {
+                publishedExams,
+                ongoingExams: activeExams,
+                draftExams: totalExamsCreated - publishedExams
             },
             gamification: {
                 xp,

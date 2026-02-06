@@ -96,6 +96,12 @@ export async function GET(req: Request) {
                 result = await AnalyticsEngine.findCorrelations(correlationStudentIds)
                 break
 
+            case "engagement":
+                // Get engagement stats for the current teacher
+                const teacherId = session.user.id
+                result = await AnalyticsEngine.getTeacherEngagementStats(teacherId)
+                break
+
             default:
                 return NextResponse.json({
                     message: "type parameter required. Valid values: strengths, compare-classes, compare-schools, subject, progression, cohort, correlations"

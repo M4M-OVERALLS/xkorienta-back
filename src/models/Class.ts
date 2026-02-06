@@ -18,7 +18,7 @@ export interface IClassTeacher {
 export interface IClass extends Document {
     _id: mongoose.Types.ObjectId
     name: string // Ex: "Tle C 2"
-    school: mongoose.Types.ObjectId // Ref: 'School'
+    school?: mongoose.Types.ObjectId // Ref: 'School' - optional for independent classes
     mainTeacher: mongoose.Types.ObjectId // Ref: 'User' (Legacy, kept for compatibility)
 
     level: mongoose.Types.ObjectId // Ref: 'EducationLevel'
@@ -40,6 +40,10 @@ export interface IClass extends Document {
     validatedBy?: mongoose.Types.ObjectId // Ref: 'User' (School Admin)
     validatedAt?: Date
     rejectionReason?: string
+
+    // For classes created before school affiliation is approved
+    isIndependent?: boolean
+    pendingSchoolId?: mongoose.Types.ObjectId // Target school when waiting for approval
 
     isActive: boolean
     createdAt: Date
@@ -97,7 +101,7 @@ const ClassSchema = new Schema<IClass>(
         school: {
             type: Schema.Types.ObjectId,
             ref: 'School',
-            required: true
+            required: false // Allow classes without school (pending approval)
         },
         mainTeacher: {
             type: Schema.Types.ObjectId,
@@ -134,7 +138,19 @@ const ClassSchema = new Schema<IClass>(
         validationStatus: {
             type: String,
             enum: Object.values(ClassValidationStatus),
-            default: ClassValidationStatus.VALIDATED // Existing classes are considered validated
+            default: ClassValidationStatus.PENDING // New classes start as pending
+        },
+        
+        // For classes created before school affiliation is approved
+        isIndependent: {
+            type: Boolean,
+            default: false
+        },
+        
+        // Target school ID (for classes waiting to be grafted)
+        pendingSchoolId: {
+            type: Schema.Types.ObjectId,
+            ref: 'School'
         },
         validatedBy: {
             type: Schema.Types.ObjectId,
