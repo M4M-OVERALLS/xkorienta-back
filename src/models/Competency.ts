@@ -49,7 +49,7 @@ const CompetencySchema = new Schema<ICompetency>(
 )
 
 // Indexes
-CompetencySchema.index({ code: 1 }, { unique: true })
+// Note: code index with unique:true is already created via field definition
 CompetencySchema.index({ type: 1, isActive: 1 })
 
 const Competency: Model<ICompetency> = mongoose.models.Competency || mongoose.model<ICompetency>('Competency', CompetencySchema)

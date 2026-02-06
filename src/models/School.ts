@@ -12,9 +12,12 @@ export enum SchoolType {
 export interface ISchool extends Document {
     _id: mongoose.Types.ObjectId
     name: string
+    acronym: string
     type: SchoolType
     address?: string
     city: mongoose.Types.ObjectId, // clé étrangère city
+    department?: mongoose.Types.ObjectId, // clé étrangère department
+    region?: mongoose.Types.ObjectId, // clé étrangère region
     country: mongoose.Types.ObjectId, // clé étrangère country
     logoUrl?: string,
     status: SchoolStatus
@@ -74,6 +77,10 @@ const SchoolSchema = new Schema<ISchool>(
             trim: true,
             index: true
         },
+        acronym: {
+            type: String,
+            trim: true
+        },
         type: {
             type: String,
             enum: Object.values(SchoolType),
@@ -86,6 +93,14 @@ const SchoolSchema = new Schema<ISchool>(
         city: {
             type: Schema.Types.ObjectId,
             ref: 'City'
+        },
+        department: {
+            type: Schema.Types.ObjectId,
+            ref: 'Department'
+        },
+        region: {
+            type: Schema.Types.ObjectId,
+            ref: 'Region'
         },
         country: {
             type: Schema.Types.ObjectId,

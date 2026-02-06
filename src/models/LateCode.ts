@@ -96,8 +96,8 @@ const LateCodeSchema = new Schema<ILateCode>(
             type: String,
             required: true,
             unique: true,
-            uppercase: true,
-            index: true
+            uppercase: true
+            // Note: unique:true already creates an index
         },
         status: {
             type: String,

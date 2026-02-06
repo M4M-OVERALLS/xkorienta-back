@@ -4,11 +4,13 @@ import Class from "@/models/Class";
 import Attempt from "@/models/Attempt";
 import Exam from "@/models/Exam";
 import { SchoolRepository } from "@/lib/repositories/SchoolRepository";
+import { SchoolCreationRepository } from "@/lib/repositories/SchoolCreationRepository";
 import { TeacherRepository } from "@/lib/repositories/TeacherRepository";
 import { ClassRepository } from "@/lib/repositories/ClassRepository";
 import { AttemptRepository } from "@/lib/repositories/AttemptRepository";
 import { ExamRepository } from "@/lib/repositories/ExamRepository";
 import mongoose from "mongoose";
+import { SchoolCreationForm } from "@/lib/types/SchoolCreationForm";
 
 export type StudentSchoolFilters = {
     query?: string;
@@ -47,6 +49,19 @@ export class SchoolService {
             .populate('admins', 'name email')
             .sort({ name: 1 })
             .lean();
+    }
+
+    static async createSchoolFromForm(form: SchoolCreationForm, ownerId: string) {
+        if (!ownerId) {
+            throw new Error("Unauthorized");
+        }
+
+        if (!form?.identity?.name || !form?.identity?.type) {
+            throw new Error("Missing required identity fields");
+        }
+
+        const repo = new SchoolCreationRepository();
+        return repo.createSchoolFromForm(form, ownerId);
     }
 
     // service pour la liste des écoles côté apprenant

@@ -39,7 +39,7 @@ const EducationLevelSchema = new Schema<IEducationLevel>(
 )
 
 // Indexes
-EducationLevelSchema.index({ code: 1 }, { unique: true })
+// Note: code index with unique:true is already created via field definition
 EducationLevelSchema.index({ subSystem: 1, cycle: 1, order: 1 })
 
 const EducationLevel: Model<IEducationLevel> = mongoose.models.EducationLevel || mongoose.model<IEducationLevel>('EducationLevel', EducationLevelSchema)

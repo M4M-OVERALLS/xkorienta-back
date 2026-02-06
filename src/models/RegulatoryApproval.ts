@@ -12,8 +12,14 @@ export interface IRegulatoryApproval extends Document {
     approvalNumber: string
     approvalStatus: ApprovalStatus
     approvalDate?: Date
-    issuedBy: string // MINESUP, MINEFOP, etc.
+    openingAuthorization?: string
+    issuedBy?: mongoose.Types.ObjectId // Ref: 'Partner' // MINESUP, MINEFOP, etc.
+    issuedByName?: string
+    secondarySupervisions?: string[]
     documentsUrl?: string // URL vers les documents scannés/preuves
+    verificationDocs?: string[]
+    foreignDiplomasNoAccreditation?: string
+    foreignDiplomasWithAccreditation?: string
     createdAt: Date
     updatedAt: Date
 }
@@ -39,12 +45,36 @@ const RegulatoryApprovalSchema = new Schema<IRegulatoryApproval>(
         approvalDate: {
             type: Date
         },
-        issuedBy: {
+        openingAuthorization: {
             type: String,
-            required: true,
             trim: true
         },
+        issuedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'Partner',
+            required: false
+        },
+        issuedByName: {
+            type: String,
+            trim: true
+        },
+        secondarySupervisions: [{
+            type: String,
+            trim: true
+        }],
         documentsUrl: {
+            type: String,
+            trim: true
+        },
+        verificationDocs: [{
+            type: String,
+            trim: true
+        }],
+        foreignDiplomasNoAccreditation: {
+            type: String,
+            trim: true
+        },
+        foreignDiplomasWithAccreditation: {
             type: String,
             trim: true
         }

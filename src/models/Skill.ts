@@ -33,7 +33,7 @@ const SkillSchema = new Schema<ISkill>(
 )
 
 // Indexes
-SkillSchema.index({ name: 1 }, { unique: true })
+// Note: name index with unique:true is already created via field definition
 SkillSchema.index({ skillType: 1 })
 
 // Prevent model recompilation in development

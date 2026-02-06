@@ -36,8 +36,7 @@ const CountrySchema = new Schema<ICountry>(
 )
 
 // Indexes
-CountrySchema.index({ isoCode: 1 }, { unique: true })
-CountrySchema.index({ name: 1 }, { unique: true })
+// Note: isoCode and name indexes with unique:true are already created via field definitions
 
 // Prevent model recompilation in development
 const Country: Model<ICountry> = mongoose.models.Country || mongoose.model<ICountry>('Country', CountrySchema)

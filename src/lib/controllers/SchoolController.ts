@@ -19,6 +19,33 @@ export class SchoolController {
         }
     }
 
+    static async createSchool(req: Request, userId: string) {
+        try {
+            const body = await req.json();
+
+            const created = await SchoolService.createSchoolFromForm(body, userId);
+            return NextResponse.json({ success: true, data: created }, { status: 201 });
+        } catch (error: any) {
+            console.error("[School Controller] Create School Error:", error);
+            if (error?.message?.includes("Unauthorized")) {
+                return NextResponse.json(
+                    { success: false, message: error.message },
+                    { status: 401 }
+                );
+            }
+            if (error?.message?.includes("Missing")) {
+                return NextResponse.json(
+                    { success: false, message: error.message },
+                    { status: 400 }
+                );
+            }
+            return NextResponse.json(
+                { success: false, message: error.message || "Internal server error" },
+                { status: 500 }
+            );
+        }
+    }
+
     static async getSchoolClasses(req: Request, schoolId: string) {
         try {
             // Basic validation

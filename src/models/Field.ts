@@ -51,7 +51,7 @@ const FieldSchema = new Schema<IField>(
 )
 
 // Indexes
-FieldSchema.index({ code: 1 }, { unique: true })
+// Note: code index with unique:true is already created via field definition
 FieldSchema.index({ subSystem: 1, cycle: 1 })
 FieldSchema.index({ applicableLevels: 1 })
 

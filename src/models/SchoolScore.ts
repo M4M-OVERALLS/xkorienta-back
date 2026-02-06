@@ -76,7 +76,7 @@ const SchoolScoreSchema = new Schema<ISchoolScore>(
 )
 
 // Indexes
-SchoolScoreSchema.index({ school: 1 }, { unique: true })
+// Note: school index with unique:true is already created via the field definition
 SchoolScoreSchema.index({ globalScore: 1 })
 SchoolScoreSchema.index({ lastComputedAt: 1 })
 

@@ -30,7 +30,7 @@ const CareerOutcomeSchema = new Schema<ICareerOutcome>(
 )
 
 // Indexes
-CareerOutcomeSchema.index({ name: 1 }, { unique: true })
+// Note: name index with unique:true is already created via field definition
 CareerOutcomeSchema.index({ sector: 1 })
 
 // Prevent model recompilation in development

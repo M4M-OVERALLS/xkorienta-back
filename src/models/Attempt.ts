@@ -105,8 +105,8 @@ const AttemptSchema = new Schema<IAttempt>(
     },
     expiresAt: {
       type: Date,
-      required: true,
-      index: true // TTL index pour auto-cleanup
+      required: true
+      // Note: TTL index is created below via schema.index()
     },
     submittedAt: {
       type: Date

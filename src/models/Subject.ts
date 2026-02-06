@@ -55,7 +55,7 @@ const SubjectSchema = new Schema<ISubject>(
 )
 
 // Indexes
-SubjectSchema.index({ code: 1 }, { unique: true })
+// Note: code index with unique:true is already created via field definition
 SubjectSchema.index({ subSystem: 1, subjectType: 1 })
 SubjectSchema.index({ applicableLevels: 1 })
 SubjectSchema.index({ applicableFields: 1 })
