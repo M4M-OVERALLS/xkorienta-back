@@ -25,36 +25,13 @@ export class RegistrationService {
             throw new Error("Invalid role");
         }
 
-        let finalSchoolId = schoolId;
-        let createdSchool = null;
-
-        // 3. Handle School Creation for TEACHER
-        if (role === UserRole.TEACHER && isCreatingSchool && newSchoolData) {
-            // Create the new school with teacher as owner
-            createdSchool = await School.create({
-                name: newSchoolData.name,
-                type: newSchoolData.type || "PUBLIC",
-                address: newSchoolData.address,
-                city: newSchoolData.city,
-                country: newSchoolData.country,
-                status: SchoolStatus.PENDING, // New schools need validation by QuizLock admin
-                isActive: true,
-                owner: null, // Will be set after user creation
-                teachers: [], // Will be set after user creation
-                admins: [],
-                applicants: []
-            });
-            
-            finalSchoolId = createdSchool._id.toString();
-        }
-
-        // 4. School Validation for TEACHER (existing school) and SCHOOL_ADMIN
+        // 3. School Validation for TEACHER (existing school) and SCHOOL_ADMIN
         if ((role === UserRole.TEACHER && !isCreatingSchool) || role === UserRole.SCHOOL_ADMIN) {
-            if (!finalSchoolId) {
+            if (!schoolId) {
                 throw new Error("School selection is required");
             }
 
-            const school = await this.registrationRepository.findSchoolById(finalSchoolId);
+            const school = await this.registrationRepository.findSchoolById(schoolId);
             if (!school) {
                 throw new Error("Selected school does not exist");
             }
@@ -65,7 +42,7 @@ export class RegistrationService {
             }
         }
 
-        // 5. Create User
+        // 4. Create User (School is created AFTER for new schools to have valid owner)
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await this.registrationRepository.createUser({
             name,
@@ -73,16 +50,34 @@ export class RegistrationService {
             password: hashedPassword,
             role,
             isActive: true,
-            schools: finalSchoolId ? [finalSchoolId] : []
+            schools: schoolId ? [schoolId] : []
         });
 
-        // 6. Handle School Creation Post-User (set owner)
-        if (createdSchool) {
-            await School.findByIdAndUpdate(createdSchool._id, {
+        // 5. Handle School Creation for TEACHER (after user is created)
+        let finalSchoolId = schoolId;
+        let createdSchool: any = null;
+        
+        if (role === UserRole.TEACHER && isCreatingSchool && newSchoolData) {
+            // Create the new school with teacher as owner
+            createdSchool = await School.create({
+                name: newSchoolData.name,
+                type: newSchoolData.type || "PUBLIC",
+                address: newSchoolData.address,
+                city: newSchoolData.city,
+                country: newSchoolData.country,
+                status: SchoolStatus.PENDING, // New schools need validation by QuizLock admin
+                isActive: true,
                 owner: user._id,
                 teachers: [user._id], // Teacher is immediately official
-                admins: [user._id]
+                admins: [user._id],
+                applicants: []
             });
+            
+            finalSchoolId = createdSchool._id.toString();
+            
+            // Add school to user's schools array
+            if (!user.schools) user.schools = [];
+            user.schools.push(createdSchool._id);
         }
 
         // 7. Handle Role Specific Logic

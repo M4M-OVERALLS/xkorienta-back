@@ -281,6 +281,32 @@ export const sendImportReportEmail = async (
     return sendEmail({ to: teacherEmail, subject: `Import terminé pour ${className}`, html });
 };
 
+// Email pour un utilisateur existant ajouté à une classe
+export const sendAddedToClassEmail = async (email: string, userName: string, className: string, teacherName: string, loginLink: string) => {
+    const content = `
+        <p>Bonjour <strong>${userName}</strong>,</p>
+        <p>Vous avez été ajouté(e) à la classe <strong>${className}</strong> par ${teacherName}.</p>
+        
+        <div style="${STYLES.infoBox}; background-color: #ECFDF5; border-color: #A7F3D0;">
+            <div style="${STYLES.infoBoxTitle}; color: #059669;">✓ Accès immédiat</div>
+            <p style="${STYLES.infoBoxText}">Votre compte est actif et vous pouvez accéder à la classe immédiatement.</p>
+        </div>
+        
+        <p>Cliquez sur le bouton ci-dessous pour vous connecter et accéder à votre classe :</p>
+        
+        <div style="text-align: center;">
+            <a href="${loginLink}" style="${STYLES.button}">Accéder à ma classe</a>
+        </div>
+        
+        <p style="font-size: 14px; color: ${COLORS.gray}; text-align: center;">
+            Ou connectez-vous à : <a href="${loginLink}" style="color: ${COLORS.primary};">${loginLink}</a>
+        </p>
+    `;
+
+    const html = emailWrapper("Ajout à une classe", `Vous êtes maintenant dans ${className}`, content);
+    return sendEmail({ to: email, subject: `Vous avez été ajouté à ${className}`, html });
+};
+
 // Code de vérification OTP
 export const sendVerificationEmail = async (email: string, code: string, userName: string) => {
     const content = `
@@ -301,4 +327,129 @@ export const sendVerificationEmail = async (email: string, code: string, userNam
 
     const html = emailWrapper("Code de vérification", "Confirmez votre identité", content);
     return sendEmail({ to: email, subject: `Votre code : ${code}`, html });
+};
+
+// ============================================================================
+// EMAILS POUR L'AJOUT D'ENSEIGNANTS
+// ============================================================================
+
+/**
+ * Email envoyé quand un enseignant existant est ajouté à une classe
+ */
+export const sendTeacherAddedEmail = async (
+    email: string,
+    teacherName: string,
+    className: string,
+    addedByName: string,
+    subjectNames: string[],
+    loginUrl: string
+) => {
+    const subjectsList = subjectNames.length > 0 
+        ? `<p style="${STYLES.infoBoxText}"><strong>📚 Matière(s) :</strong> ${subjectNames.join(', ')}</p>` 
+        : '';
+
+    const content = `
+        <p>Bonjour <strong>${teacherName}</strong>,</p>
+        <p>Vous avez été ajouté(e) comme enseignant(e) collaborateur(trice) dans la classe <strong>${className}</strong> par ${addedByName}.</p>
+        
+        <div style="${STYLES.infoBox}; background-color: #EFF6FF; border-color: #BFDBFE;">
+            <div style="${STYLES.infoBoxTitle}; color: #3B82F6;">✓ Nouvel accès enseignant</div>
+            <p style="${STYLES.infoBoxText}">Vous pouvez maintenant gérer les examens, noter les élèves et accéder aux statistiques de cette classe.</p>
+            ${subjectsList}
+        </div>
+        
+        <p>Cliquez sur le bouton ci-dessous pour accéder à la classe :</p>
+        
+        <div style="text-align: center;">
+            <a href="${loginUrl}" style="${STYLES.button}">Accéder à la classe</a>
+        </div>
+        
+        <p style="font-size: 14px; color: ${COLORS.gray}; text-align: center;">
+            Ou connectez-vous à : <a href="${loginUrl}" style="color: ${COLORS.primary};">${loginUrl}</a>
+        </p>
+    `;
+
+    const html = emailWrapper("Ajout comme enseignant", `Vous enseignez dans ${className}`, content);
+    return sendEmail({ to: email, subject: `Vous êtes enseignant dans ${className}`, html });
+};
+
+/**
+ * Email d'activation pour un nouvel enseignant invité
+ * (compte créé avec mot de passe temporaire)
+ */
+export const sendTeacherActivationEmail = async (
+    email: string,
+    teacherName: string,
+    className: string,
+    addedByName: string,
+    subjectNames: string[],
+    activationLink: string
+) => {
+    const subjectsList = subjectNames.length > 0 
+        ? `<p style="${STYLES.infoBoxText}"><strong>📚 Matière(s) :</strong> ${subjectNames.join(', ')}</p>` 
+        : '';
+
+    const content = `
+        <p>Bonjour <strong>${teacherName}</strong>,</p>
+        <p>${addedByName} vous a invité(e) à rejoindre <strong>${className}</strong> comme enseignant(e) collaborateur(trice) sur QuizLock.</p>
+        
+        <div style="${STYLES.infoBox}; background-color: #F0FDFA; border-color: #CCFBF1;">
+            <div style="${STYLES.infoBoxTitle}; color: #0D9488;">🎓 Votre classe</div>
+            <p style="${STYLES.infoBoxText}"><strong>Classe :</strong> ${className}</p>
+            ${subjectsList}
+        </div>
+        
+        <p>Un compte a été créé pour vous. Pour l'activer et définir votre mot de passe, cliquez sur le bouton ci-dessous :</p>
+        
+        <div style="text-align: center;">
+            <a href="${activationLink}" style="${STYLES.button}">Activer mon compte</a>
+        </div>
+        
+        <div style="${STYLES.infoBox}; background-color: #FFFBEB; border-color: #FCD34D; margin-top: 20px;">
+            <div style="${STYLES.infoBoxTitle}; color: #D97706;">⚠️ Important</div>
+            <p style="${STYLES.infoBoxText}">Ce lien est unique et expire dans 7 jours. Vous devrez définir votre mot de passe lors de la première connexion.</p>
+        </div>
+        
+        <p style="font-size: 14px; color: ${COLORS.gray}; text-align: center;">
+            Si le bouton ne fonctionne pas, utilisez ce lien : <a href="${activationLink}" style="color: ${COLORS.primary}; word-break: break-all;">${activationLink}</a>
+        </p>
+    `;
+
+    const html = emailWrapper("Activez votre compte enseignant", `Bienvenue dans ${className}`, content);
+    return sendEmail({ to: email, subject: `Invitation enseignant : ${className}`, html });
+};
+
+/**
+ * Email de confirmation après activation du compte enseignant
+ */
+export const sendTeacherWelcomeEmail = async (
+    email: string,
+    teacherName: string,
+    className: string,
+    dashboardUrl: string
+) => {
+    const content = `
+        <p>Bonjour <strong>${teacherName}</strong>,</p>
+        <p>Votre compte enseignant a été activé avec succès ! 🎉</p>
+        
+        <div style="${STYLES.infoBox}; background-color: #ECFDF5; border-color: #A7F3D0;">
+            <div style="${STYLES.infoBoxTitle}; color: #059669;">✓ Compte actif</div>
+            <p style="${STYLES.infoBoxText}">Vous pouvez maintenant accéder à toutes les fonctionnalités enseignant de la classe <strong>${className}</strong>.</p>
+        </div>
+        
+        <p>En tant qu'enseignant collaborateur, vous pouvez :</p>
+        <ul style="margin: 16px 0; padding-left: 24px; color: ${COLORS.text};">
+            <li>Créer et gérer des examens</li>
+            <li>Noter les élèves</li>
+            <li>Voir les statistiques de la classe</li>
+            <li>Communiquer avec les élèves</li>
+        </ul>
+        
+        <div style="text-align: center;">
+            <a href="${dashboardUrl}" style="${STYLES.button}">Accéder au tableau de bord</a>
+        </div>
+    `;
+
+    const html = emailWrapper("Bienvenue enseignant !", `Votre compte est actif`, content);
+    return sendEmail({ to: email, subject: `Votre compte enseignant est activé`, html });
 };

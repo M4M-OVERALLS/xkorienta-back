@@ -4,7 +4,7 @@ import Class from "@/models/Class";
 import School from "@/models/School";
 import ImportLog from "@/models/ImportLog";
 import crypto from "crypto";
-import { sendInvitationEmail, sendAccountActivationEmail, sendWelcomeEmail, sendTeacherNotification, sendImportReportEmail } from "@/lib/mail";
+import { sendInvitationEmail, sendAccountActivationEmail, sendWelcomeEmail, sendTeacherNotification, sendImportReportEmail, sendAddedToClassEmail } from "@/lib/mail";
 import { ClassService } from "./ClassService";
 import { SchoolService } from "./SchoolService";
 import bcrypt from "bcryptjs";
@@ -172,10 +172,31 @@ export class InvitationService {
      * Invite a single student manually
      */
     static async inviteStudent(classId: string, email: string, name: string, teacherId: string) {
-        const existingUser = await User.findOne({ email });
+        // Normalize email to lowercase for consistency
+        const normalizedEmail = email.toLowerCase().trim();
+        
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        const classData = await Class.findById(classId).populate('mainTeacher', 'name');
+        const teacher = classData?.mainTeacher as any;
+        const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
 
         if (existingUser) {
+            // User exists - enroll in class and send notification
             await ClassService.enrollStudent(classId, existingUser._id.toString());
+            
+            // Send email to existing user
+            try {
+                await sendAddedToClassEmail(
+                    normalizedEmail,
+                    existingUser.name,
+                    classData?.name || 'la classe',
+                    teacher?.name || 'Votre enseignant',
+                    loginUrl
+                );
+            } catch (err) {
+                console.error("Failed to send added-to-class email:", err);
+            }
+            
             return { status: 'ENROLLED', user: existingUser };
         }
 
@@ -185,19 +206,36 @@ export class InvitationService {
 
         const newUser = await User.create({
             name,
-            email,
+            email: normalizedEmail,
             password: hashedPassword,
             role: UserRole.STUDENT,
             isActive: false, // Account is inactive until they claim it via link
             emailVerified: false,
         });
 
+        // Create LearnerProfile for the new student
+        try {
+            const LearnerProfile = (await import('@/models/LearnerProfile')).default;
+            const learnerProfile = await LearnerProfile.create({
+                user: newUser._id,
+                currentLevel: classData?.level,
+                currentField: classData?.field,
+            });
+            newUser.learnerProfile = learnerProfile._id;
+            await newUser.save();
+        } catch (err) {
+            console.error("[Invitation] Failed to create LearnerProfile:", err);
+        }
+
+        // Also enroll student in class immediately (will be pending activation)
+        await ClassService.enrollStudent(classId, newUser._id.toString());
+
         const token = crypto.randomBytes(32).toString('hex');
 
         await Invitation.create({
             token,
             classId,
-            email,
+            email: normalizedEmail,
             type: 'INDIVIDUAL',
             status: 'PENDING',
             createdBy: teacherId,
@@ -206,11 +244,10 @@ export class InvitationService {
             registeredStudents: []
         });
 
-        const classData = await Class.findById(classId);
         const joinLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/join/${token}`;
 
         // Send activation email WITHOUT temp password
-        await sendAccountActivationEmail(email, joinLink, classData?.name || 'la classe');
+        await sendAccountActivationEmail(normalizedEmail, joinLink, classData?.name || 'la classe');
 
         return { status: 'INVITED', user: newUser };
     }
