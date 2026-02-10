@@ -11,6 +11,65 @@ import mongoose from "mongoose"
 import crypto from "crypto"
 
 /**
+ * Évalue une réponse à une question ouverte
+ */
+function evaluateOpenQuestion(studentAnswer: string, question: any): boolean {
+    const config = question.openQuestionConfig || { gradingMode: 'hybrid' }
+    const answer = studentAnswer.toLowerCase().trim()
+    const modelAnswer = (question.modelAnswer || '').toLowerCase().trim()
+
+    // Si mode manuel, toujours considérer comme nécessitant une évaluation manuelle (false)
+    if (config.gradingMode === 'manual') {
+        return false
+    }
+
+    // Vérification par mots-clés
+    if (config.keywords && config.keywords.length > 0) {
+        let matchedWeight = 0
+        let totalWeight = 0
+        let requiredMissing = false
+
+        for (const kw of config.keywords) {
+            const word = kw.word.toLowerCase()
+            const synonyms = (kw.synonyms || []).map((s: string) => s.toLowerCase())
+            const allForms: string[] = [word, ...synonyms]
+
+            totalWeight += kw.weight || 10
+            const found = allForms.some((form: string) => answer.includes(form))
+
+            if (found) {
+                matchedWeight += kw.weight || 10
+            } else if (kw.required) {
+                requiredMissing = true
+            }
+        }
+
+        // Si un mot-clé requis manque, échoue
+        if (requiredMissing) return false
+
+        // Considéré comme correct si au moins 50% des mots-clés trouvés
+        return matchedWeight >= totalWeight * 0.5
+    }
+
+    // Comparaison avec réponse modèle (approche sémantique simple)
+    if (modelAnswer) {
+        const answerWords = new Set(answer.split(/\s+/).filter((w: string) => w.length > 2))
+        const modelWords = new Set(modelAnswer.split(/\s+/).filter((w: string) => w.length > 2))
+
+        if (modelWords.size === 0) return true
+
+        const intersection = [...answerWords].filter(w => modelWords.has(w)).length
+        const similarity = intersection / modelWords.size
+
+        const threshold = config.semanticThreshold || 0.7
+        return similarity >= threshold * 0.5
+    }
+
+    // Si pas de mots-clés ni de réponse modèle, accepter
+    return true
+}
+
+/**
  * Service pour gérer les tentatives d'examen et les réponses
  * Intègre EvaluationStrategy et Observer patterns
  */
@@ -261,26 +320,41 @@ export class AttemptService {
             timeSpent?: number
         }>
     ) {
+        console.log(`[submitAttempt] Starting submission for attempt ${attemptId}, user ${userId}`)
+        console.log(`[submitAttempt] Received ${responses?.length || 0} responses`)
+        
         const { AttemptRepository } = await import("@/lib/repositories/AttemptRepository");
         const repo = new AttemptRepository();
 
         // Use findByIdForUpdate to work with the mongoose document
         const attempt = await repo.findByIdForUpdate(attemptId);
 
-        if (!attempt) throw new Error("Attempt not found")
+        if (!attempt) {
+            console.error(`[submitAttempt] Attempt ${attemptId} not found`)
+            throw new Error("Attempt not found")
+        }
+
+        console.log(`[submitAttempt] Found attempt, current status: ${attempt.status}`)
 
         // Vérifier que l'utilisateur est le propriétaire
         if (attempt.userId.toString() !== userId) {
+            console.error(`[submitAttempt] User mismatch: ${attempt.userId} vs ${userId}`)
             throw new Error("Unauthorized: Not your attempt")
         }
 
         // Vérifier que la tentative est en cours
         if (attempt.status !== AttemptStatus.STARTED) {
+            console.error(`[submitAttempt] Attempt not in STARTED status: ${attempt.status}`)
             throw new Error("Attempt is not in progress")
         }
 
         const exam = await Exam.findById(attempt.examId)
-        if (!exam) throw new Error("Exam not found")
+        if (!exam) {
+            console.error(`[submitAttempt] Exam ${attempt.examId} not found`)
+            throw new Error("Exam not found")
+        }
+        
+        console.log(`[submitAttempt] Exam found: ${exam.title}`)
 
         // Récupérer toutes les questions
         const questions = await Question.find({ examId: exam._id }).lean()
@@ -289,27 +363,49 @@ export class AttemptService {
         // Récupérer toutes les options pour ces questions
         const allOptions = await Option.find({ questionId: { $in: questionIds } }).lean()
 
+        // Supprimer les réponses existantes pour cette tentative (pour éviter les doublons)
+        await Response.deleteMany({ attemptId: attempt._id })
+        console.log(`[submitAttempt] Cleared existing responses for attempt ${attemptId}`)
+
         // Sauvegarder les réponses
         const savedResponses: any[] = []
         for (const resp of responses) {
             const question = questions.find(q => q._id.toString() === resp.questionId)
             if (!question) continue
 
-            // Déterminer si la réponse est correcte
+            // Déterminer si la réponse est correcte selon le type de question
             let isCorrect = false
-            if (resp.selectedOptionId) {
-                // Trouver l'option sélectionnée
-                const selectedOption = allOptions.find(opt =>
-                    opt._id.toString() === resp.selectedOptionId &&
-                    opt.questionId.toString() === resp.questionId
-                )
-                isCorrect = selectedOption?.isCorrect || false
+            let selectedOptionId = undefined
+            let textResponse = undefined
+
+            if (question.type === 'TRUE_FALSE') {
+                // Pour Vrai/Faux: comparer avec correctAnswer
+                // Stocker la valeur 'true'/'false' dans textResponse car ce n'est pas un ObjectId
+                const studentAnswer = resp.selectedOptionId === 'true'
+                isCorrect = studentAnswer === question.correctAnswer
+                textResponse = resp.selectedOptionId // 'true' ou 'false'
+                selectedOptionId = undefined
+            } else if (question.type === 'OPEN_QUESTION') {
+                // Pour questions ouvertes: évaluation basée sur mots-clés ou réponse modèle
+                textResponse = resp.textAnswer || ''
+                isCorrect = evaluateOpenQuestion(textResponse, question)
+            } else {
+                // Pour QCM: trouver l'option sélectionnée
+                if (resp.selectedOptionId) {
+                    const selectedOption = allOptions.find(opt =>
+                        opt._id.toString() === resp.selectedOptionId &&
+                        opt.questionId.toString() === resp.questionId
+                    )
+                    isCorrect = selectedOption?.isCorrect || false
+                    selectedOptionId = resp.selectedOptionId ? new mongoose.Types.ObjectId(resp.selectedOptionId) : undefined
+                }
             }
 
             const response = await Response.create({
                 attemptId: attempt._id,
                 questionId: new mongoose.Types.ObjectId(resp.questionId),
-                selectedOptionId: resp.selectedOptionId ? new mongoose.Types.ObjectId(resp.selectedOptionId) : undefined,
+                selectedOptionId,
+                textResponse,
                 isCorrect,
                 timeSpent: resp.timeSpent || 0,
                 answeredAt: new Date()
@@ -336,7 +432,10 @@ export class AttemptService {
         attempt.percentage = evaluation.percentage
         attempt.passed = evaluation.passed
         attempt.timeSpent = timeSpent
+        
+        console.log(`[submitAttempt] Saving attempt with status: ${attempt.status}, score: ${evaluation.score}/${evaluation.maxScore}`)
         await attempt.save()
+        console.log(`[submitAttempt] Attempt saved successfully`)
 
         // Publier un événement de soumission
         await publishEvent({
@@ -419,14 +518,36 @@ export class AttemptService {
             throw new Error("Attempt already completed");
         }
 
+        // Récupérer la question pour déterminer le type
+        const question = await Question.findById(questionId).lean();
+        if (!question) {
+            throw new Error("Question not found");
+        }
+
         let isCorrect = false;
-        // Check if the selected option is correct (if provided)
-        if (selectedOptionId) {
-            const option = await Option.findById(selectedOptionId);
-            isCorrect = option?.isCorrect || false;
-        } else if (textResponse) {
-            // Open questions are pending grading, so defaults to false or could be handled by AI later
-            isCorrect = false;
+        let finalSelectedOptionId: string | undefined = undefined;
+        let finalTextResponse: string | undefined = undefined;
+
+        // Évaluation selon le type de question
+        if (question.type === 'TRUE_FALSE') {
+            // Pour Vrai/Faux: selectedOptionId contient 'true' ou 'false'
+            // On stocke dans textResponse car ce n'est pas un ObjectId
+            const studentAnswer = selectedOptionId === 'true';
+            isCorrect = studentAnswer === question.correctAnswer;
+            finalTextResponse = selectedOptionId; // 'true' ou 'false'
+            finalSelectedOptionId = undefined;
+        } else if (question.type === 'OPEN_QUESTION') {
+            // Pour questions ouvertes
+            finalSelectedOptionId = undefined;
+            finalTextResponse = textResponse || '';
+            isCorrect = evaluateOpenQuestion(finalTextResponse, question);
+        } else {
+            // Pour QCM: vérifier l'option sélectionnée
+            if (selectedOptionId) {
+                const option = await Option.findById(selectedOptionId);
+                isCorrect = option?.isCorrect || false;
+                finalSelectedOptionId = selectedOptionId;
+            }
         }
 
         // Find existing response for this question in this attempt
@@ -434,17 +555,17 @@ export class AttemptService {
 
         // Update existing response or create new one
         if (existingResponse) {
-            await responseRepo.update(existingResponse._id.toString(), { // Convert to string if repo expects string or handle ObjectId
-                selectedOptionId: selectedOptionId ? new mongoose.Types.ObjectId(selectedOptionId) : undefined,
-                textResponse: textResponse || undefined,
+            await responseRepo.update(existingResponse._id.toString(), {
+                selectedOptionId: finalSelectedOptionId ? new mongoose.Types.ObjectId(finalSelectedOptionId) : undefined,
+                textResponse: finalTextResponse,
                 isCorrect
             } as any);
         } else {
             await responseRepo.create({
                 attemptId: new mongoose.Types.ObjectId(attemptId),
                 questionId: new mongoose.Types.ObjectId(questionId),
-                selectedOptionId: selectedOptionId ? new mongoose.Types.ObjectId(selectedOptionId) : undefined,
-                textResponse: textResponse || undefined,
+                selectedOptionId: finalSelectedOptionId ? new mongoose.Types.ObjectId(finalSelectedOptionId) : undefined,
+                textResponse: finalTextResponse,
                 isCorrect,
             } as any);
         }

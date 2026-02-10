@@ -296,10 +296,11 @@ export class ClassService {
 
         const Exam = mongoose.models.Exam || mongoose.model('Exam');
 
-        // Build query
+        // Build query - only published exams for students
         const query: any = {
             targetLevels: classData.level._id,
-            status: { $ne: 'ARCHIVED' }
+            status: 'PUBLISHED',
+            isPublished: true
         };
 
         // Handle Fields filtering

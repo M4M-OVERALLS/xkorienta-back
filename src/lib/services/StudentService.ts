@@ -431,6 +431,7 @@ export class StudentService {
      */
     static async getStudentExams(studentId: string) {
         const classRepo = new ClassRepository();
+        const attemptRepo = new AttemptRepository();
 
         // 1. Get classes where student is enrolled using Repository
         const classes = await classRepo.findStudentClasses(studentId);
@@ -450,18 +451,56 @@ export class StudentService {
             new Map(allExams.map(e => [e._id.toString(), e])).values()
         );
 
-        // 4. Sort by startTime descending
+        // 4. Get exam IDs for fetching attempts
+        const examIds = uniqueExams.map(e => e._id.toString());
+
+        // 5. Fetch attempts for this student and these exams
+        const attempts = await attemptRepo.findByExamIds(studentId, examIds);
+
+        // 6. Group attempts by examId
+        const attemptsByExamId = new Map<string, any[]>();
+        for (const attempt of attempts) {
+            const examId = attempt.examId.toString();
+            if (!attemptsByExamId.has(examId)) {
+                attemptsByExamId.set(examId, []);
+            }
+            attemptsByExamId.get(examId)!.push(attempt);
+        }
+
+        // 7. Sort by startTime descending
         uniqueExams.sort((a, b) => {
             const aTime = typeof a.startTime === 'string' ? new Date(a.startTime).getTime() : a.startTime.getTime();
             const bTime = typeof b.startTime === 'string' ? new Date(b.startTime).getTime() : b.startTime.getTime();
             return bTime - aTime;
         });
 
-        // 5. Format response with id field
-        return uniqueExams.map(e => ({
-            ...e,
-            id: e._id.toString()
-        }));
+        // 8. Format response with id field and attempts
+        const now = new Date();
+        return uniqueExams.map(e => {
+            const examId = e._id.toString();
+            const examAttempts = attemptsByExamId.get(examId) || [];
+            
+            // Calculate resultsBlocked for this exam
+            const examData = e as any;
+            const lateDuration = examData.config?.lateDuration || 0;
+            const delayResultsUntilLateEnd = examData.config?.delayResultsUntilLateEnd ?? false;
+            const examEndTime = new Date(examData.endTime);
+            const lateEndTime = addMinutes(examEndTime, lateDuration);
+            
+            const examEnded = isPast(examEndTime);
+            const inLatePeriod = examEnded && isAfter(lateEndTime, now) && lateDuration > 0;
+            const resultsBlocked = !examEnded || (delayResultsUntilLateEnd && inLatePeriod);
+            
+            return {
+                ...e,
+                id: examId,
+                resultsBlocked,
+                attempts: examAttempts.map(a => ({
+                    ...a,
+                    id: a._id.toString()
+                }))
+            };
+        });
     }
 
     /**

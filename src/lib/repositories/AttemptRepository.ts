@@ -174,4 +174,17 @@ export class AttemptRepository {
 
         return avgScoreResult.length > 0 ? Math.round(avgScoreResult[0].avgScore) : 0;
     }
+
+    /**
+     * Find attempts by userId and examIds
+     */
+    async findByExamIds(userId: string, examIds: string[]) {
+        await connectDB();
+        if (examIds.length === 0) return [];
+
+        return Attempt.find({
+            userId: new mongoose.Types.ObjectId(userId),
+            examId: { $in: examIds.map(id => new mongoose.Types.ObjectId(id)) }
+        }).sort({ startedAt: -1 }).lean();
+    }
 }
