@@ -11,6 +11,11 @@ import "@/models/CareerOutcome"
 import "@/models/School"
 
 export class SpecialtyRepository {
+    async findById(id: string) {
+        await connectDB()
+        return Specialty.findById(id)
+    }
+
     async findAllSpecialties() {
         await connectDB()
         return Specialty.find({}).lean()

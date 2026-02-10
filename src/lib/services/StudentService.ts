@@ -15,6 +15,7 @@ import { MASTERY_LEVEL_PERCENTAGES, MasteryLevel } from "@/lib/patterns/Evaluati
 import { ILearnerProfile } from "@/models/LearnerProfile";
 import { ORIENTATION_SCHOOLS_MOCK } from "@/lib/mocks/orientationSchools";
 import { SpecialtyRepository } from "@/lib/repositories/SpecialtyRepository";
+import { StudentShortlistRepository } from "@/lib/repositories/StudentShortlistRepository";
 import {
     SpecialtyDTO,
     SpecialtyCareerOutcomeDTO,
@@ -100,6 +101,19 @@ const normalizePrerequisites = (value: unknown): string[] | undefined => {
     return undefined
 }
 
+const buildShortlistDTO = (studentId: string, shortlist: Record<string, unknown> | null) => {
+    const schoolsRaw = shortlist?.schools as Array<{ toString: () => string }> | undefined
+    const specialtiesRaw = shortlist?.specialties as Array<{ toString: () => string }> | undefined
+    const updatedAtRaw = shortlist?.updatedAt as Date | string | undefined
+
+    return {
+        student_id: studentId,
+        school_ids: (schoolsRaw || []).map(id => id.toString()),
+        specialty_ids: (specialtiesRaw || []).map(id => id.toString()),
+        updated_at: updatedAtRaw ? new Date(updatedAtRaw).toISOString() : new Date().toISOString()
+    }
+}
+
 export interface StudentClassWithRank {
     id: string;
     name: string;
@@ -131,6 +145,15 @@ export interface StudentSubject {
         currentLevel?: string;
         lastEvaluated?: string;
     }>;
+}
+
+export type ShortlistItemType = "school" | "specialty";
+
+export interface StudentShortlistDTO {
+    student_id: string;
+    school_ids: string[];
+    specialty_ids: string[];
+    updated_at: string;
 }
 
 export class StudentService {
@@ -564,6 +587,97 @@ export class StudentService {
                 popularity_score: scoreData?.popularity_score
             }
         })
+    }
+
+    /**
+     * Get student's shortlist (school IDs + specialty IDs)
+     */
+    static async getStudentShortlist(studentId: string): Promise<StudentShortlistDTO> {
+        if (!studentId) {
+            throw new Error("Unauthorized");
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(studentId)) {
+            throw new Error("Invalid studentId");
+        }
+
+        const repo = new StudentShortlistRepository();
+        const shortlistRaw = await repo.ensureByStudentId(studentId);
+        return buildShortlistDTO(studentId, shortlistRaw as Record<string, unknown> | null);
+    }
+
+    /**
+     * Add one item to student's shortlist
+     */
+    static async addToStudentShortlist(
+        studentId: string,
+        itemType: ShortlistItemType,
+        itemId: string
+    ): Promise<StudentShortlistDTO> {
+        if (!studentId) {
+            throw new Error("Unauthorized");
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(studentId)) {
+            throw new Error("Invalid studentId");
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(itemId)) {
+            throw new Error("Invalid itemId");
+        }
+
+        const shortlistRepo = new StudentShortlistRepository();
+
+        if (itemType === "school") {
+            const schoolRepo = new SchoolRepository();
+            const school = await schoolRepo.findById(itemId);
+            if (!school) {
+                throw new Error("School not found");
+            }
+
+            const updated = await shortlistRepo.addSchool(studentId, itemId);
+            return buildShortlistDTO(studentId, updated as Record<string, unknown> | null);
+        }
+
+        const specialtyRepo = new SpecialtyRepository();
+        const specialty = await specialtyRepo.findById(itemId);
+        if (!specialty) {
+            throw new Error("Specialty not found");
+        }
+
+        const updated = await shortlistRepo.addSpecialty(studentId, itemId);
+        return buildShortlistDTO(studentId, updated as Record<string, unknown> | null);
+    }
+
+    /**
+     * Remove one item from student's shortlist
+     */
+    static async removeFromStudentShortlist(
+        studentId: string,
+        itemType: ShortlistItemType,
+        itemId: string
+    ): Promise<StudentShortlistDTO> {
+        if (!studentId) {
+            throw new Error("Unauthorized");
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(studentId)) {
+            throw new Error("Invalid studentId");
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(itemId)) {
+            throw new Error("Invalid itemId");
+        }
+
+        const shortlistRepo = new StudentShortlistRepository();
+
+        if (itemType === "school") {
+            const updated = await shortlistRepo.removeSchool(studentId, itemId);
+            return buildShortlistDTO(studentId, updated as Record<string, unknown> | null);
+        }
+
+        const updated = await shortlistRepo.removeSpecialty(studentId, itemId);
+        return buildShortlistDTO(studentId, updated as Record<string, unknown> | null);
     }
 
     /**

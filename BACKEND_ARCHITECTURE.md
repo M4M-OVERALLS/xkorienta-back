@@ -125,6 +125,7 @@ export class AuthRepository {
 | **Profils** | ✅ `/api/profiles/pedagogical` | ✅ `ProfileController` | ✅ `ProfileService` | (intégré dans Service) |
 | **Niveaux/Filières** | ✅ `/api/education-levels`, `/api/fields` | ✅ `EducationStructureController` | ✅ `EducationStructureService` | (intégré dans Service) |
 | **Spécialités (apprenant)** | ✅ `/api/student/specialties` | ✅ `StudentController` | ✅ `StudentService` | ✅ `SpecialtyRepository` |
+| **Shortlist (apprenant)** | ✅ `/api/student/shortlist` | ✅ `StudentController` | ✅ `StudentService` | ✅ `StudentShortlistRepository` |
 
 ---
 
@@ -176,6 +177,50 @@ Le DTO est défini dans `src/lib/dtos/SpecialtyDTO.ts` et expose une structure s
 - Appeler `GET /api/student/specialties` côté client (ou server component).
 - Consommer `data` pour afficher les cartes de spécialités et les sections associées (skills, débouchés, écoles, scores).
 - Utiliser les champs `employment_rate` et `popularity_score` pour les badges/indicateurs.
+
+---
+
+## 🎯 Fonctionnalité: Shortlist étudiant (écoles + spécialités)
+
+### Objectif
+Permettre à un apprenant de sauvegarder ses choix en cliquant sur une école ou une spécialité, sous forme d'IDs.
+
+### Endpoints
+- **GET** `/api/student/shortlist`
+  - Retourne la shortlist courante de l'étudiant.
+- **POST** `/api/student/shortlist`
+  - Ajoute un item dans la shortlist.
+  - Body: `{ "itemType": "school" | "specialty", "itemId": "..." }`
+- **DELETE** `/api/student/shortlist`
+  - Retire un item de la shortlist.
+  - Body: `{ "itemType": "school" | "specialty", "itemId": "..." }`
+- Auth requis (session NextAuth), `studentId` optionnel en query pour override.
+
+### Modèle de données
+- Modèle dédié: `src/models/StudentShortlist.ts`
+- Une shortlist unique par étudiant:
+  - `student` (ObjectId unique)
+  - `schools` (ObjectId[])
+  - `specialties` (ObjectId[])
+
+### Format de réponse
+```typescript
+{
+  student_id: string
+  school_ids: string[]
+  specialty_ids: string[]
+  updated_at: string
+}
+```
+
+### Intégration frontend (clic utilisateur)
+- Au clic sur l'icône shortlist d'une école, envoyer:
+  - `POST /api/student/shortlist` avec `{ itemType: "school", itemId: schoolId }`
+- Au clic sur l'icône shortlist d'une spécialité, envoyer:
+  - `POST /api/student/shortlist` avec `{ itemType: "specialty", itemId: specialtyId }`
+- Si l'item est déjà shortlisté et l'utilisateur reclique:
+  - `DELETE /api/student/shortlist` avec le même payload
+- Au chargement de la page, appeler `GET /api/student/shortlist` pour hydrater l'état visuel des boutons (actif/inactif).
 
 ---
 
