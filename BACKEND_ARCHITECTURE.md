@@ -124,6 +124,58 @@ export class AuthRepository {
 | **Écoles** | ✅ `/api/schools/*` | ✅ `SchoolController` | ✅ `SchoolService` | ✅ `SchoolRepository` |
 | **Profils** | ✅ `/api/profiles/pedagogical` | ✅ `ProfileController` | ✅ `ProfileService` | (intégré dans Service) |
 | **Niveaux/Filières** | ✅ `/api/education-levels`, `/api/fields` | ✅ `EducationStructureController` | ✅ `EducationStructureService` | (intégré dans Service) |
+| **Spécialités (apprenant)** | ✅ `/api/student/specialties` | ✅ `StudentController` | ✅ `StudentService` | ✅ `SpecialtyRepository` |
+
+---
+
+## 🎯 Fonctionnalité: Liste des spécialités pour l'apprenant
+
+### Endpoint
+- **GET** `/api/student/specialties`
+- Auth requis (session NextAuth)
+- Paramètre optionnel: `?studentId=...` (sinon session)
+
+### Source des données
+- `Specialty` → informations de base (domaine, filière, niveau, durée, etc.)
+- `SpecialtySkill` → `Skill` (compétences)
+- `SpecialtyOutcome` → `CareerOutcome` (débouchés)
+- `SchoolProgram` → `School` (écoles proposant la spécialité)
+- `SpecialtyScore` (scores employabilité / popularité)
+
+### DTO renvoyé
+Le DTO est défini dans `src/lib/dtos/SpecialtyDTO.ts` et expose une structure stable pour le frontend:
+
+```typescript
+{
+  _id: string
+  specialty_id: string
+  domain: string
+  field: string
+  specialty_name: string
+  level: string
+  degree_awarded: string
+  duration_years: number
+  language: string[]
+  mode: string
+  prerequisites?: string[]
+  general_objective?: string
+  specific_objectives?: string[]
+  value_proposition?: string
+  exit_profile?: string
+  created_at: string
+  skills: { skill_id: string; name: string; skill_type: string }[]
+  career_outcomes: { outcome_id: string; name: string; sector: string }[]
+  schools_offering: { school_id: string; school_name: string; tuition_fee?: { min: number; max: number; currency: string } }[]
+  average_salary?: { min: number; max: number; currency: string }
+  employment_rate?: number
+  popularity_score?: number
+}
+```
+
+### Intégration frontend (résumé)
+- Appeler `GET /api/student/specialties` côté client (ou server component).
+- Consommer `data` pour afficher les cartes de spécialités et les sections associées (skills, débouchés, écoles, scores).
+- Utiliser les champs `employment_rate` et `popularity_score` pour les badges/indicateurs.
 
 ---
 

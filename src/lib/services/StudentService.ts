@@ -14,8 +14,91 @@ import { ChallengeStatus } from "@/models/Challenge";
 import { MASTERY_LEVEL_PERCENTAGES, MasteryLevel } from "@/lib/patterns/EvaluationStrategy";
 import { ILearnerProfile } from "@/models/LearnerProfile";
 import { ORIENTATION_SCHOOLS_MOCK } from "@/lib/mocks/orientationSchools";
+import { SpecialtyRepository } from "@/lib/repositories/SpecialtyRepository";
+import {
+    SpecialtyDTO,
+    SpecialtyCareerOutcomeDTO,
+    SpecialtySchoolOfferingDTO,
+    SpecialtySkillDTO,
+    SpecialtySalaryRangeDTO
+} from "@/lib/dtos/SpecialtyDTO";
 import { addMinutes, isAfter, isPast } from "date-fns";
 import mongoose from "mongoose";
+
+type TuitionFee = {
+    min: number
+    max: number
+    currency: string
+}
+
+const getNumber = (value: unknown): number | undefined => {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+        return undefined
+    }
+    return value
+}
+
+const extractMinMax = (source?: Record<string, unknown>) => {
+    if (!source) {
+        return { min: undefined, max: undefined, currency: undefined }
+    }
+    return {
+        min: getNumber(source.min ?? source.minimum ?? source.minCost ?? source.low),
+        max: getNumber(source.max ?? source.maximum ?? source.maxCost ?? source.high),
+        currency: typeof source.currency === "string" ? source.currency : undefined
+    }
+}
+
+const buildTuitionFee = (programData: Record<string, unknown>): TuitionFee | undefined => {
+    const costBreakdown = programData.costBreakdownJson as Record<string, unknown> | undefined
+    const otherFees = programData.otherFeesJson as Record<string, unknown> | undefined
+    const annualCost = getNumber(programData.annualCostTotal)
+
+    const { min, max, currency } = extractMinMax(costBreakdown)
+    const fallbackCurrency = typeof otherFees?.currency === "string" ? otherFees.currency : undefined
+
+    if (typeof min === "number" || typeof max === "number") {
+        return {
+            min: min ?? max ?? 0,
+            max: max ?? min ?? 0,
+            currency: (currency || fallbackCurrency || "FCFA")
+        }
+    }
+
+    if (typeof annualCost === "number") {
+        return {
+            min: annualCost,
+            max: annualCost,
+            currency: (currency || fallbackCurrency || "FCFA")
+        }
+    }
+
+    return undefined
+}
+
+const mergeTuition = (current?: TuitionFee, next?: TuitionFee): TuitionFee | undefined => {
+    if (!current) return next
+    if (!next) return current
+    return {
+        min: Math.min(current.min, next.min),
+        max: Math.max(current.max, next.max),
+        currency: current.currency || next.currency
+    }
+}
+
+const normalizePrerequisites = (value: unknown): string[] | undefined => {
+    if (Array.isArray(value)) {
+        const cleaned = value
+            .map(item => (typeof item === "string" ? item.trim() : String(item).trim()))
+            .filter(Boolean)
+        return cleaned.length > 0 ? cleaned : undefined
+    }
+    if (typeof value === "string") {
+        const trimmed = value.trim()
+        return trimmed ? [trimmed] : undefined
+    }
+    return undefined
+}
 
 export interface StudentClassWithRank {
     id: string;
@@ -322,6 +405,165 @@ export class StudentService {
                 meta: { source: "mock" }
             };
         }
+    }
+
+    /**
+     * Get specialties list for student discovery
+     */
+    static async getStudentSpecialties(studentId: string): Promise<SpecialtyDTO[]> {
+        if (!studentId) {
+            throw new Error("Unauthorized")
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(studentId)) {
+            throw new Error("Invalid studentId")
+        }
+
+        const repo = new SpecialtyRepository()
+        const specialties = await repo.findAllSpecialties()
+
+        if (specialties.length === 0) {
+            return []
+        }
+
+        const specialtyIds = specialties.map(s => s._id as mongoose.Types.ObjectId)
+        const [skillLinks, outcomeLinks, programs, scores] = await Promise.all([
+            repo.findSkillLinksBySpecialtyIds(specialtyIds),
+            repo.findOutcomeLinksBySpecialtyIds(specialtyIds),
+            repo.findProgramsBySpecialtyIds(specialtyIds),
+            repo.findScoresBySpecialtyIds(specialtyIds)
+        ])
+
+        const skillsBySpecialtyId = new Map<string, SpecialtySkillDTO[]>()
+        for (const link of skillLinks) {
+            const linkData = link as Record<string, unknown>
+            const specialtyId = (linkData.specialty as { toString: () => string } | undefined)?.toString()
+            const skill = linkData.skill as Record<string, unknown> | undefined
+
+            if (!specialtyId || !skill) continue
+
+            const skillId = (skill._id as { toString: () => string } | undefined)?.toString()
+            if (!skillId) continue
+
+            const dto: SpecialtySkillDTO = {
+                skill_id: skillId,
+                name: (skill.name as string) || "",
+                skill_type: (skill.skillType as string) || ""
+            }
+
+            const list = skillsBySpecialtyId.get(specialtyId) || []
+            list.push(dto)
+            skillsBySpecialtyId.set(specialtyId, list)
+        }
+
+        const outcomesBySpecialtyId = new Map<string, SpecialtyCareerOutcomeDTO[]>()
+        for (const link of outcomeLinks) {
+            const linkData = link as Record<string, unknown>
+            const specialtyId = (linkData.specialty as { toString: () => string } | undefined)?.toString()
+            const outcome = linkData.outcome as Record<string, unknown> | undefined
+
+            if (!specialtyId || !outcome) continue
+
+            const outcomeId = (outcome._id as { toString: () => string } | undefined)?.toString()
+            if (!outcomeId) continue
+
+            const dto: SpecialtyCareerOutcomeDTO = {
+                outcome_id: outcomeId,
+                name: (outcome.name as string) || "",
+                sector: (outcome.sector as string) || ""
+            }
+
+            const list = outcomesBySpecialtyId.get(specialtyId) || []
+            list.push(dto)
+            outcomesBySpecialtyId.set(specialtyId, list)
+        }
+
+        const schoolsBySpecialtyId = new Map<string, Map<string, SpecialtySchoolOfferingDTO>>()
+        for (const program of programs) {
+            const programData = program as Record<string, unknown>
+            const specialtyId = (programData.specialty as { toString: () => string } | undefined)?.toString()
+            const school = programData.school as Record<string, unknown> | undefined
+
+            if (!specialtyId || !school) continue
+
+            const schoolId = (school._id as { toString: () => string } | undefined)?.toString()
+            if (!schoolId) continue
+
+            const tuitionFee = buildTuitionFee(programData)
+            const schoolMap = schoolsBySpecialtyId.get(specialtyId) || new Map()
+            const existing = schoolMap.get(schoolId)
+
+            if (existing) {
+                existing.tuition_fee = mergeTuition(existing.tuition_fee, tuitionFee)
+            } else {
+                schoolMap.set(schoolId, {
+                    school_id: schoolId,
+                    school_name: (school.name as string) || "",
+                    tuition_fee: tuitionFee
+                })
+            }
+
+            schoolsBySpecialtyId.set(specialtyId, schoolMap)
+        }
+
+        const scoresBySpecialtyId = new Map<string, { employment_rate?: number; popularity_score?: number }>()
+        for (const score of scores) {
+            const scoreData = score as Record<string, unknown>
+            const specialtyId = (scoreData.specialty as { toString: () => string } | undefined)?.toString()
+            if (!specialtyId) continue
+
+            const employmentRate = typeof scoreData.employabilityScore === "number"
+                ? scoreData.employabilityScore
+                : undefined
+            const popularityScore = typeof scoreData.globalScore === "number"
+                ? scoreData.globalScore
+                : undefined
+
+            scoresBySpecialtyId.set(specialtyId, {
+                employment_rate: employmentRate,
+                popularity_score: popularityScore
+            })
+        }
+
+        return specialties.map((specialty) => {
+            const data = specialty as Record<string, unknown>
+            const id = (data._id as { toString: () => string }).toString()
+            const createdAt = data.createdAt as Date | string | undefined
+            const createdAtIso = createdAt ? new Date(createdAt).toISOString() : ""
+
+            const scoreData = scoresBySpecialtyId.get(id)
+            const schools = schoolsBySpecialtyId.get(id)
+            const averageSalary = undefined as SpecialtySalaryRangeDTO | undefined
+
+            return {
+                _id: id,
+                specialty_id: id,
+                domain: (data.domain as string) || "",
+                field: (data.field as string) || "",
+                specialty_name: (data.specialtyName as string) || "",
+                level: (data.level as string) || "",
+                degree_awarded: (data.degreeAwarded as string) || "",
+                duration_years: (data.durationYears as number) || 0,
+                language: Array.isArray(data.language)
+                    ? (data.language as string[])
+                    : data.language
+                        ? [String(data.language)]
+                        : [],
+                mode: (data.mode as string) || "",
+                prerequisites: normalizePrerequisites(data.prerequisites),
+                general_objective: (data.generalObjective as string) || undefined,
+                specific_objectives: (data.specificObjectives as string[]) || undefined,
+                value_proposition: (data.valueProposition as string) || undefined,
+                exit_profile: (data.exitProfile as string) || undefined,
+                created_at: createdAtIso,
+                skills: skillsBySpecialtyId.get(id) || [],
+                career_outcomes: outcomesBySpecialtyId.get(id) || [],
+                schools_offering: schools ? Array.from(schools.values()) : [],
+                average_salary: averageSalary,
+                employment_rate: scoreData?.employment_rate,
+                popularity_score: scoreData?.popularity_score
+            }
+        })
     }
 
     /**

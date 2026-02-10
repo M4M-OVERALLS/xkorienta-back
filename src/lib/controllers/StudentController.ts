@@ -99,6 +99,35 @@ export class StudentController {
     }
 
     /**
+     * GET /api/student/specialties
+     * Liste des specialites pour l'apprenant
+     */
+    static async getStudentSpecialties(studentId: string) {
+        try {
+            if (!studentId) {
+                return NextResponse.json(
+                    { success: false, message: "Unauthorized" },
+                    { status: 401 }
+                );
+            }
+
+            const specialties = await StudentService.getStudentSpecialties(studentId);
+
+            return NextResponse.json({
+                success: true,
+                data: specialties
+            });
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "Internal server error";
+            console.error("[Student Controller] Get Student Specialties Error:", error);
+            return NextResponse.json(
+                { success: false, message: errorMessage },
+                { status: 500 }
+            );
+        }
+    }
+
+    /**
      * GET /api/student/leaderboard
      * Get leaderboard based on type (CLASS, SCHOOL_LEVEL, NATIONAL_LEVEL)
      */
