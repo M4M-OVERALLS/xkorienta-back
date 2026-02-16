@@ -236,17 +236,19 @@ export class ExamServiceV2 {
                         let optionsToCreate = []
 
                         if (qData.options && qData.options.length > 0) {
-                            // Use provided options
-                            optionsToCreate = qData.options.map((opt: any, idx: number) => ({
-                                questionId: createdQuestion._id,
-                                text: opt.text,
-                                isCorrect: opt.isCorrect,
-                                order: idx,
-                                stats: {
-                                    timesSelected: 0,
-                                    selectionRate: 0
-                                }
-                            }))
+                            // Use provided options, filtering out any with empty text
+                            optionsToCreate = qData.options
+                                .filter((opt: any) => opt.text && opt.text.trim() !== '')
+                                .map((opt: any, idx: number) => ({
+                                    questionId: createdQuestion._id,
+                                    text: opt.text,
+                                    isCorrect: opt.isCorrect,
+                                    order: idx,
+                                    stats: {
+                                        timesSelected: 0,
+                                        selectionRate: 0
+                                    }
+                                }))
                         } else if (qData.type === EvaluationType.TRUE_FALSE) {
                             // Generate default TRUE/FALSE options if not provided
                             // Determine which is correct based on qData.correctAnswer

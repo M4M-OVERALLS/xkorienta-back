@@ -52,4 +52,56 @@ export class ChallengeRepository {
             challengeId: { $in: challengeIds }
         }).lean();
     }
+
+    /**
+     * Find a challenge by ID
+     */
+    async findById(challengeId: string) {
+        await connectDB();
+        return Challenge.findById(challengeId).lean();
+    }
+
+    /**
+     * Find student progress for a specific challenge
+     */
+    async findStudentChallengeProgress(studentId: string, challengeId: string) {
+        await connectDB();
+        return ChallengeProgress.findOne({
+            userId: new mongoose.Types.ObjectId(studentId),
+            challengeId: new mongoose.Types.ObjectId(challengeId)
+        }).lean();
+    }
+
+    /**
+     * Add a participant to a challenge
+     */
+    async addParticipant(challengeId: string, studentId: string) {
+        await connectDB();
+        return Challenge.findByIdAndUpdate(
+            challengeId,
+            { $addToSet: { participants: new mongoose.Types.ObjectId(studentId) } },
+            { new: true }
+        );
+    }
+
+    /**
+     * Create a challenge progress record
+     */
+    async createChallengeProgress(data: {
+        userId: mongoose.Types.ObjectId;
+        challengeId: mongoose.Types.ObjectId;
+        progress: Array<{
+            goalIndex: number;
+            current: number;
+            target: number;
+            completed: boolean;
+        }>;
+        overallProgress: number;
+        completed: boolean;
+        startedAt: Date;
+        lastUpdated: Date;
+    }) {
+        await connectDB();
+        return ChallengeProgress.create(data);
+    }
 }

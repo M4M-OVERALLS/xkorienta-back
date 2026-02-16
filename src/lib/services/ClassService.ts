@@ -186,7 +186,7 @@ export class ClassService {
             .populate('school', 'name')
             .populate('field', 'name code')
             .populate({ path: 'specialty', select: 'name code', strictPopulate: false })
-            .populate('students', 'name email image')
+            .populate('students', 'name email image isActive')
             .populate('mainTeacher', 'name')
     }
 
@@ -296,10 +296,11 @@ export class ClassService {
 
         const Exam = mongoose.models.Exam || mongoose.model('Exam');
 
-        // Build query
+        // Build query - only published exams for students
         const query: any = {
             targetLevels: classData.level._id,
-            status: { $ne: 'ARCHIVED' }
+            status: 'PUBLISHED',
+            isPublished: true
         };
 
         // Handle Fields filtering

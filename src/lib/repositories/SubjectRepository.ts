@@ -11,7 +11,6 @@ export class SubjectRepository {
             .populate('applicableLevels', 'name code')
             .populate('applicableFields', 'name code')
             .populate('parentSubject', 'name code')
-            .populate('childSubjects', 'name code')
             .lean();
     }
 

@@ -17,7 +17,15 @@ export interface Topic {
     id: string
     title: string
     content?: string
+    concepts?: Concept[]
     resources?: Resource[]
+    order: number
+}
+
+export interface Concept {
+    id: string
+    title: string
+    description?: string
     order: number
 }
 
@@ -136,6 +144,26 @@ export class SyllabusBuilder {
             order
         })
         return id
+    }
+
+    /**
+     * Add a concept to a topic
+     */
+    addConcept(chapterId: string, topicId: string, concept: Omit<Concept, 'id' | 'order'>): SyllabusBuilder {
+        const chapter = this.structure.chapters.find(c => c.id === chapterId)
+        if (!chapter) throw new Error(`Chapter with ID ${chapterId} not found`)
+
+        const topic = chapter.topics.find(t => t.id === topicId)
+        if (!topic) throw new Error(`Topic with ID ${topicId} not found`)
+
+        topic.concepts = topic.concepts || []
+        const order = topic.concepts.length
+        topic.concepts.push({
+            id: crypto.randomUUID(),
+            order,
+            ...concept
+        })
+        return this
     }
 
     /**

@@ -107,6 +107,15 @@ export async function POST(req: Request) {
                     chap.topics.forEach((top: any) => {
                         const topicId = builder.addTopic(chapterId, top.title, top.content)
 
+                        if (Array.isArray(top.concepts)) {
+                            top.concepts.forEach((concept: any) => {
+                                builder.addConcept(chapterId, topicId, {
+                                    title: concept.title,
+                                    description: concept.description
+                                })
+                            })
+                        }
+
                         if (Array.isArray(top.resources)) {
                             top.resources.forEach((res: any) => {
                                 builder.addResource(chapterId, topicId, {

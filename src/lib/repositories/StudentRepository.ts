@@ -72,4 +72,19 @@ export class StudentRepository {
             syllabus: { $in: syllabusIds }
         }).lean();
     }
+
+    /**
+     * Find syllabi by teachers (Fallback)
+     */
+    async findSyllabiByTeachers(teacherIds: mongoose.Types.ObjectId[], schoolId?: mongoose.Types.ObjectId) {
+        await connectDB();
+        const query: any = {
+            teacher: { $in: teacherIds },
+            status: 'ACTIVE'
+        };
+        if (schoolId) {
+            query.school = schoolId;
+        }
+        return Syllabus.find(query).populate('subject').lean();
+    }
 }

@@ -1,6 +1,6 @@
 # Guide Étape par Étape - Obtenir Google Client ID et Secret
 
-Guide complet avec captures d'écran pour configurer Google OAuth pour Xkorin School.
+Guide complet avec captures d'écran pour configurer Google OAuth pour Xkorienta.
 
 ## 📋 Prérequis
 
@@ -36,7 +36,7 @@ En haut de la page, vous verrez:
 1. Dans la popup qui s'ouvre, cliquez sur **"NEW PROJECT"** (en haut à droite)
 
 2. Remplissez les informations:
-   - **Project name**: `Xkorin School` (ou le nom de votre choix)
+   - **Project name**: `Xkorienta` (ou le nom de votre choix)
    - **Organization**: Laissez par défaut ou sélectionnez votre organisation
    - **Location**: Laissez par défaut
 
@@ -99,7 +99,7 @@ Avant de créer les credentials, vous devez configurer l'écran de consentement.
 
 Remplissez les champs suivants:
 
-- **App name**: `Xkorin School`
+- **App name**: `Xkorienta`
 - **User support email**: Votre email
 - **App logo**: (optionnel, vous pouvez passer)
 - **Application home page**: `http://localhost:3000` (pour l'instant)
@@ -107,7 +107,7 @@ Remplissez les champs suivants:
 - **Application terms of service link**: Laissez vide pour le développement
 - **Authorized domains**:
   - Laissez vide pour localhost
-  - En production, ajoutez votre domaine (ex: `Xkorin School.com`)
+  - En production, ajoutez votre domaine (ex: `Xkorienta.com`)
 - **Developer contact information**: Votre email
 
 Cliquez sur **"SAVE AND CONTINUE"**
@@ -163,7 +163,7 @@ C'est ici que vous obtiendrez votre Client ID et Client Secret!
 
 2. **Name**: Donnez un nom descriptif
    ```
-   Xkorin School Development
+   Xkorienta Development
    ```
 
 3. **Authorized JavaScript origins** (optionnel):
@@ -228,7 +228,7 @@ Your Client Secret
 
 1. Cliquez sur **"OK"** pour fermer la popup
 2. Dans la page Credentials, vous verrez votre client OAuth 2.0
-3. Cliquez sur le nom (ex: "Xkorin School Development")
+3. Cliquez sur le nom (ex: "Xkorienta Development")
 4. Vous verrez vos credentials à nouveau
 
 ---
@@ -237,7 +237,7 @@ Your Client Secret
 
 ### 7.1 Ouvrir votre fichier .env
 
-Dans votre projet Xkorin School, ouvrez ou créez le fichier `.env`:
+Dans votre projet Xkorienta, ouvrez ou créez le fichier `.env`:
 
 ```bash
 # Si le fichier n'existe pas
@@ -298,7 +298,7 @@ npm run dev
 
 1. Cliquez sur **"Continuer avec Google"**
 2. Sélectionnez votre compte Google
-3. Autorisez l'accès à Xkorin School
+3. Autorisez l'accès à Xkorienta
 4. Vous serez redirigé vers `/dashboard`
 
 **Si ça marche**: 🎉 Félicitations! Google OAuth est configuré!
@@ -329,7 +329,7 @@ npm run dev
 3. Vérifiez qu'il n'y a pas d'espaces avant/après les credentials
 4. Ouvrez la console du navigateur (F12) pour voir les erreurs
 
-### ❌ "Access blocked: Xkorin School has not completed the Google verification process"
+### ❌ "Access blocked: Xkorienta has not completed the Google verification process"
 
 **C'est normal en développement!**
 
@@ -406,7 +406,7 @@ Pour retirer le message "app non vérifiée":
                   ▼
 ┌─────────────────────────────────────────────┐
 │  2. Créer un Projet                         │
-│     "Xkorin School"                              │
+│     "Xkorienta"                              │
 └─────────────────┬───────────────────────────┘
                   │
                   ▼
@@ -510,5 +510,5 @@ Avant de dire que c'est terminé, vérifiez:
 
 ---
 
-**Créé pour Xkorin School** 🔐
+**Créé pour Xkorienta** 🔐
 **Dernière mise à jour**: 2025-01-29

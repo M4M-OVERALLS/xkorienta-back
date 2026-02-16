@@ -1,8 +1,10 @@
 import { AuthRepository } from "@/lib/repositories/AuthRepository";
 import { authStrategyManager } from "@/lib/auth/strategies/AuthStrategyManager";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
+import { sendPasswordResetEmail } from "@/lib/mail";
 
 type GoogleUserPayload = {
     email?: string;
@@ -15,6 +17,7 @@ export class AuthService {
     private authRepository: AuthRepository;
     private readonly MAX_LOGIN_ATTEMPTS = 5;
     private readonly LOCK_TIME_MINUTES = 15;
+    private readonly RESET_TOKEN_EXPIRY_MINUTES = 60; // 1 hour
 
     constructor() {
         this.authRepository = new AuthRepository();
@@ -28,7 +31,6 @@ export class AuthService {
         const user = await this.authRepository.findByEmailWithPassword(email);
 
         if (!user) {
-            // Return null instead of error to avoid checking for non-existent users
             return null;
         }
 
@@ -43,7 +45,6 @@ export class AuthService {
         const isPlainMatch = user.password === password; // Legacy fallback
 
         if (!isMatch && !isPlainMatch) {
-            // Increment attempts
             let lockUntil: Date | undefined;
             if ((user.loginAttempts || 0) + 1 >= this.MAX_LOGIN_ATTEMPTS) {
                 lockUntil = new Date(Date.now() + this.LOCK_TIME_MINUTES * 60000);
@@ -55,13 +56,12 @@ export class AuthService {
                 throw new Error(`Account locked due to too many failed attempts. Try again in ${this.LOCK_TIME_MINUTES} minutes.`);
             }
 
-            return null; // Invalid password
+            return null;
         }
 
         // 3. Success: Reset attempts
         await this.authRepository.resetLoginAttempts(user._id.toString());
 
-        // Return safe user info
         return {
             id: user._id.toString(),
             name: user.name,
@@ -78,6 +78,82 @@ export class AuthService {
             providers: authStrategyManager.getUIStrategies(),
             status: authStrategyManager.getConfigStatus()
         };
+    }
+
+    /**
+     * Request a password reset
+     * Generates a token, hashes it, stores it, and sends the email
+     */
+    async requestPasswordReset(email: string) {
+        if (!email) {
+            throw new Error("Email is required");
+        }
+
+        await connectDB();
+
+        const user = await User.findOne({ email: email.toLowerCase() });
+
+        if (!user) {
+            // Don't reveal whether the email exists
+            console.log(`[Auth] Password reset requested for non-existent email: ${email}`);
+            return { success: true };
+        }
+
+        // Generate a random token
+        const rawToken = crypto.randomBytes(32).toString('hex');
+
+        // Hash for storage (never store raw tokens)
+        const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+        // Set expiry
+        const expires = new Date(Date.now() + this.RESET_TOKEN_EXPIRY_MINUTES * 60 * 1000);
+
+        // Save to DB
+        await this.authRepository.saveResetToken(user._id.toString(), hashedToken, expires);
+
+        // Build the reset URL with raw token
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
+
+        // Send the email
+        await sendPasswordResetEmail(email, user.name || 'Utilisateur', resetUrl);
+
+        console.log(`[Auth] Password reset email sent to: ${email}`);
+        return { success: true };
+    }
+
+    /**
+     * Reset the password using the token
+     */
+    async resetPassword(token: string, newPassword: string) {
+        if (!token || !newPassword) {
+            throw new Error("Token and new password are required");
+        }
+
+        if (newPassword.length < 6) {
+            throw new Error("Le mot de passe doit contenir au moins 6 caractères");
+        }
+
+        // Hash the provided token to compare with stored hash
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+        console.log(`[Auth] Attempting password reset with hashed token: ${hashedToken.substring(0, 12)}...`);
+
+        // Find user with this token that hasn't expired
+        const user = await this.authRepository.findByResetToken(hashedToken);
+
+        if (!user) {
+            throw new Error("Lien de réinitialisation invalide ou expiré");
+        }
+
+        // Hash the new password
+        const salt = await bcrypt.genSalt(12);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        // Update password and clear token
+        await this.authRepository.updatePassword(user._id.toString(), hashedPassword);
+
+        console.log(`[Auth] Password reset successful for: ${user.email}`);
+        return { success: true };
     }
 
     async verifyGoogle(idToken?: string, userPayload?: GoogleUserPayload) {

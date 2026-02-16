@@ -20,7 +20,7 @@
 
 ## 🎯 Vue d'ensemble
 
-Xkorin School utilise **NextAuth.js 4.24.13** pour l'authentification avec support de :
+Xkorienta utilise **NextAuth.js 4.24.13** pour l'authentification avec support de :
 - **Credentials:** Email/Password (bcryptjs)
 - **Google OAuth**
 - **GitHub OAuth**

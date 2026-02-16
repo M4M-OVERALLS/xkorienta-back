@@ -396,6 +396,39 @@ export class StudentController {
     }
 
     /**
+     * POST /api/student/challenges/:id/join
+     * Join a challenge
+     */
+    static async joinChallenge(studentId: string, challengeId: string) {
+        try {
+            if (!studentId) {
+                return NextResponse.json(
+                    { success: false, message: "Unauthorized" },
+                    { status: 401 }
+                );
+            }
+
+            if (!challengeId) {
+                return NextResponse.json(
+                    { success: false, message: "Challenge ID is required" },
+                    { status: 400 }
+                );
+            }
+
+            const result = await StudentService.joinChallenge(studentId, challengeId);
+
+            return NextResponse.json(result);
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "Internal server error";
+            console.error("[Student Controller] Join Challenge Error:", error);
+            return NextResponse.json(
+                { success: false, message: errorMessage },
+                { status: 500 }
+            );
+        }
+    }
+
+    /**
      * GET /api/student/attempts
      * Get all completed attempts for the student with exam details
      */

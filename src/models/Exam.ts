@@ -55,6 +55,11 @@ export interface ExamConfig {
     lateDuration?: number // Durée additionnelle en minutes pour les retardataires
     lateExamId?: mongoose.Types.ObjectId // Référence vers un examen alternatif pour retardataires
     delayResultsUntilLateEnd?: boolean // Ne pas afficher les résultats avant fin de la période late
+
+    // Auto-évaluation des concepts
+    enableSelfAssessment?: boolean // Activer l'auto-évaluation après l'examen
+    enableGuidedReflection?: boolean // Activer la réflexion guidée
+    requireConceptEvaluation?: boolean // Rendre l'auto-évaluation obligatoire
 }
 
 /**
@@ -281,6 +286,19 @@ const ExamSchema = new Schema<IExam>(
             },
             // Feedback immédiat pour évaluations formatives
             enableImmediateFeedback: {
+                type: Boolean,
+                default: false
+            },
+            // Auto-évaluation des concepts
+            enableSelfAssessment: {
+                type: Boolean,
+                default: false
+            },
+            enableGuidedReflection: {
+                type: Boolean,
+                default: false
+            },
+            requireConceptEvaluation: {
                 type: Boolean,
                 default: false
             },

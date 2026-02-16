@@ -22,6 +22,11 @@ export enum AssistanceRequestType {
     TECHNICAL = 'TECHNICAL'              // Technical issue
 }
 
+export enum TeacherType {
+    SCHOOL = 'SCHOOL',       // Teacher from student's school (free)
+    EXTERNAL = 'EXTERNAL'    // Teacher from another school (paid)
+}
+
 /**
  * Assistance request from student to teacher
  */
@@ -51,6 +56,17 @@ export interface IAssistanceRequest extends Document {
     // Assignment
     assignedTo?: mongoose.Types.ObjectId // Teacher
     assignedAt?: Date
+
+    // Teacher type - distinguishes between school teacher (free) and external teacher (paid)
+    teacherType?: TeacherType
+    
+    // Payment info (for external teachers)
+    payment?: {
+        amount: number           // Amount in currency
+        currency: string         // Currency code (e.g., 'EUR', 'XOF')
+        status: 'PENDING' | 'PAID' | 'FAILED'
+        paidAt?: Date
+    }
 
     // Resolution
     resolution?: {
@@ -133,6 +149,21 @@ const AssistanceRequestSchema = new Schema<IAssistanceRequest>(
             ref: 'User'
         },
         assignedAt: Date,
+        teacherType: {
+            type: String,
+            enum: Object.values(TeacherType),
+            default: TeacherType.SCHOOL
+        },
+        payment: {
+            amount: { type: Number, default: 0 },
+            currency: { type: String, default: 'XOF' },
+            status: { 
+                type: String, 
+                enum: ['PENDING', 'PAID', 'FAILED'],
+                default: 'PENDING'
+            },
+            paidAt: Date
+        },
         resolution: {
             notes: String,
             resources: [String],

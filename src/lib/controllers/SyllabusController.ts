@@ -121,7 +121,7 @@ export class SyllabusController {
             if (error.message === "Syllabus not found") {
                 return NextResponse.json({ success: false, message: error.message }, { status: 404 });
             }
-            if (error.message === "Forbidden") {
+            if (error.message === "Forbidden" || error.message?.startsWith("Forbidden:")) {
                 return NextResponse.json({ success: false, message: error.message }, { status: 403 });
             }
             if (error.message === "Invalid syllabus ID") {

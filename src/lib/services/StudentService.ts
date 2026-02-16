@@ -165,14 +165,46 @@ export class StudentService {
 
         // 1. Find all classes the student is enrolled in
         const classes = await repo.findStudentClasses(studentId);
+        console.log(`[StudentService] Found ${classes.length} active classes for student ${studentId}`);
 
         if (classes.length === 0) {
+            console.log('[StudentService] No classes found, returning empty subjects');
             return [];
         }
 
         // 2. Get all syllabi for these classes
         const classIds = classes.map(c => c._id);
-        const syllabi = await repo.findSyllabiByClasses(classIds);
+        console.log(`[StudentService] Class IDs: ${classIds.map(id => id.toString()).join(', ')}`);
+
+        let syllabi = await repo.findSyllabiByClasses(classIds);
+        console.log(`[StudentService] Found ${syllabi.length} syllabi associated with these classes`);
+
+        // If no syllabi found via classes, try via teachers
+        if (syllabi.length === 0) {
+            // Get all teacher IDs from classes
+            const teacherIds: mongoose.Types.ObjectId[] = [];
+            for (const cls of classes) {
+                const classData = cls as any;
+                // Add mainTeacher
+                if (classData.mainTeacher) {
+                    teacherIds.push(classData.mainTeacher);
+                }
+                // Add collaborating teachers
+                if (classData.teachers && Array.isArray(classData.teachers)) {
+                    for (const t of classData.teachers) {
+                        if (t.teacher) {
+                            teacherIds.push(t.teacher);
+                        }
+                    }
+                }
+            }
+
+            if (teacherIds.length > 0) {
+                console.log(`[StudentService] Trying to find syllabi via ${teacherIds.length} teachers`);
+                syllabi = await repo.findSyllabiByTeachers(teacherIds);
+                console.log(`[StudentService] Found ${syllabi.length} syllabi via teachers`);
+            }
+        }
 
         // 3. Get unique subjects
         const subjectMap = new Map<string, {
@@ -324,10 +356,10 @@ export class StudentService {
         // School level ranking
         try {
             const school = studentClassData.school as Record<string, unknown>;
-            const level = studentClassData.level as { toString: () => string };
+            const level = studentClassData.level as Record<string, unknown>;
             const schoolId = (school._id as { toString: () => string }).toString();
-            const levelId = level.toString();
-            
+            const levelId = (level._id as { toString: () => string }).toString();
+
             const schoolLeaderboard = await LeaderboardService.getSchoolLevelLeaderboard(
                 schoolId,
                 levelId,
@@ -346,9 +378,9 @@ export class StudentService {
 
         // National ranking
         try {
-            const level = studentClassData.level as { toString: () => string };
-            const levelId = level.toString();
-            
+            const level = studentClassData.level as Record<string, unknown>;
+            const levelId = (level._id as { toString: () => string }).toString();
+
             const nationalLeaderboard = await LeaderboardService.getNationalLevelLeaderboard(
                 levelId,
                 studentId
@@ -700,7 +732,7 @@ export class StudentService {
         const studentClassData = studentClass as unknown as Record<string, unknown>;
         const classId = (studentClassData._id as { toString: () => string }).toString();
         const school = studentClassData.school as Record<string, unknown>;
-        const level = studentClassData.level as { toString: () => string };
+        const level = studentClassData.level as Record<string, unknown>;
 
         // Convert string to enum if needed
         const leaderboardType = type as LeaderboardType;
@@ -717,7 +749,7 @@ export class StudentService {
 
             case LeaderboardType.SCHOOL_LEVEL:
                 const schoolId = (school._id as { toString: () => string }).toString();
-                const levelId = level.toString();
+                const levelId = (level._id as { toString: () => string }).toString();
                 return await LeaderboardService.getSchoolLevelLeaderboard(
                     schoolId,
                     levelId,
@@ -726,7 +758,7 @@ export class StudentService {
                 );
 
             case LeaderboardType.NATIONAL_LEVEL:
-                const nationalLevelId = level.toString();
+                const nationalLevelId = (level._id as { toString: () => string }).toString();
                 return await LeaderboardService.getNationalLevelLeaderboard(
                     nationalLevelId,
                     studentId,
@@ -755,6 +787,7 @@ export class StudentService {
      */
     static async getStudentExams(studentId: string) {
         const classRepo = new ClassRepository();
+        const attemptRepo = new AttemptRepository();
 
         // 1. Get classes where student is enrolled using Repository
         const classes = await classRepo.findStudentClasses(studentId);
@@ -774,18 +807,56 @@ export class StudentService {
             new Map(allExams.map(e => [e._id.toString(), e])).values()
         );
 
-        // 4. Sort by startTime descending
+        // 4. Get exam IDs for fetching attempts
+        const examIds = uniqueExams.map(e => e._id.toString());
+
+        // 5. Fetch attempts for this student and these exams
+        const attempts = await attemptRepo.findByExamIds(studentId, examIds);
+
+        // 6. Group attempts by examId
+        const attemptsByExamId = new Map<string, any[]>();
+        for (const attempt of attempts) {
+            const examId = attempt.examId.toString();
+            if (!attemptsByExamId.has(examId)) {
+                attemptsByExamId.set(examId, []);
+            }
+            attemptsByExamId.get(examId)!.push(attempt);
+        }
+
+        // 7. Sort by startTime descending
         uniqueExams.sort((a, b) => {
             const aTime = typeof a.startTime === 'string' ? new Date(a.startTime).getTime() : a.startTime.getTime();
             const bTime = typeof b.startTime === 'string' ? new Date(b.startTime).getTime() : b.startTime.getTime();
             return bTime - aTime;
         });
 
-        // 5. Format response with id field
-        return uniqueExams.map(e => ({
-            ...e,
-            id: e._id.toString()
-        }));
+        // 8. Format response with id field and attempts
+        const now = new Date();
+        return uniqueExams.map(e => {
+            const examId = e._id.toString();
+            const examAttempts = attemptsByExamId.get(examId) || [];
+
+            // Calculate resultsBlocked for this exam
+            const examData = e as any;
+            const lateDuration = examData.config?.lateDuration || 0;
+            const delayResultsUntilLateEnd = examData.config?.delayResultsUntilLateEnd ?? false;
+            const examEndTime = new Date(examData.endTime);
+            const lateEndTime = addMinutes(examEndTime, lateDuration);
+
+            const examEnded = isPast(examEndTime);
+            const inLatePeriod = examEnded && isAfter(lateEndTime, now) && lateDuration > 0;
+            const resultsBlocked = !examEnded || (delayResultsUntilLateEnd && inLatePeriod);
+
+            return {
+                ...e,
+                id: examId,
+                resultsBlocked,
+                attempts: examAttempts.map(a => ({
+                    ...a,
+                    id: a._id.toString()
+                }))
+            };
+        });
     }
 
     /**
@@ -859,7 +930,7 @@ export class StudentService {
         const studentClass = await classRepo.findStudentClass(studentId);
 
         const classId = studentClass ? (studentClass as unknown as Record<string, unknown>)._id?.toString() || null : null;
-        const schoolId = studentClass ? (studentClass as unknown as Record<string, unknown>).school 
+        const schoolId = studentClass ? (studentClass as unknown as Record<string, unknown>).school
             ? ((studentClass as unknown as Record<string, unknown>).school as Record<string, unknown>)._id?.toString() || null
             : null : null;
         const levelId = studentClass ? (studentClass as unknown as Record<string, unknown>).level
@@ -916,6 +987,54 @@ export class StudentService {
         });
 
         return formattedChallenges;
+    }
+
+    /**
+     * Join a challenge
+     */
+    static async joinChallenge(studentId: string, challengeId: string) {
+        const challengeRepo = new ChallengeRepository();
+
+        // 1. Check if challenge exists and is active
+        const challenge = await challengeRepo.findById(challengeId);
+        if (!challenge) {
+            throw new Error("Challenge not found");
+        }
+
+        const challengeData = challenge as unknown as Record<string, unknown>;
+        if (challengeData.status !== ChallengeStatus.ACTIVE) {
+            throw new Error("Challenge is not active");
+        }
+
+        // 2. Check if already joined
+        const existingProgress = await challengeRepo.findStudentChallengeProgress(studentId, challengeId);
+        if (existingProgress) {
+            throw new Error("Already participating in this challenge");
+        }
+
+        // 3. Add student to participants
+        await challengeRepo.addParticipant(challengeId, studentId);
+
+        // 4. Create progress record
+        const goals = challengeData.goals as Array<{ target: number; description: string }>;
+        const progress = goals.map((goal, index) => ({
+            goalIndex: index,
+            current: 0,
+            target: goal.target,
+            completed: false
+        }));
+
+        await challengeRepo.createChallengeProgress({
+            userId: new mongoose.Types.ObjectId(studentId),
+            challengeId: new mongoose.Types.ObjectId(challengeId),
+            progress,
+            overallProgress: 0,
+            completed: false,
+            startedAt: new Date(),
+            lastUpdated: new Date()
+        });
+
+        return { success: true, message: "Successfully joined challenge" };
     }
 
     /**

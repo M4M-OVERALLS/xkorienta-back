@@ -17,7 +17,8 @@ export enum RequestType {
 }
 
 export enum RequestStatus {
-    PENDING = 'PENDING',
+    PENDING = 'PENDING',           // Initial state
+    AVAILABLE = 'AVAILABLE',       // External request waiting for a teacher to claim
     ACCEPTED = 'ACCEPTED',
     REJECTED = 'REJECTED',
     SCHEDULED = 'SCHEDULED',
@@ -32,12 +33,28 @@ export enum RequestPriority {
     URGENT = 'URGENT'
 }
 
+export enum TeacherType {
+    SCHOOL = 'SCHOOL',       // Teacher from student's school (free)
+    EXTERNAL = 'EXTERNAL'    // Teacher from another school (paid)
+}
+
 export interface IRequest extends Document {
     _id: mongoose.Types.ObjectId
 
     // Participants
     studentId: mongoose.Types.ObjectId
-    teacherId: mongoose.Types.ObjectId
+    teacherId?: mongoose.Types.ObjectId  // Optional for external requests (claimed later)
+
+    // Teacher type
+    teacherType?: TeacherType
+
+    // Payment info (for external teachers)
+    payment?: {
+        amount: number
+        currency: string
+        status: 'PENDING' | 'PAID' | 'FAILED'
+        paidAt?: Date
+    }
 
     // Request details
     type: RequestType
@@ -68,6 +85,16 @@ export interface IRequest extends Document {
         comment?: string
     }
 
+    // In-ticket conversation
+    messages: {
+        _id?: mongoose.Types.ObjectId
+        sender: mongoose.Types.ObjectId
+        senderName?: string
+        senderRole?: 'student' | 'teacher'
+        content: string
+        sentAt: Date
+    }[]
+
     createdAt: Date
     updatedAt: Date
 }
@@ -82,7 +109,22 @@ const RequestSchema = new Schema<IRequest>(
         teacherId: {
             type: Schema.Types.ObjectId,
             ref: 'User',
-            required: true
+            required: false  // Optional for external requests
+        },
+        teacherType: {
+            type: String,
+            enum: Object.values(TeacherType),
+            default: TeacherType.SCHOOL
+        },
+        payment: {
+            amount: { type: Number, default: 0 },
+            currency: { type: String, default: 'XOF' },
+            status: {
+                type: String,
+                enum: ['PENDING', 'PAID', 'FAILED'],
+                default: 'PENDING'
+            },
+            paidAt: Date
         },
         type: {
             type: String,
@@ -157,7 +199,30 @@ const RequestSchema = new Schema<IRequest>(
                 type: String,
                 maxlength: 500
             }
-        }
+        },
+        messages: [{
+            sender: {
+                type: Schema.Types.ObjectId,
+                ref: 'User',
+                required: true
+            },
+            senderName: {
+                type: String
+            },
+            senderRole: {
+                type: String,
+                enum: ['student', 'teacher']
+            },
+            content: {
+                type: String,
+                required: true,
+                maxlength: 5000
+            },
+            sentAt: {
+                type: Date,
+                default: Date.now
+            }
+        }]
     },
     {
         timestamps: true
@@ -170,6 +235,11 @@ RequestSchema.index({ teacherId: 1, status: 1 })
 RequestSchema.index({ type: 1, status: 1 })
 RequestSchema.index({ createdAt: -1 })
 RequestSchema.index({ priority: -1, createdAt: -1 })
+
+// Clear cached model in dev to ensure schema changes are picked up
+if (process.env.NODE_ENV === 'development' && mongoose.models.Request) {
+    delete mongoose.models.Request;
+}
 
 const Request: Model<IRequest> = mongoose.models.Request || mongoose.model<IRequest>('Request', RequestSchema)
 

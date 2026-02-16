@@ -43,8 +43,19 @@ export async function GET(
 
         // If INDIVIDUAL, the account already exists - include email for activation flow
         if (invitation.type === 'INDIVIDUAL' && invitation.email) {
-            responseData.email = invitation.email
-            responseData.isActivation = true // Flag for frontend
+            // Verify the user still exists
+            const existingUser = await User.findOne({ 
+                email: { $regex: new RegExp(`^${invitation.email}$`, 'i') } 
+            })
+            
+            if (existingUser) {
+                responseData.email = invitation.email
+                responseData.isActivation = true // Flag for frontend
+            } else {
+                // User was deleted, treat as new registration
+                responseData.isActivation = false
+                console.error(`[Invitation] User ${invitation.email} not found for INDIVIDUAL invitation`)
+            }
         }
 
         return NextResponse.json({
@@ -93,14 +104,20 @@ export async function POST(
 
         // INDIVIDUAL invitation - account already exists, just activate
         if (invitation.type === 'INDIVIDUAL' && invitation.email) {
-            const existingUser = await User.findOne({ email: invitation.email })
+            // Case-insensitive email search
+            const existingUser = await User.findOne({ 
+                email: { $regex: new RegExp(`^${invitation.email}$`, 'i') } 
+            })
 
             if (!existingUser) {
+                console.error(`[Invitation] User not found for email: ${invitation.email}`)
                 return NextResponse.json(
                     { success: false, message: "Compte non trouvé" },
                     { status: 404 }
                 )
             }
+
+            console.log(`[Invitation] Activating account for user: ${existingUser.email}`)
 
             // Update password and activate account
             const hashedPassword = await bcrypt.hash(password, 10)
@@ -108,6 +125,8 @@ export async function POST(
             existingUser.isActive = true
             existingUser.emailVerified = true
             await existingUser.save()
+
+            console.log(`[Invitation] Account activated, enrolling in class...`)
 
             // Accept invitation (enroll in class)
             await InvitationService.acceptInvitation(token, existingUser._id.toString())

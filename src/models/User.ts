@@ -53,6 +53,10 @@ export interface IUser extends Document {
         lastActivityDate?: Date
     }
 
+    // Password Reset
+    resetPasswordToken?: string
+    resetPasswordExpires?: Date
+
     // Legacy fields (kept for compatibility during migration)
     studentCode?: string
     image?: string
@@ -107,6 +111,10 @@ const UserSchema = new Schema<IUser>(
             longestStreak: { type: Number, default: 0 },
             lastActivityDate: Date
         },
+
+        // Password Reset
+        resetPasswordToken: { type: String, select: false },
+        resetPasswordExpires: { type: Date, select: false },
 
         // Legacy
         studentCode: { type: String, unique: true, sparse: true },

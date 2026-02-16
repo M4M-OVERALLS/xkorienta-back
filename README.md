@@ -87,4 +87,4 @@ Le frontend (`xkorienta-front`) communique avec ce backend via des requêtes HTT
 
 ---
 
-*Backend API de Quizlock - Xkorin School*
+*Backend API de Quizlock - Xkorienta*

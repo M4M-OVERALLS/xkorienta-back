@@ -37,7 +37,7 @@ export class RequestController {
     static async createRequest(req: Request, userId: string) {
         try {
             const body = await req.json();
-            const { teacherId, type, subjectId, title, message, priority, relatedExamId, relatedConceptIds } = body;
+            const { teacherId, type, subjectId, title, message, priority, relatedExamId, relatedConceptIds, teacherType } = body;
 
             const newRequest = await RequestService.createRequest({
                 teacherId,
@@ -47,7 +47,8 @@ export class RequestController {
                 message,
                 priority,
                 relatedExamId,
-                relatedConceptIds
+                relatedConceptIds,
+                teacherType
             }, userId);
 
             return NextResponse.json({
@@ -150,6 +151,34 @@ export class RequestController {
 
             if (error.message === "Non autorisé" || error.message === "Seules les demandes en attente peuvent être annulées") {
                 return NextResponse.json({ error: error.message }, { status: error.message.includes("Non autorisé") ? 403 : 400 });
+            }
+
+            return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+        }
+    }
+
+    /**
+     * POST /api/requests/[requestId]/claim
+     * Claim an external request (teacher only)
+     */
+    static async claimRequest(requestId: string, userId: string) {
+        try {
+            const request = await RequestService.claimExternalRequest(requestId, userId);
+
+            return NextResponse.json({
+                success: true,
+                data: request,
+                message: 'Demande prise en charge'
+            });
+        } catch (error: any) {
+            console.error("[Request Controller] Claim Request Error:", error);
+
+            if (error.message === "Demande non trouvée") {
+                return NextResponse.json({ error: error.message }, { status: 404 });
+            }
+
+            if (error.message === "Cette demande n'est pas externe" || error.message === "Cette demande n'est plus disponible") {
+                return NextResponse.json({ error: error.message }, { status: 400 });
             }
 
             return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });

@@ -29,7 +29,6 @@ export class AuthController {
 
         } catch (error: any) {
             console.error("Auth Verify Error:", error);
-            // Handle expected errors differently if needed
             if (error.message === "Email and password are required") {
                 return NextResponse.json(
                     { message: error.message },
@@ -70,6 +69,59 @@ export class AuthController {
             return NextResponse.json(
                 { message: error.message || "Internal server error" },
                 { status }
+            );
+        }
+    }
+
+    static async forgotPassword(req: Request) {
+        try {
+            const body = await req.json();
+            const { email } = body;
+
+            if (!email) {
+                return NextResponse.json(
+                    { success: false, message: "L'email est requis" },
+                    { status: 400 }
+                );
+            }
+
+            const result = await authService.requestPasswordReset(email);
+            return NextResponse.json({
+                success: true,
+                message: "Si un compte existe avec cet email, un lien de réinitialisation a été envoyé."
+            });
+        } catch (error: any) {
+            console.error("[AuthController] Forgot Password Error:", error);
+            // Always return success to prevent email enumeration
+            return NextResponse.json({
+                success: true,
+                message: "Si un compte existe avec cet email, un lien de réinitialisation a été envoyé."
+            });
+        }
+    }
+
+    static async resetPassword(req: Request) {
+        try {
+            const body = await req.json();
+            const { token, password } = body;
+
+            if (!token || !password) {
+                return NextResponse.json(
+                    { success: false, message: "Token et mot de passe requis" },
+                    { status: 400 }
+                );
+            }
+
+            const result = await authService.resetPassword(token, password);
+            return NextResponse.json({
+                success: true,
+                message: "Mot de passe réinitialisé avec succès"
+            });
+        } catch (error: any) {
+            console.error("[AuthController] Reset Password Error:", error);
+            return NextResponse.json(
+                { success: false, message: error.message || "Erreur lors de la réinitialisation" },
+                { status: 400 }
             );
         }
     }

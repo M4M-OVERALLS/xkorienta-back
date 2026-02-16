@@ -1,4 +1,4 @@
-# Xkorin School - OAuth Authentication avec Strategy Pattern
+# Xkorienta - OAuth Authentication avec Strategy Pattern
 
 Ce document explique comment le système d'authentification OAuth fonctionne et comment ajouter de nouveaux providers.
 
@@ -185,7 +185,7 @@ GOOGLE_CLIENT_SECRET="votre-client-secret"
 1. Allez sur [GitHub Developer Settings](https://github.com/settings/developers)
 2. Cliquez sur **New OAuth App**
 3. Remplissez:
-   - **Application name**: Xkorin School
+   - **Application name**: Xkorienta
    - **Homepage URL**: `http://localhost:3000`
    - **Authorization callback URL**: `http://localhost:3000/api/auth/callback/github`
 

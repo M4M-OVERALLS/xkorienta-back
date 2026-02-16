@@ -1,5 +1,5 @@
 import { RequestRepository } from "@/lib/repositories/RequestRepository";
-import { RequestType, RequestStatus, RequestPriority, IRequest } from "@/models/Request";
+import { RequestType, RequestStatus, RequestPriority, TeacherType, IRequest } from "@/models/Request";
 import { UserRole } from "@/models/enums";
 import { getPusherServer, getRequestsChannel } from "@/lib/pusher";
 import { publishEvent } from "@/lib/events/EventPublisher";
@@ -12,24 +12,53 @@ export class RequestService {
      */
     static async getRequests(userId: string, role: UserRole, filters?: { status?: string; type?: string }) {
         const repo = new RequestRepository();
-        let query: any = {};
-
+        
         if (role === UserRole.STUDENT) {
-            query.studentId = userId;
+            let query: any = { studentId: userId };
+            if (filters?.status) query.status = filters.status;
+            if (filters?.type) query.type = filters.type;
+            return await repo.find(query);
         } else if (role === UserRole.TEACHER) {
-            query.teacherId = userId;
+            // Teachers see:
+            // 1. Direct requests assigned to them
+            // 2. School requests without specific teacher (available to all school teachers)
+            // 3. External requests that are available (not yet claimed)
+            const directQuery: any = { teacherId: userId };
+            const schoolGeneralQuery: any = { 
+                teacherType: TeacherType.SCHOOL,
+                teacherId: { $exists: false },
+                status: RequestStatus.PENDING
+            };
+            const externalQuery: any = { 
+                teacherType: TeacherType.EXTERNAL,
+                status: RequestStatus.AVAILABLE 
+            };
+            
+            if (filters?.status) {
+                directQuery.status = filters.status;
+                schoolGeneralQuery.status = filters.status;
+                // For external, only show AVAILABLE unless filtering by status
+                if (filters.status !== RequestStatus.AVAILABLE) {
+                    externalQuery.status = filters.status;
+                }
+            }
+            if (filters?.type) {
+                directQuery.type = filters.type;
+                schoolGeneralQuery.type = filters.type;
+                externalQuery.type = filters.type;
+            }
+            
+            // Get all types of requests
+            const [directRequests, schoolGeneralRequests, externalRequests] = await Promise.all([
+                repo.find(directQuery),
+                repo.find(schoolGeneralQuery),
+                repo.find(externalQuery)
+            ]);
+            
+            return [...directRequests, ...schoolGeneralRequests, ...externalRequests];
         } else {
             throw new Error("Rôle non autorisé");
         }
-
-        if (filters?.status) {
-            query.status = filters.status;
-        }
-        if (filters?.type) {
-            query.type = filters.type;
-        }
-
-        return await repo.find(query);
     }
 
     /**
@@ -58,7 +87,7 @@ export class RequestService {
      * Create a new request
      */
     static async createRequest(data: {
-        teacherId: string;
+        teacherId?: string;
         type: RequestType;
         subjectId?: string;
         title: string;
@@ -66,10 +95,11 @@ export class RequestService {
         priority?: RequestPriority;
         relatedExamId?: string;
         relatedConceptIds?: string[];
+        teacherType?: TeacherType;
     }, studentId: string) {
         const repo = new RequestRepository();
 
-        if (!data.teacherId || !data.type || !data.title || !data.message) {
+        if (!data.type || !data.title || !data.message) {
             throw new Error("Champs requis manquants");
         }
 
@@ -77,42 +107,123 @@ export class RequestService {
             throw new Error("Type de demande invalide");
         }
 
-        const newRequest = await repo.create({
+        const isExternal = data.teacherType === TeacherType.EXTERNAL;
+        
+        // For school requests with specific teacher, validate the teacher
+        // If no teacherId is provided for school request, it will be available to all school teachers
+
+        // Build request data carefully - don't include undefined fields
+        const requestData: any = {
             studentId: new mongoose.Types.ObjectId(studentId),
-            teacherId: new mongoose.Types.ObjectId(data.teacherId),
             type: data.type,
-            subject: data.subjectId ? new mongoose.Types.ObjectId(data.subjectId) : undefined,
             title: data.title,
             message: data.message,
             priority: data.priority || RequestPriority.MEDIUM,
-            relatedExam: data.relatedExamId ? new mongoose.Types.ObjectId(data.relatedExamId) : undefined,
-            relatedConcepts: data.relatedConceptIds?.map(id => new mongoose.Types.ObjectId(id)),
-            status: RequestStatus.PENDING
-        });
+            teacherType: data.teacherType || TeacherType.SCHOOL,
+            status: isExternal ? RequestStatus.AVAILABLE : RequestStatus.PENDING
+        };
 
-        // Trigger Pusher for real-time notification to teacher
-        const pusher = getPusherServer();
-        if (pusher) {
-            pusher.trigger(getRequestsChannel(data.teacherId), 'request-created', {
-                request: newRequest.toObject()
+        // Only add optional fields if they have values
+        if (data.subjectId) {
+            requestData.subject = new mongoose.Types.ObjectId(data.subjectId);
+        }
+        if (data.relatedExamId) {
+            requestData.relatedExam = new mongoose.Types.ObjectId(data.relatedExamId);
+        }
+        if (data.relatedConceptIds && data.relatedConceptIds.length > 0) {
+            requestData.relatedConcepts = data.relatedConceptIds.map(id => new mongoose.Types.ObjectId(id));
+        }
+
+        // Only add teacherId for school requests with specific teacher
+        if (data.teacherId) {
+            requestData.teacherId = new mongoose.Types.ObjectId(data.teacherId);
+        }
+
+        // Add payment info for external requests
+        if (isExternal) {
+            requestData.payment = {
+                amount: 5000,  // Fixed price for now
+                currency: 'XOF',
+                status: 'PENDING'
+            };
+        }
+
+        const newRequest = await repo.create(requestData);
+
+        // Only send notifications for school requests (external requests have no teacher yet)
+        if (!isExternal && data.teacherId) {
+            // Trigger Pusher for real-time notification to teacher
+            const pusher = getPusherServer();
+            if (pusher) {
+                pusher.trigger(getRequestsChannel(data.teacherId), 'request-created', {
+                    request: newRequest.toObject()
+                });
+            }
+
+            // Emit event for observer pattern
+            publishEvent({
+                type: EventType.REQUEST_CREATED,
+                timestamp: new Date(),
+                userId: new mongoose.Types.ObjectId(data.teacherId),
+                data: {
+                    requestId: newRequest._id,
+                    studentId: studentId,
+                    studentName: (newRequest.studentId as any).name,
+                    type: newRequest.type,
+                    title: newRequest.title
+                }
             });
         }
 
-        // Emit event for observer pattern
-        publishEvent({
-            type: EventType.REQUEST_CREATED,
-            timestamp: new Date(),
-            userId: new mongoose.Types.ObjectId(data.teacherId),
-            data: {
-                requestId: newRequest._id,
-                studentId: studentId,
-                studentName: (newRequest.studentId as any).name,
-                type: newRequest.type,
-                title: newRequest.title
-            }
-        });
-
         return newRequest;
+    }
+
+    /**
+     * Claim a request (teacher takes an available request - external or school general)
+     */
+    static async claimExternalRequest(requestId: string, teacherId: string) {
+        const repo = new RequestRepository();
+        const request = await repo.findByIdForUpdate(requestId);
+
+        if (!request) {
+            throw new Error("Demande non trouvée");
+        }
+
+        const requestData = request as any;
+
+        // Handle external requests (status AVAILABLE)
+        if (requestData.teacherType === TeacherType.EXTERNAL) {
+            if (requestData.status !== RequestStatus.AVAILABLE) {
+                throw new Error("Cette demande n'est plus disponible");
+            }
+        } 
+        // Handle school general requests (no teacherId assigned yet)
+        else if (requestData.teacherType === TeacherType.SCHOOL) {
+            if (requestData.teacherId) {
+                throw new Error("Cette demande est déjà assignée à un professeur");
+            }
+            if (requestData.status !== RequestStatus.PENDING) {
+                throw new Error("Cette demande n'est plus disponible");
+            }
+        }
+        else {
+            throw new Error("Type de demande non pris en charge");
+        }
+
+        // Update the request
+        requestData.teacherId = new mongoose.Types.ObjectId(teacherId);
+        requestData.status = RequestStatus.PENDING;
+        const updatedRequest = await repo.save(request);
+
+        // Notify student
+        const pusher = getPusherServer();
+        if (pusher) {
+            pusher.trigger(getRequestsChannel(requestData.studentId.toString()), 'request-claimed', {
+                request: updatedRequest.toObject()
+            });
+        }
+
+        return updatedRequest;
     }
 
     /**
@@ -138,8 +249,10 @@ export class RequestService {
         }
 
         const isStudent = request.studentId._id.toString() === userId;
-        const isTeacher = request.teacherId._id.toString() === userId;
+        const isTeacher = request.teacherId?._id?.toString() === userId;
 
+        // For external requests that are available, only the student can access
+        // For assigned requests, both student and teacher can access
         if (!isStudent && !isTeacher) {
             throw new Error("Accès non autorisé");
         }
@@ -160,7 +273,7 @@ export class RequestService {
                 userId: request.studentId._id,
                 data: {
                     requestId: request._id,
-                    teacherName: (request.teacherId as any).name,
+                    teacherName: (request.teacherId as any)?.name || 'Enseignant',
                     type: request.type,
                     title: request.title,
                     scheduledAt: request.scheduledAt
@@ -194,7 +307,7 @@ export class RequestService {
             publishEvent({
                 type: EventType.REQUEST_COMPLETED,
                 timestamp: new Date(),
-                userId: isStudent ? request.teacherId._id : request.studentId._id,
+                userId: isStudent ? request.teacherId?._id : request.studentId._id,
                 data: {
                     requestId: request._id,
                     type: request.type,
@@ -210,10 +323,12 @@ export class RequestService {
         // Trigger Pusher for real-time update
         const pusher = getPusherServer();
         if (pusher) {
-            const targetUserId = isTeacher ? request.studentId._id.toString() : request.teacherId._id.toString();
-            pusher.trigger(getRequestsChannel(targetUserId), 'request-updated', {
-                request: request.toObject()
-            });
+            const targetUserId = isTeacher ? request.studentId._id.toString() : request.teacherId?._id?.toString();
+            if (targetUserId) {
+                pusher.trigger(getRequestsChannel(targetUserId), 'request-updated', {
+                    request: request.toObject()
+                });
+            }
         }
 
         return request;

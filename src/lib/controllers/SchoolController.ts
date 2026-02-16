@@ -149,8 +149,11 @@ export class SchoolController {
                 );
             }
 
-            const teachers = await SchoolService.getSchoolTeachers(schoolId);
-            return NextResponse.json(teachers);
+            const result = await SchoolService.getSchoolTeachers(schoolId);
+            return NextResponse.json({
+                success: true,
+                data: result
+            });
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : "Internal server error";
             console.error("[School Controller] Get School Teachers Error:", error);

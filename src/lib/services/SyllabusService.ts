@@ -155,6 +155,7 @@ export class SyllabusService {
         structure?: SyllabusStructure;
         learningObjectives?: string[];
         status?: SyllabusStatus;
+        classes?: string[];
     }) {
         if (!mongoose.Types.ObjectId.isValid(id)) {
             throw new Error("Invalid syllabus ID");
@@ -165,11 +166,61 @@ export class SyllabusService {
             throw new Error("Syllabus not found");
         }
 
-        if (existingSyllabus.teacher.toString() !== userId) {
-            throw new Error("Forbidden"); // Or specific usage error
+        // Check if user is the owner teacher
+        // teacher might be populated (object with _id) or just an ObjectId
+        const teacherField = existingSyllabus.teacher;
+        let teacherId: string | undefined;
+        
+        if (teacherField && typeof teacherField === 'object' && '_id' in teacherField) {
+            // teacher is populated - extract _id from the object
+            teacherId = (teacherField as any)._id?.toString();
+        } else if (teacherField && (teacherField as any).toString) {
+            // teacher is just an ObjectId
+            teacherId = (teacherField as any).toString();
+        }
+        
+        const isOwner = teacherId === userId;
+        
+        console.log(`[SyllabusService] Update check - Syllabus ID: ${id}`);
+        console.log(`[SyllabusService] Teacher ID: ${teacherId}, User ID: ${userId}, Is Owner: ${isOwner}`);
+        
+        // Check if user is a collaborating teacher in one of the assigned classes
+        let isCollaborator = false;
+        if (!isOwner && existingSyllabus.classes && existingSyllabus.classes.length > 0) {
+            const Class = (await import('@/models/Class')).default;
+            const classIds = existingSyllabus.classes.map((c: any) => c.toString());
+            
+            const classes = await Class.find({
+                _id: { $in: classIds },
+                $or: [
+                    { mainTeacher: userId },
+                    { 'teachers.teacher': userId }
+                ]
+            }).lean();
+            
+            isCollaborator = classes.length > 0;
+            console.log(`[SyllabusService] Is Collaborator: ${isCollaborator}`);
+        }
+        
+        // Check if user is trying to update classes (only owner can do this)
+        if (!isOwner && updatePayload.classes !== undefined) {
+            // Check if classes are actually being modified (not just sent as same values)
+            const currentClasses = existingSyllabus.classes?.map((c: any) => c.toString()).sort() || [];
+            const newClasses = updatePayload.classes.map((c: string) => c.toString()).sort();
+            
+            const classesChanged = currentClasses.length !== newClasses.length ||
+                !currentClasses.every((id, i) => id === newClasses[i]);
+            
+            if (classesChanged) {
+                throw new Error("Forbidden: Only the owner can modify assigned classes");
+            }
         }
 
-        const { title, description, structure, learningObjectives, status } = updatePayload;
+        if (!isOwner && !isCollaborator) {
+            throw new Error("Forbidden");
+        }
+
+        const { title, description, structure, learningObjectives, status, classes } = updatePayload;
 
         // Use Builder Pattern
         const builder = SyllabusBuilder.fromExisting(existingSyllabus)
@@ -183,6 +234,16 @@ export class SyllabusService {
                 if (Array.isArray(chap.topics)) {
                     chap.topics.forEach((top) => {
                         const topicId = builder.addTopic(chapterId, top.title, top.content);
+
+                        // Handle concepts
+                        if (Array.isArray(top.concepts)) {
+                            top.concepts.forEach((concept) => {
+                                builder.addConcept(chapterId, topicId, {
+                                    title: concept.title,
+                                    description: concept.description
+                                });
+                            });
+                        }
 
                         // Handle resources
                         if (Array.isArray(top.resources)) {
@@ -208,22 +269,21 @@ export class SyllabusService {
 
         const updateData = builder.build();
 
-        // Preserve concepts by bypassing builder limitations if necessary
-        // (Logic imported from original route)
-        if (structure) {
-            (updateData as { structure?: SyllabusStructure }).structure = structure;
-        }
-
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { version, ...updateDataWithoutVersion } = updateData;
 
-        const finalUpdate = {
+        const finalUpdate: any = {
             $set: {
                 ...updateDataWithoutVersion,
                 status: status || existingSyllabus.status,
             },
             $inc: { version: 1 }
         };
+        
+        // Update classes if provided (and user is owner)
+        if (classes && isOwner) {
+            finalUpdate.$set.classes = classes.map((c: string) => new mongoose.Types.ObjectId(c));
+        }
 
         const updatedSyllabus = await SyllabusRepository.update(id, finalUpdate);
 
@@ -261,7 +321,22 @@ export class SyllabusService {
             throw new Error("Syllabus not found");
         }
 
-        if (existingSyllabus.teacher.toString() !== userId) {
+        // Check if user is the owner teacher
+        // teacher might be populated (object with _id) or just an ObjectId
+        const teacherField = existingSyllabus.teacher;
+        let teacherId: string | undefined;
+        
+        if (teacherField && typeof teacherField === 'object' && '_id' in teacherField) {
+            // teacher is populated - extract _id from the object
+            teacherId = (teacherField as any)._id?.toString();
+        } else if (teacherField && (teacherField as any).toString) {
+            // teacher is just an ObjectId
+            teacherId = (teacherField as any).toString();
+        }
+        
+        const isOwner = teacherId === userId;
+        
+        if (!isOwner) {
             throw new Error("Forbidden");
         }
 

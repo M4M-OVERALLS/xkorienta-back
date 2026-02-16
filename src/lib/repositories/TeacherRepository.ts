@@ -1,4 +1,5 @@
 import Class from "@/models/Class";
+import School from "@/models/School";
 import Syllabus from "@/models/Syllabus";
 import User from "@/models/User";
 import connectDB from "@/lib/mongodb";
@@ -52,15 +53,44 @@ export class TeacherRepository {
     }
 
     /**
-     * Find teachers by school ID
+     * Find teachers by school ID (includes applicants)
      */
     async findTeachersBySchool(schoolId: string) {
         await connectDB();
-        return User.find({
-            schools: schoolId,
-            role: 'TEACHER',
-            isActive: true
-        }).select('name email role isActive metadata.avatar lastLogin createdAt').lean();
+
+        // Get school with teachers and applicants
+        const school = await School.findById(schoolId)
+            .select('teachers applicants')
+            .lean();
+
+        if (!school) {
+            return { teachers: [], applicants: [] };
+        }
+
+        // Get approved teachers
+        const teacherIds = school.teachers || [];
+        const applicantIds = school.applicants || [];
+
+        // Fetch teacher details
+        const teachers = teacherIds.length > 0
+            ? await User.find({
+                _id: { $in: teacherIds },
+                isActive: true
+            }).select('name email role isActive metadata.avatar lastLogin createdAt subjects').populate('subjects', 'name').lean()
+            : [];
+
+        // Fetch applicant details
+        const applicants = applicantIds.length > 0
+            ? await User.find({
+                _id: { $in: applicantIds },
+                isActive: true
+            }).select('name email role isActive metadata.avatar lastLogin createdAt subjects').populate('subjects', 'name').lean()
+            : [];
+
+        return {
+            teachers: teachers.map(t => ({ ...t, status: 'APPROVED' })),
+            applicants: applicants.map(a => ({ ...a, status: 'PENDING' }))
+        };
     }
 
     /**

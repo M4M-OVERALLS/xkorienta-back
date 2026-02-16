@@ -4,6 +4,15 @@ import connectDB from "@/lib/mongodb";
 import mongoose from "mongoose";
 import SchoolScore from "@/models/SchoolScore";
 
+// Import models to ensure they are registered for populate
+import "@/models/City";
+import "@/models/Country";
+import "@/models/Specialty";
+import "@/models/Badge";
+import "@/models/EducationLevel";
+import "@/models/Partner";
+import "@/models/CareerOutcome";
+
 export class SchoolRepository {
     /**
      * Find school by ID
