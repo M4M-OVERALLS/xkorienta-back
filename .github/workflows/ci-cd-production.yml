@@ -196,9 +196,8 @@ jobs:
             echo "⚠️ Health endpoint non disponible (vérifier les logs du container)"
           fi
 
-          echo "=== Nettoyage Docker (safe) ==="
-          docker image prune -af --filter "until=168h" || true
-          docker builder prune -af || true
+          echo "=== Nettoyage Docker (dangling only — ne touche pas aux images des autres services) ==="
+          docker image prune -f || true
 
           echo "=== ✅ Déploiement PRODUCTION API terminé avec succès ==="
           REMOTE
