@@ -144,7 +144,7 @@ export class StudentController {
             return NextResponse.json({ success: true, data: shortlist });
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : "Internal server error";
-            console.error("[Student Controller] Get Student Shortlist Error:", error);
+            
             return NextResponse.json(
                 { success: false, message: errorMessage },
                 { status: 500 }
@@ -230,7 +230,7 @@ export class StudentController {
             return NextResponse.json({ success: true, data: shortlist });
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : "Internal server error";
-            console.error("[Student Controller] Remove Student Shortlist Error:", error);
+            
             return NextResponse.json(
                 { success: false, message: errorMessage },
                 { status: 500 }
