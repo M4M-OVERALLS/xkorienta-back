@@ -82,9 +82,9 @@ export const ORIENTATION_SCHOOLS_MOCK: OrientationSchoolDTO[] = [
     address: "Yaoundé, Cameroun",
     city: "Yaoundé",
     country: "Cameroun",
-    logoUrl: "/logo.png",
+    logoUrl: "/logo_xkorienta.png",
     status: SchoolStatus.VALIDATED,
-    contactInfo: { 
+    contactInfo: {
       website: "https://issima.cm",
       email: "contact@issima.cm",
       phone: "+237 222 123 456"

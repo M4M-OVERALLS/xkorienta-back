@@ -1,0 +1,66 @@
+@startuml Patterns - Decorator
+
+title Quizlock API - Decorator Pattern
+
+skinparam class {
+    BackgroundColor #E8F5E9
+    BorderColor #424242
+    ArrowColor #616161
+}
+
+interface ExamDecorator {
+    +decorate(exam: IExam): IExam
+    +enhanceResult(result: EvaluationResult, exam: IExam): EvaluationResult
+}
+
+abstract class BaseExamDecorator {
+    #decoratedExam: IExam
+    +{abstract} decorate(exam: IExam): IExam
+    +enhanceResult(): EvaluationResult
+}
+
+class TimeBonusDecorator {
+    +decorate(): IExam
+    +enhanceResult(): EvaluationResult
+}
+
+class StreakBonusDecorator {
+    +decorate(): IExam
+    +enhanceResult(): EvaluationResult
+}
+
+class TimePenaltyDecorator {
+    +decorate(): IExam
+    +enhanceResult(): EvaluationResult
+}
+
+class BadgeDecorator {
+    +decorate(): IExam
+    +enhanceResult(): EvaluationResult
+}
+
+class DetailedStatsDecorator {
+    +decorate(): IExam
+    +enhanceResult(): EvaluationResult
+}
+
+class ExamDecoratorFactory {
+    +{static} applyDecorators(result: EvaluationResult, exam: IExam, options): EvaluationResult
+}
+
+ExamDecorator <|.. BaseExamDecorator
+BaseExamDecorator <|-- TimeBonusDecorator
+BaseExamDecorator <|-- StreakBonusDecorator
+BaseExamDecorator <|-- TimePenaltyDecorator
+BaseExamDecorator <|-- BadgeDecorator
+BaseExamDecorator <|-- DetailedStatsDecorator
+ExamDecoratorFactory ..> ExamDecorator : uses
+
+note top of ExamDecorator
+  Decorator Pattern
+  Adds dynamic features
+  to exam evaluation
+  (src/lib/patterns/ExamDecorator.ts)
+end note
+
+@enduml

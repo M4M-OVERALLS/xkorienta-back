@@ -1,0 +1,60 @@
+@startuml Patterns - Builder
+
+title Quizlock API - Builder Pattern
+
+skinparam class {
+    BackgroundColor #E8F5E9
+    BorderColor #424242
+    ArrowColor #616161
+}
+
+class SyllabusBuilder {
+    -syllabus: Partial<ISyllabus>
+    -structure: SyllabusStructure
+    +setBasicInfo(title: string, description?: string): SyllabusBuilder
+    +setContext(teacherId: string, subjectId: string, schoolId?: string): SyllabusBuilder
+    +setClasses(classIds: string[]): SyllabusBuilder
+    +addObjective(objective: string): SyllabusBuilder
+    +addChapter(title: string, description?: string): string
+    +addTopic(chapterId: string, title: string, content?: string): string
+    +addConcept(chapterId: string, topicId: string, concept): SyllabusBuilder
+    +addResource(chapterId: string, topicId: string, resource): SyllabusBuilder
+    +resetStructure(): SyllabusBuilder
+    +resetObjectives(): SyllabusBuilder
+    +build(): Partial<ISyllabus>
+    +{static} fromExisting(syllabus: ISyllabus): SyllabusBuilder
+}
+
+interface SyllabusStructure {
+    chapters: Chapter[]
+}
+
+interface Chapter {
+    id: string
+    title: string
+    description?: string
+    topics: Topic[]
+    order: number
+}
+
+interface Topic {
+    id: string
+    title: string
+    content?: string
+    concepts?: Concept[]
+    resources?: Resource[]
+    order: number
+}
+
+SyllabusBuilder --> SyllabusStructure : builds
+SyllabusStructure --> Chapter
+Chapter --> Topic
+
+note top of SyllabusBuilder
+  Builder Pattern
+  Constructs complex
+  syllabus structures
+  (src/lib/patterns/SyllabusBuilder.ts)
+end note
+
+@enduml

@@ -1,0 +1,131 @@
+@startuml Models - Academic Structure
+
+title Quizlock API - Academic Structure Models
+
+skinparam class {
+    BackgroundColor #E3F2FD
+    BorderColor #424242
+    ArrowColor #616161
+}
+
+class School {
+    +_id: ObjectId
+    +name: string
+    +type: SchoolType
+    +address: string
+    +city: ObjectId
+    +country: ObjectId
+    +status: SchoolStatus
+    +specialties: ObjectId
+    +accreditation: ObjectId
+    +teachers: ObjectId[]
+    +admins: ObjectId[]
+    +owner: ObjectId
+    +isActive: boolean
+}
+
+class Syllabus {
+    +_id: ObjectId
+    +title: string
+    +description: string
+    +subject: ObjectId
+    +teacher: ObjectId
+    +school: ObjectId
+    +structure: any
+    +classes: ObjectId[]
+    +learningObjectives: string[]
+    +status: SyllabusStatus
+    +version: number
+}
+
+class Subject {
+    +_id: ObjectId
+    +name: string
+    +code: string
+    +description: string
+    +applicableLevels: ObjectId[]
+    +applicableFields: ObjectId[]
+    +parentSubject: ObjectId
+    +isActive: boolean
+}
+
+class LearningUnit {
+    +_id: ObjectId
+    +name: string
+    +code: string
+    +subject: ObjectId
+    +parentUnit: ObjectId
+    +description: string
+    +order: number
+    +isActive: boolean
+}
+
+class EducationLevel {
+    +_id: ObjectId
+    +name: string
+    +code: string
+    +subSystem: SubSystem
+    +cycle: string
+    +description: string
+    +isActive: boolean
+}
+
+class Field {
+    +_id: ObjectId
+    +name: string
+    +code: string
+    +applicableLevels: ObjectId[]
+    +parentField: ObjectId
+    +childFields: ObjectId[]
+    +isActive: boolean
+}
+
+class Class {
+    +_id: ObjectId
+    +name: string
+    +school: ObjectId
+    +level: ObjectId
+    +field: ObjectId
+    +students: ObjectId[]
+    +teachers: ObjectId[]
+}
+
+class Concept {
+    +_id: ObjectId
+    +title: string
+    +description: string
+    +learningUnit: ObjectId
+    +order: number
+}
+
+School "1" --> "0..*" Class : has
+School "1" --> "0..*" Syllabus : contains
+Syllabus "0..*" --> "1" Subject : teaches
+Subject "1" --> "0..*" LearningUnit : contains
+Subject "0..*" --> "0..*" EducationLevel : applicable to
+Subject "0..*" --> "0..*" Field : applicable to
+Field "0..*" --> "0..*" EducationLevel : belongs to
+Class "0..*" --> "1" EducationLevel : at level
+Class "0..*" --> "0..1" Field : in field
+LearningUnit "1" --> "0..*" Concept : contains
+
+note top of School
+  Educational institution
+  (src/models/School.ts)
+end note
+
+note right of Syllabus
+  Course curriculum
+  (src/models/Syllabus.ts)
+
+  Built using SyllabusBuilder
+end note
+
+note bottom of EducationLevel
+  Academic levels
+  (src/models/EducationLevel.ts)
+
+  Used in Composite Pattern
+end note
+
+@enduml

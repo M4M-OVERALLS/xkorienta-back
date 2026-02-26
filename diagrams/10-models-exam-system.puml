@@ -1,0 +1,118 @@
+@startuml Models - Exam System
+
+title Quizlock API - Exam System Models
+
+skinparam class {
+    BackgroundColor #E3F2FD
+    BorderColor #424242
+    ArrowColor #616161
+}
+
+class Exam {
+    +_id: ObjectId
+    +title: string
+    +description: string
+    +subSystem: SubSystem
+    +targetLevels: ObjectId[]
+    +subject: ObjectId
+    +syllabus: ObjectId
+    +learningUnit: ObjectId
+    +targetFields: ObjectId[]
+    +linkedConcepts: ObjectId[]
+    +pedagogicalObjective: PedagogicalObjective
+    +evaluationType: EvaluationType
+    +learningMode: LearningMode
+    +difficultyLevel: DifficultyLevel
+    +startTime: Date
+    +endTime: Date
+    +duration: number
+    +status: ExamStatus
+    +config: ExamConfig
+    +stats: ExamStats
+    +createdById: ObjectId
+    +getTotalPoints(): Promise<number>
+}
+
+class Question {
+    +_id: ObjectId
+    +examId: ObjectId
+    +text: string
+    +imageUrl: string
+    +audioUrl: string
+    +type: EvaluationType
+    +points: number
+    +difficulty: DifficultyLevel
+    +correctAnswer: boolean
+    +modelAnswer: string
+    +openQuestionConfig: OpenQuestionConfig
+    +explanation: string
+    +hints: string[]
+    +stats: QuestionStats
+    +order: number
+}
+
+class Option {
+    +_id: ObjectId
+    +questionId: ObjectId
+    +text: string
+    +isCorrect: boolean
+    +explanation: string
+    +order: number
+}
+
+class Attempt {
+    +_id: ObjectId
+    +examId: ObjectId
+    +userId: ObjectId
+    +startedAt: Date
+    +expiresAt: Date
+    +submittedAt: Date
+    +status: AttemptStatus
+    +score: number
+    +maxScore: number
+    +percentage: number
+    +passed: boolean
+    +resumeToken: string
+    +antiCheatEvents: AntiCheatEvent[]
+    +tabSwitchCount: number
+    +timeSpent: number
+}
+
+class Response {
+    +_id: ObjectId
+    +attemptId: ObjectId
+    +questionId: ObjectId
+    +selectedOptionId: ObjectId
+    +textResponse: string
+    +isCorrect: boolean
+    +partialScore: number
+    +timeSpent: number
+    +answeredAt: Date
+    +isMarkedForReview: boolean
+}
+
+Exam "1" --> "0..*" Question : contains
+Question "1" --> "0..*" Option : has
+Exam "1" <-- "0..*" Attempt : attempts
+Attempt "1" --> "0..*" Response : contains
+Response "0..*" --> "1" Question : answers
+Response "0..1" --> "0..1" Option : selects
+
+note top of Exam
+  Main exam model
+  (src/models/Exam.ts)
+
+  Supports multiple evaluation types:
+  QCM, TRUE_FALSE, OPEN_QUESTION,
+  ADAPTIVE, EXAM_SIMULATION
+end note
+
+note bottom of Attempt
+  Tracks exam attempts
+  (src/models/Attempt.ts)
+
+  Includes anti-cheat monitoring
+  and session management
+end note
+
+@enduml

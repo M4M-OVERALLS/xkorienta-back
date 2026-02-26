@@ -1,0 +1,86 @@
+@startuml Patterns - Composite
+
+title Quizlock API - Composite Pattern
+
+skinparam class {
+    BackgroundColor #E8F5E9
+    BorderColor #424242
+    ArrowColor #616161
+}
+
+interface EducationalComponent {
+    +_id: ObjectId
+    +name: string
+    +code: string
+    +getChildren(): Promise<EducationalComponent[]>
+    +getParent(): Promise<EducationalComponent>
+    +getPath(): Promise<string[]>
+    +getDepth(): Promise<number>
+    +isLeaf(): Promise<boolean>
+    +getAncestors(): Promise<EducationalComponent[]>
+    +getDescendants(): Promise<EducationalComponent[]>
+    +getSiblings(): Promise<EducationalComponent[]>
+}
+
+abstract class BaseEducationalComponent {
+    +_id: ObjectId
+    +name: string
+    +code: string
+    +{abstract} getChildren(): Promise<EducationalComponent[]>
+    +{abstract} getParent(): Promise<EducationalComponent>
+    +getPath(): Promise<string[]>
+    +getAncestors(): Promise<EducationalComponent[]>
+    +getDescendants(): Promise<EducationalComponent[]>
+}
+
+class EducationLevelComponent {
+    +subSystem: string
+    +cycle: string
+    +getChildren(): Promise<EducationalComponent[]>
+    +getParent(): Promise<EducationalComponent>
+}
+
+class FieldComponent {
+    +parentField: ObjectId
+    +childFields: ObjectId[]
+    +getChildren(): Promise<EducationalComponent[]>
+    +getParent(): Promise<EducationalComponent>
+}
+
+class SubjectComponent {
+    +parentSubject: ObjectId
+    +getChildren(): Promise<EducationalComponent[]>
+    +getParent(): Promise<EducationalComponent>
+}
+
+class LearningUnitComponent {
+    +parentUnit: ObjectId
+    +subject: ObjectId
+    +getChildren(): Promise<EducationalComponent[]>
+    +getParent(): Promise<EducationalComponent>
+}
+
+class EducationalComponentFactory {
+    +{static} create(type: string, data: any): EducationalComponent
+    +{static} createFromId(type: string, id: ObjectId): Promise<EducationalComponent>
+}
+
+EducationalComponent <|.. BaseEducationalComponent
+BaseEducationalComponent <|-- EducationLevelComponent
+BaseEducationalComponent <|-- FieldComponent
+BaseEducationalComponent <|-- SubjectComponent
+BaseEducationalComponent <|-- LearningUnitComponent
+EducationalComponent o--> EducationalComponent : children/parent
+EducationalComponentFactory ..> EducationalComponent : creates
+
+note top of EducationalComponent
+  Composite Pattern
+  Represents hierarchical
+  educational structure
+  (src/lib/patterns/EducationalHierarchy.ts)
+
+  Hierarchy:
+  EducationLevel → Field → Subject → LearningUnit
+end note
+
+@enduml

@@ -1,0 +1,811 @@
+@startuml Quizlock API - Architecture Complète
+
+title Quizlock API - Diagramme de Classe Complet\nPatterns: Strategy, Decorator, Observer, Builder, Composite, Factory
+
+!define PATTERN_COLOR #E8F5E9
+!define MODEL_COLOR #E3F2FD
+!define FACTORY_COLOR #FFF9C4
+!define OBSERVER_COLOR #FCE4EC
+!define EVENT_COLOR #F3E5F5
+
+skinparam class {
+    BackgroundColor<<Pattern>> PATTERN_COLOR
+    BackgroundColor<<Model>> MODEL_COLOR
+    BackgroundColor<<Factory>> FACTORY_COLOR
+    BackgroundColor<<Observer>> OBSERVER_COLOR
+    BackgroundColor<<Event>> EVENT_COLOR
+    BorderColor #424242
+    ArrowColor #616161
+}
+
+skinparam packageStyle rectangle
+
+legend bottom
+  |<PATTERN_COLOR> Pattern | Design Pattern |
+  |<MODEL_COLOR> Model | Domain Model |
+  |<FACTORY_COLOR> Factory | Factory Pattern |
+  |<OBSERVER_COLOR> Observer | Observer Pattern |
+  |<EVENT_COLOR> Event | Event/Data Type |
+endlegend
+
+' ===========================================
+' DESIGN PATTERNS - STRATEGY (Evaluation)
+' ===========================================
+package "Patterns::Strategy::Evaluation" <<Pattern>> {
+    interface EvaluationStrategy <<Pattern>> {
+        +evaluate(exam: IExam, responses: any[], questions: any[]): Promise<EvaluationResult>
+    }
+
+    class QCMEvaluationStrategy <<Pattern>> {
+        +evaluate(): Promise<EvaluationResult>
+    }
+
+    class TrueFalseEvaluationStrategy <<Pattern>> {
+        +evaluate(): Promise<EvaluationResult>
+    }
+
+    class AdaptiveEvaluationStrategy <<Pattern>> {
+        +evaluate(): Promise<EvaluationResult>
+        -getDifficultyMultiplier(difficulty: string): number
+    }
+
+    class ExamSimulationStrategy <<Pattern>> {
+        +evaluate(): Promise<EvaluationResult>
+    }
+
+    class OpenQuestionEvaluationStrategy <<Pattern>> {
+        +evaluate(): Promise<EvaluationResult>
+        -gradeByKeywords(): number
+        -gradeBySemantic(): number
+    }
+
+    class ConceptSelfEvaluationStrategy <<Pattern>> {
+        +evaluate(input: ConceptEvaluationInput): ConceptEvaluationResult
+        +save(input: ConceptEvaluationInput): Promise<any>
+    }
+
+    EvaluationStrategy <|.. QCMEvaluationStrategy
+    EvaluationStrategy <|.. TrueFalseEvaluationStrategy
+    EvaluationStrategy <|.. AdaptiveEvaluationStrategy
+    EvaluationStrategy <|.. ExamSimulationStrategy
+    EvaluationStrategy <|.. OpenQuestionEvaluationStrategy
+}
+
+' ===========================================
+' DESIGN PATTERNS - STRATEGY (Authentication)
+' ===========================================
+package "Patterns::Strategy::Authentication" <<Pattern>> {
+    interface IAuthStrategy <<Pattern>> {
+        +id: string
+        +name: string
+        +icon: string
+        +getProvider(): Provider
+        +handleSignIn(profile: any, account: any): Promise<boolean>
+        +transformSession(session: Session, token: any): Promise<Session>
+        +isEnabled(): boolean
+    }
+
+    abstract class BaseAuthStrategy <<Pattern>> {
+        +{abstract} id: string
+        +{abstract} name: string
+        +icon: string
+        +{abstract} getProvider(): Provider
+        +handleSignIn(profile: any, account: any): Promise<boolean>
+        +transformSession(session: Session, token: any): Promise<Session>
+        +{abstract} isEnabled(): boolean
+        #checkEnvVars(...vars: string[]): boolean
+    }
+
+    class CredentialsAuthStrategy <<Pattern>> {
+        +id: "credentials"
+        +name: "Email & Password"
+        +getProvider(): Provider
+        +isEnabled(): boolean
+    }
+
+    class GoogleAuthStrategy <<Pattern>> {
+        +id: "google"
+        +name: "Google"
+        +getProvider(): Provider
+        +handleSignIn(profile: any, account: any): Promise<boolean>
+        +isEnabled(): boolean
+    }
+
+    class GitHubAuthStrategy <<Pattern>> {
+        +id: "github"
+        +name: "GitHub"
+        +getProvider(): Provider
+        +handleSignIn(profile: any, account: any): Promise<boolean>
+        +isEnabled(): boolean
+    }
+
+    class AuthStrategyManager <<Pattern>> {
+        -{static} instance: AuthStrategyManager
+        -strategies: Map<string, IAuthStrategy>
+        +{static} getInstance(): AuthStrategyManager
+        -registerStrategies(): void
+        -registerStrategy(strategy: IAuthStrategy): void
+        +getStrategy(id: string): IAuthStrategy
+        +getAllStrategies(): IAuthStrategy[]
+        +getEnabledStrategies(): IAuthStrategy[]
+        +getEnabledProviders(): Provider[]
+        +handleSignIn(strategyId: string, profile: any, account: any): Promise<boolean>
+        +isProviderEnabled(id: string): boolean
+    }
+
+    IAuthStrategy <|.. BaseAuthStrategy
+    BaseAuthStrategy <|-- CredentialsAuthStrategy
+    BaseAuthStrategy <|-- GoogleAuthStrategy
+    BaseAuthStrategy <|-- GitHubAuthStrategy
+    AuthStrategyManager o--> IAuthStrategy : manages
+}
+
+' ===========================================
+' DESIGN PATTERNS - DECORATOR
+' ===========================================
+package "Patterns::Decorator" <<Pattern>> {
+    interface ExamDecorator <<Pattern>> {
+        +decorate(exam: IExam): IExam
+        +enhanceResult(result: EvaluationResult, exam: IExam): EvaluationResult
+    }
+
+    abstract class BaseExamDecorator <<Pattern>> {
+        #decoratedExam: IExam
+        +{abstract} decorate(exam: IExam): IExam
+        +enhanceResult(): EvaluationResult
+    }
+
+    class TimeBonusDecorator <<Pattern>> {
+        +decorate(): IExam
+        +enhanceResult(): EvaluationResult
+    }
+
+    class StreakBonusDecorator <<Pattern>> {
+        +decorate(): IExam
+        +enhanceResult(): EvaluationResult
+    }
+
+    class TimePenaltyDecorator <<Pattern>> {
+        +decorate(): IExam
+        +enhanceResult(): EvaluationResult
+    }
+
+    class BadgeDecorator <<Pattern>> {
+        +decorate(): IExam
+        +enhanceResult(): EvaluationResult
+    }
+
+    class DetailedStatsDecorator <<Pattern>> {
+        +decorate(): IExam
+        +enhanceResult(): EvaluationResult
+    }
+
+    ExamDecorator <|.. BaseExamDecorator
+    BaseExamDecorator <|-- TimeBonusDecorator
+    BaseExamDecorator <|-- StreakBonusDecorator
+    BaseExamDecorator <|-- TimePenaltyDecorator
+    BaseExamDecorator <|-- BadgeDecorator
+    BaseExamDecorator <|-- DetailedStatsDecorator
+}
+
+' ===========================================
+' DESIGN PATTERNS - BUILDER
+' ===========================================
+package "Patterns::Builder" <<Pattern>> {
+    class SyllabusBuilder <<Pattern>> {
+        -syllabus: Partial<ISyllabus>
+        -structure: SyllabusStructure
+        +setBasicInfo(): SyllabusBuilder
+        +setContext(): SyllabusBuilder
+        +setClasses(): SyllabusBuilder
+        +addObjective(): SyllabusBuilder
+        +addChapter(): string
+        +addTopic(): string
+        +addConcept(): SyllabusBuilder
+        +addResource(): SyllabusBuilder
+        +build(): Partial<ISyllabus>
+        +{static} fromExisting(): SyllabusBuilder
+    }
+}
+
+' ===========================================
+' DESIGN PATTERNS - COMPOSITE
+' ===========================================
+package "Patterns::Composite" <<Pattern>> {
+    interface EducationalComponent <<Pattern>> {
+        +_id: ObjectId
+        +name: string
+        +code: string
+        +getChildren(): Promise<EducationalComponent[]>
+        +getParent(): Promise<EducationalComponent>
+        +getPath(): Promise<string[]>
+        +getDepth(): Promise<number>
+        +isLeaf(): Promise<boolean>
+        +getAncestors(): Promise<EducationalComponent[]>
+        +getDescendants(): Promise<EducationalComponent[]>
+    }
+
+    abstract class BaseEducationalComponent <<Pattern>> {
+        +_id: ObjectId
+        +name: string
+        +code: string
+        +{abstract} getChildren(): Promise<EducationalComponent[]>
+        +{abstract} getParent(): Promise<EducationalComponent>
+        +getPath(): Promise<string[]>
+        +getAncestors(): Promise<EducationalComponent[]>
+    }
+
+    class EducationLevelComponent <<Pattern>> {
+        +subSystem: string
+        +cycle: string
+        +getChildren(): Promise<EducationalComponent[]>
+        +getParent(): Promise<EducationalComponent>
+    }
+
+    class FieldComponent <<Pattern>> {
+        +parentField: ObjectId
+        +childFields: ObjectId[]
+        +getChildren(): Promise<EducationalComponent[]>
+        +getParent(): Promise<EducationalComponent>
+    }
+
+    class SubjectComponent <<Pattern>> {
+        +parentSubject: ObjectId
+        +getChildren(): Promise<EducationalComponent[]>
+        +getParent(): Promise<EducationalComponent>
+    }
+
+    class LearningUnitComponent <<Pattern>> {
+        +parentUnit: ObjectId
+        +subject: ObjectId
+        +getChildren(): Promise<EducationalComponent[]>
+        +getParent(): Promise<EducationalComponent>
+    }
+
+    EducationalComponent <|.. BaseEducationalComponent
+    BaseEducationalComponent <|-- EducationLevelComponent
+    BaseEducationalComponent <|-- FieldComponent
+    BaseEducationalComponent <|-- SubjectComponent
+    BaseEducationalComponent <|-- LearningUnitComponent
+    EducationalComponent o--> EducationalComponent : children
+}
+
+' ===========================================
+' DESIGN PATTERNS - OBSERVER
+' ===========================================
+package "Patterns::Observer" <<Observer>> {
+    interface IObserver <<Observer>> {
+        +update(event: Event): Promise<void>
+        +getName(): string
+        +getInterestedEvents(): string[]
+    }
+
+    class EventPublisher <<Observer>> {
+        -{static} instance: EventPublisher
+        -observers: Map<string, IObserver[]>
+        -eventHistory: Event[]
+        +{static} getInstance(): EventPublisher
+        +subscribe(observer: IObserver): void
+        +unsubscribe(observer: IObserver): void
+        +publish(event: Event): Promise<void>
+        -notifyObserver(): Promise<void>
+        +getHistory(): Event[]
+    }
+
+    class EmailNotificationObserver <<Observer>> {
+        +update(event: Event): Promise<void>
+        +getName(): string
+        +getInterestedEvents(): string[]
+        -sendExamCompletedEmail(): Promise<void>
+        -sendAttemptGradedEmail(): Promise<void>
+        -sendBadgeEarnedEmail(): Promise<void>
+    }
+
+    class XPUpdateObserver <<Observer>> {
+        +update(event: Event): Promise<void>
+        +getName(): string
+        +getInterestedEvents(): string[]
+    }
+
+    class NotificationObserver <<Observer>> {
+        +update(event: Event): Promise<void>
+        +getName(): string
+        +getInterestedEvents(): string[]
+    }
+
+    class StatsUpdateObserver <<Observer>> {
+        +update(event: Event): Promise<void>
+        +getName(): string
+        +getInterestedEvents(): string[]
+    }
+
+    class BadgeAwardObserver <<Observer>> {
+        +update(event: Event): Promise<void>
+        +getName(): string
+        +getInterestedEvents(): string[]
+    }
+
+    IObserver <|.. EmailNotificationObserver
+    IObserver <|.. XPUpdateObserver
+    IObserver <|.. NotificationObserver
+    IObserver <|.. StatsUpdateObserver
+    IObserver <|.. BadgeAwardObserver
+    EventPublisher --> IObserver : notifies
+}
+
+' ===========================================
+' EVENTS
+' ===========================================
+package "Events" <<Event>> {
+    enum EventType <<Event>> {
+        EXAM_CREATED
+        EXAM_COMPLETED
+        ATTEMPT_STARTED
+        BADGE_EARNED
+        LEVEL_UP
+        XP_GAINED
+    }
+
+    interface Event <<Event>> {
+        +type: EventType
+        +timestamp: Date
+        +userId: ObjectId
+        +data: Record<string, any>
+    }
+
+    class ExamCompletedEvent <<Event>> {
+        +type: EventType.EXAM_COMPLETED
+        +data: {examId, score, passed, ...}
+    }
+
+    class BadgeEarnedEvent <<Event>> {
+        +type: EventType.BADGE_EARNED
+        +data: {badgeId, badgeName, ...}
+    }
+
+    class AttemptGradedEvent <<Event>> {
+        +type: EventType.ATTEMPT_GRADED
+        +data: {attemptId, score, ...}
+    }
+
+    Event <|.. ExamCompletedEvent
+    Event <|.. BadgeEarnedEvent
+    Event <|.. AttemptGradedEvent
+    Event --> EventType
+}
+
+' ===========================================
+' FACTORIES
+' ===========================================
+package "Factories" <<Factory>> {
+    class ProfileFactory <<Factory>> {
+        +{static} createUser(userData: CreateUserDTO): Promise<{user, profile}>
+        -{static} isPedagogicalRole(role: UserRole): boolean
+    }
+
+    class ProfileFactoryV2 <<Factory>> {
+        +{static} createProfile(user: IUser): Promise<ILearnerProfile | IPedagogicalProfile>
+        -{static} createLearnerProfile(user: IUser): Promise<ILearnerProfile>
+        -{static} createPedagogicalProfile(user: IUser): Promise<IPedagogicalProfile>
+    }
+
+    class EvaluationStrategyFactory <<Factory>> {
+        +{static} getStrategy(type: EvaluationType): EvaluationStrategy
+        +{static} getConceptSelfEvaluationStrategy(): ConceptSelfEvaluationStrategy
+        +{static} evaluateExam(): Promise<EvaluationResult>
+    }
+
+    class ExamDecoratorFactory <<Factory>> {
+        +{static} applyDecorators(result: EvaluationResult, exam: IExam, options): EvaluationResult
+    }
+
+    class EducationalComponentFactory <<Factory>> {
+        +{static} create(type: string, data: any): EducationalComponent
+        +{static} createFromId(type: string, id: ObjectId): Promise<EducationalComponent>
+    }
+
+    ProfileFactory ..> User : creates
+    ProfileFactory ..> LearnerProfile : creates
+    ProfileFactory ..> PedagogicalProfile : creates
+    ProfileFactoryV2 ..> LearnerProfile : creates/retrieves
+    ProfileFactoryV2 ..> PedagogicalProfile : creates/retrieves
+    EvaluationStrategyFactory ..> EvaluationStrategy : creates
+    ExamDecoratorFactory ..> ExamDecorator : uses
+    EducationalComponentFactory ..> EducationalComponent : creates
+}
+
+' ===========================================
+' CORE MODELS - USER
+' ===========================================
+package "Models::User" <<Model>> {
+    class User <<Model>> {
+        +_id: ObjectId
+        +name: string
+        +email: string
+        +password: string
+        +role: UserRole
+        +subSystem: SubSystem
+        +institution: string
+        +schools: ObjectId[]
+        +learnerProfile: ObjectId
+        +pedagogicalProfile: ObjectId
+        +googleId: string
+        +emailVerified: boolean
+        +isActive: boolean
+        +preferences: Preferences
+        +gamification: Gamification
+        +createdAt: Date
+    }
+
+    class LearnerProfile <<Model>> {
+        +_id: ObjectId
+        +user: ObjectId
+        +currentLevel: ObjectId
+        +currentField: ObjectId
+        +enrollmentDate: Date
+        +cognitiveProfile: CognitiveProfile
+        +learnerType: LearnerType
+        +subscriptionStatus: SubscriptionStatus
+        +stats: Stats
+        +gamification: Gamification
+    }
+
+    class PedagogicalProfile <<Model>> {
+        +_id: ObjectId
+        +user: ObjectId
+        +teachingSubjects: ObjectId[]
+        +interventionLevels: ObjectId[]
+        +interventionFields: ObjectId[]
+        +contributionTypes: ContributionType[]
+        +accessScope: AccessScope
+        +scopeDetails: ScopeDetails
+        +reportingAccess: ReportingAccess
+        +stats: Stats
+        +qualifications: Qualification[]
+    }
+
+    User "1" --> "0..1" LearnerProfile : has
+    User "1" --> "0..1" PedagogicalProfile : has
+}
+
+' ===========================================
+' CORE MODELS - EXAM SYSTEM
+' ===========================================
+package "Models::ExamSystem" <<Model>> {
+    class Exam <<Model>> {
+        +_id: ObjectId
+        +title: string
+        +description: string
+        +subSystem: SubSystem
+        +targetLevels: ObjectId[]
+        +subject: ObjectId
+        +syllabus: ObjectId
+        +learningUnit: ObjectId
+        +targetFields: ObjectId[]
+        +linkedConcepts: ObjectId[]
+        +pedagogicalObjective: PedagogicalObjective
+        +evaluationType: EvaluationType
+        +learningMode: LearningMode
+        +difficultyLevel: DifficultyLevel
+        +startTime: Date
+        +endTime: Date
+        +duration: number
+        +status: ExamStatus
+        +config: ExamConfig
+        +stats: ExamStats
+        +createdById: ObjectId
+        +getTotalPoints(): Promise<number>
+    }
+
+    class Question <<Model>> {
+        +_id: ObjectId
+        +examId: ObjectId
+        +text: string
+        +imageUrl: string
+        +type: EvaluationType
+        +points: number
+        +difficulty: DifficultyLevel
+        +correctAnswer: boolean
+        +modelAnswer: string
+        +openQuestionConfig: OpenQuestionConfig
+        +explanation: string
+        +hints: string[]
+        +stats: QuestionStats
+        +order: number
+    }
+
+    class Option <<Model>> {
+        +_id: ObjectId
+        +questionId: ObjectId
+        +text: string
+        +isCorrect: boolean
+        +explanation: string
+        +order: number
+    }
+
+    class Attempt <<Model>> {
+        +_id: ObjectId
+        +examId: ObjectId
+        +userId: ObjectId
+        +startedAt: Date
+        +expiresAt: Date
+        +submittedAt: Date
+        +status: AttemptStatus
+        +score: number
+        +maxScore: number
+        +percentage: number
+        +passed: boolean
+        +resumeToken: string
+        +antiCheatEvents: AntiCheatEvent[]
+        +tabSwitchCount: number
+        +timeSpent: number
+    }
+
+    class Response <<Model>> {
+        +_id: ObjectId
+        +attemptId: ObjectId
+        +questionId: ObjectId
+        +selectedOptionId: ObjectId
+        +textResponse: string
+        +isCorrect: boolean
+        +partialScore: number
+        +timeSpent: number
+        +answeredAt: Date
+        +isMarkedForReview: boolean
+    }
+
+    Exam "1" --> "0..*" Question : contains
+    Question "1" --> "0..*" Option : has
+    Exam "1" <-- "0..*" Attempt : attempts
+    Attempt "1" --> "0..*" Response : contains
+    Response "0..*" --> "1" Question : answers
+    Response "0..1" --> "0..1" Option : selects
+    User "1" --> "0..*" Attempt : makes
+}
+
+' ===========================================
+' CORE MODELS - ACADEMIC STRUCTURE
+' ===========================================
+package "Models::AcademicStructure" <<Model>> {
+    class School <<Model>> {
+        +_id: ObjectId
+        +name: string
+        +type: SchoolType
+        +address: string
+        +city: ObjectId
+        +country: ObjectId
+        +status: SchoolStatus
+        +specialties: ObjectId
+        +accreditation: ObjectId
+        +teachers: ObjectId[]
+        +admins: ObjectId[]
+        +owner: ObjectId
+    }
+
+    class Syllabus <<Model>> {
+        +_id: ObjectId
+        +title: string
+        +description: string
+        +subject: ObjectId
+        +teacher: ObjectId
+        +school: ObjectId
+        +structure: any
+        +classes: ObjectId[]
+        +learningObjectives: string[]
+        +status: SyllabusStatus
+        +version: number
+    }
+
+    class Subject <<Model>> {
+        +_id: ObjectId
+        +name: string
+        +code: string
+        +description: string
+        +applicableLevels: ObjectId[]
+        +applicableFields: ObjectId[]
+        +parentSubject: ObjectId
+        +isActive: boolean
+    }
+
+    class LearningUnit <<Model>> {
+        +_id: ObjectId
+        +name: string
+        +code: string
+        +subject: ObjectId
+        +parentUnit: ObjectId
+        +description: string
+        +order: number
+        +isActive: boolean
+    }
+
+    class EducationLevel <<Model>> {
+        +_id: ObjectId
+        +name: string
+        +code: string
+        +subSystem: SubSystem
+        +cycle: string
+        +description: string
+        +isActive: boolean
+    }
+
+    class Field <<Model>> {
+        +_id: ObjectId
+        +name: string
+        +code: string
+        +applicableLevels: ObjectId[]
+        +parentField: ObjectId
+        +childFields: ObjectId[]
+        +isActive: boolean
+    }
+
+    class Class <<Model>> {
+        +_id: ObjectId
+        +name: string
+        +school: ObjectId
+        +level: ObjectId
+        +field: ObjectId
+        +students: ObjectId[]
+        +teachers: ObjectId[]
+    }
+
+    School "1" --> "0..*" Class : has
+    School "1" --> "0..*" Syllabus : contains
+    Syllabus "0..*" --> "1" Subject : teaches
+    Syllabus "0..*" --> "1" User : created by
+    Subject "1" --> "0..*" LearningUnit : contains
+    Subject "0..*" --> "0..*" EducationLevel : applicable to
+    Subject "0..*" --> "0..*" Field : applicable to
+    Field "0..*" --> "0..*" EducationLevel : belongs to
+    Class "0..*" --> "1" EducationLevel : at level
+    Class "0..*" --> "0..1" Field : in field
+}
+
+' ===========================================
+' CORE MODELS - ADDITIONAL
+' ===========================================
+package "Models::Additional" <<Model>> {
+    class Concept <<Model>> {
+        +_id: ObjectId
+        +title: string
+        +description: string
+        +learningUnit: ObjectId
+        +order: number
+    }
+
+    class ConceptEvaluation <<Model>> {
+        +_id: ObjectId
+        +student: ObjectId
+        +concept: ObjectId
+        +syllabus: ObjectId
+        +level: MasteryLevel
+        +reflection: string
+        +evaluatedAt: Date
+    }
+
+    class Badge <<Model>> {
+        +_id: ObjectId
+        +name: string
+        +description: string
+        +iconUrl: string
+        +criteria: any
+    }
+
+    class Notification <<Model>> {
+        +_id: ObjectId
+        +userId: ObjectId
+        +type: string
+        +title: string
+        +message: string
+        +read: boolean
+        +createdAt: Date
+    }
+
+    LearningUnit "1" --> "0..*" Concept : contains
+    User "1" --> "0..*" ConceptEvaluation : evaluates
+    Concept "1" <-- "0..*" ConceptEvaluation : evaluated
+    User "1" --> "0..*" Notification : receives
+}
+
+' ===========================================
+' RELATIONSHIPS BETWEEN PACKAGES
+' ===========================================
+
+' Strategy Pattern relationships
+EvaluationStrategy ..> Exam : evaluates
+EvaluationStrategy ..> Question : uses
+EvaluationStrategy ..> Response : evaluates
+
+' Decorator Pattern relationships
+ExamDecorator ..> Exam : decorates
+ExamDecoratorFactory ..> Attempt : enhances results
+
+' Builder Pattern relationships
+SyllabusBuilder ..> Syllabus : builds
+
+' Composite Pattern relationships
+EducationalComponent ..> EducationLevel : represents
+EducationalComponent ..> Field : represents
+EducationalComponent ..> Subject : represents
+EducationalComponent ..> LearningUnit : represents
+
+' Observer Pattern relationships
+EventPublisher ..> Event : publishes
+IObserver ..> Event : receives
+EmailNotificationObserver ..> User : notifies
+XPUpdateObserver ..> LearnerProfile : updates
+NotificationObserver ..> Notification : creates
+
+' Authentication Strategy relationships
+IAuthStrategy ..> User : creates/updates
+CredentialsAuthStrategy ..> User : authenticates
+GoogleAuthStrategy ..> User : authenticates
+GitHubAuthStrategy ..> User : authenticates
+AuthStrategyManager ..> User : manages
+
+' Factory relationships
+ProfileFactory ..> EventPublisher : publishes events
+ProfileFactoryV2 ..> User : uses
+
+note top of ProfileFactory
+  Factory Method Pattern
+  (src/lib/factories/)
+  Creates users and their
+  associated profiles in transaction
+end note
+
+note top of ProfileFactoryV2
+  Factory Method Pattern
+  (src/lib/profile-factory.ts)
+  Creates or retrieves profiles
+  for existing users
+end note
+
+note top of EvaluationStrategyFactory
+  Factory Pattern
+  Creates appropriate evaluation
+  strategy based on exam type
+end note
+
+note top of AuthStrategyManager
+  Singleton + Strategy Pattern
+  Manages authentication providers
+  Easily extensible for new OAuth providers
+end note
+
+note top of EventPublisher
+  Singleton + Observer Pattern
+  Central event management
+end note
+
+note top of SyllabusBuilder
+  Builder Pattern
+  Constructs complex
+  syllabus structures
+end note
+
+note top of EducationalComponent
+  Composite Pattern
+  Represents hierarchical
+  educational structure
+end note
+
+note top of ExamDecorator
+  Decorator Pattern
+  Adds dynamic features
+  to exam evaluation
+end note
+
+note top of EvaluationStrategy
+  Strategy Pattern
+  Different evaluation algorithms
+  for different exam types
+end note
+
+note top of IAuthStrategy
+  Strategy Pattern
+  Supports multiple authentication
+  providers (Credentials, Google, GitHub)
+  Easy to extend with new providers
+end note
+
+@enduml

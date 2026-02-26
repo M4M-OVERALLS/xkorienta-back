@@ -1,11 +1,11 @@
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-    host: process.env.MAIL_HOST || 'mail.xkorin.com',
+    host: process.env.MAIL_HOST || 'mail.Xkorienta.com',
     port: parseInt(process.env.MAIL_PORT || '587'),
     secure: false,
     auth: {
-        user: process.env.MAIL_USER || 'contact@xkorin.com',
+        user: process.env.MAIL_USER || 'contact@Xkorienta.com',
         pass: process.env.MAIL_PASSWORD,
     },
     tls: {
@@ -85,7 +85,7 @@ const emailWrapper = (title: string, subtitle: string, content: string) => `
 export const sendEmail = async ({ to, subject, html }: MailOptions) => {
     try {
         const info = await transporter.sendMail({
-            from: `"${process.env.MAIL_FROM_NAME || 'Xkorienta'}" <${process.env.MAIL_SOURCE || 'contact@xkorin.com'}>`,
+            from: `"${process.env.MAIL_FROM_NAME || 'Xkorienta'}" <${process.env.MAIL_SOURCE || 'contact@Xkorienta.com'}>`,
             to,
             subject,
             html,
@@ -123,7 +123,7 @@ export const sendWelcomeEmail = async (email: string, userName: string, classNam
         <a href="${loginUrl}" style="color: ${COLORS.primary};">${loginUrl}</a></p>
     `;
 
-    const html = emailWrapper("Bienvenue sur Xkorin !", "Votre inscription est confirmée", content);
+    const html = emailWrapper("Bienvenue sur Xkorienta !", "Votre inscription est confirmée", content);
     return sendEmail({ to: email, subject: `Bienvenue dans la classe ${className} !`, html });
 };
 
@@ -184,7 +184,7 @@ export const sendAccountActivationEmail = async (email: string, link: string, cl
     `;
 
     const html = emailWrapper("Activez votre compte", `Bienvenue dans la classe ${className}`, content);
-    return sendEmail({ to: email, subject: `Action requise : Activez votre compte Xkorin`, html });
+    return sendEmail({ to: email, subject: `Action requise : Activez votre compte Xkorienta`, html });
 };
 
 // Notification Enseignant

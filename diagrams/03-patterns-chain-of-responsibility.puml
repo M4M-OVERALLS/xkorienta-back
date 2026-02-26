@@ -1,0 +1,65 @@
+@startuml Patterns - Chain of Responsibility
+
+title Quizlock API - Chain of Responsibility Pattern
+
+skinparam class {
+    BackgroundColor #E8F5E9
+    BorderColor #424242
+    ArrowColor #616161
+}
+
+abstract class AccessHandler {
+    #nextHandler: AccessHandler
+    +setNext(handler: AccessHandler): AccessHandler
+    +handle(request: AccessRequest): Promise<boolean>
+    #{abstract} canHandle(request: AccessRequest): Promise<boolean>
+    #{abstract} checkAccess(request: AccessRequest): Promise<boolean>
+}
+
+class GlobalAccessHandler {
+    #canHandle(): Promise<boolean>
+    #checkAccess(): Promise<boolean>
+}
+
+class LocalAccessHandler {
+    #canHandle(): Promise<boolean>
+    #checkAccess(): Promise<boolean>
+}
+
+class SubjectAccessHandler {
+    #canHandle(): Promise<boolean>
+    #checkAccess(): Promise<boolean>
+}
+
+class LevelAccessHandler {
+    #canHandle(): Promise<boolean>
+    #checkAccess(): Promise<boolean>
+}
+
+class FieldAccessHandler {
+    #canHandle(): Promise<boolean>
+    #checkAccess(): Promise<boolean>
+}
+
+class AccessHandlerChain {
+    -{static} instance: AccessHandler
+    +{static} getChain(): AccessHandler
+    +{static} checkAccess(request: AccessRequest): Promise<boolean>
+}
+
+AccessHandler <|-- GlobalAccessHandler
+AccessHandler <|-- LocalAccessHandler
+AccessHandler <|-- SubjectAccessHandler
+AccessHandler <|-- LevelAccessHandler
+AccessHandler <|-- FieldAccessHandler
+AccessHandler o--> AccessHandler : nextHandler
+AccessHandlerChain ..> AccessHandler : creates chain
+
+note top of AccessHandler
+  Chain of Responsibility
+  Handles access control
+  based on user scope
+  (src/lib/patterns/AccessHandler.ts)
+end note
+
+@enduml

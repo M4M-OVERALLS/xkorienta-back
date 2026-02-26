@@ -1,0 +1,123 @@
+@startuml Patterns - Strategy
+
+title Quizlock API - Strategy Patterns
+
+skinparam class {
+    BackgroundColor #E8F5E9
+    BorderColor #424242
+    ArrowColor #616161
+}
+
+' ===========================================
+' STRATEGY - Evaluation
+' ===========================================
+package "Evaluation Strategies" {
+    interface EvaluationStrategy {
+        +evaluate(exam: IExam, responses: any[], questions: any[]): Promise<EvaluationResult>
+    }
+
+    class QCMEvaluationStrategy {
+        +evaluate(): Promise<EvaluationResult>
+    }
+
+    class TrueFalseEvaluationStrategy {
+        +evaluate(): Promise<EvaluationResult>
+    }
+
+    class AdaptiveEvaluationStrategy {
+        +evaluate(): Promise<EvaluationResult>
+        -getDifficultyMultiplier(difficulty: string): number
+    }
+
+    class ExamSimulationStrategy {
+        +evaluate(): Promise<EvaluationResult>
+    }
+
+    class OpenQuestionEvaluationStrategy {
+        +evaluate(): Promise<EvaluationResult>
+        -gradeByKeywords(): number
+        -gradeBySemantic(): number
+    }
+
+    class ConceptSelfEvaluationStrategy {
+        +evaluate(input: ConceptEvaluationInput): ConceptEvaluationResult
+        +save(input: ConceptEvaluationInput): Promise<any>
+    }
+
+    EvaluationStrategy <|.. QCMEvaluationStrategy
+    EvaluationStrategy <|.. TrueFalseEvaluationStrategy
+    EvaluationStrategy <|.. AdaptiveEvaluationStrategy
+    EvaluationStrategy <|.. ExamSimulationStrategy
+    EvaluationStrategy <|.. OpenQuestionEvaluationStrategy
+}
+
+' ===========================================
+' STRATEGY - Authentication
+' ===========================================
+package "Authentication Strategies" {
+    interface IAuthStrategy {
+        +id: string
+        +name: string
+        +icon: string
+        +getProvider(): Provider
+        +handleSignIn(profile: any, account: any): Promise<boolean>
+        +isEnabled(): boolean
+    }
+
+    abstract class BaseAuthStrategy {
+        +{abstract} id: string
+        +{abstract} name: string
+        +{abstract} getProvider(): Provider
+        +handleSignIn(): Promise<boolean>
+        +{abstract} isEnabled(): boolean
+        #checkEnvVars(...vars: string[]): boolean
+    }
+
+    class CredentialsAuthStrategy {
+        +id: "credentials"
+        +name: "Email & Password"
+        +getProvider(): Provider
+    }
+
+    class GoogleAuthStrategy {
+        +id: "google"
+        +name: "Google"
+        +getProvider(): Provider
+        +handleSignIn(): Promise<boolean>
+    }
+
+    class GitHubAuthStrategy {
+        +id: "github"
+        +name: "GitHub"
+        +getProvider(): Provider
+        +handleSignIn(): Promise<boolean>
+    }
+
+    class AuthStrategyManager {
+        -{static} instance: AuthStrategyManager
+        -strategies: Map<string, IAuthStrategy>
+        +{static} getInstance(): AuthStrategyManager
+        +getEnabledStrategies(): IAuthStrategy[]
+        +handleSignIn(): Promise<boolean>
+    }
+
+    IAuthStrategy <|.. BaseAuthStrategy
+    BaseAuthStrategy <|-- CredentialsAuthStrategy
+    BaseAuthStrategy <|-- GoogleAuthStrategy
+    BaseAuthStrategy <|-- GitHubAuthStrategy
+    AuthStrategyManager o--> IAuthStrategy
+}
+
+note top of EvaluationStrategy
+  Strategy Pattern
+  Different evaluation algorithms
+  for different exam types
+end note
+
+note top of IAuthStrategy
+  Strategy Pattern
+  Multiple authentication providers
+  (Credentials, Google, GitHub)
+end note
+
+@enduml

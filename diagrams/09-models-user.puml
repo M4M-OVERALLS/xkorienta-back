@@ -1,0 +1,96 @@
+@startuml Models - User
+
+title Quizlock API - User Models
+
+skinparam class {
+    BackgroundColor #E3F2FD
+    BorderColor #424242
+    ArrowColor #616161
+}
+
+class User {
+    +_id: ObjectId
+    +name: string
+    +email: string
+    +password?: string
+    +role: UserRole
+    +subSystem: SubSystem
+    +institution: string
+    +schools: ObjectId[]
+    +teachingSyllabuses: ObjectId[]
+    +learnerProfile: ObjectId
+    +pedagogicalProfile: ObjectId
+    +googleId: string
+    +githubId: string
+    +emailVerified: boolean
+    +isActive: boolean
+    +lastLogin: Date
+    +preferences: Preferences
+    +gamification: Gamification
+    +metadata: Metadata
+    +createdAt: Date
+    +updatedAt: Date
+}
+
+class LearnerProfile {
+    +_id: ObjectId
+    +user: ObjectId
+    +currentLevel: ObjectId
+    +currentField: ObjectId
+    +enrollmentDate: Date
+    +cognitiveProfile: CognitiveProfile
+    +learnerType: LearnerType
+    +subscriptionStatus: SubscriptionStatus
+    +preferredLearningMode: LearningMode
+    +stats: Stats
+    +gamification: Gamification
+    +createdAt: Date
+    +updatedAt: Date
+}
+
+class PedagogicalProfile {
+    +_id: ObjectId
+    +user: ObjectId
+    +teachingSubjects: ObjectId[]
+    +interventionLevels: ObjectId[]
+    +interventionFields: ObjectId[]
+    +contributionTypes: ContributionType[]
+    +accessScope: AccessScope
+    +scopeDetails: ScopeDetails
+    +reportingAccess: ReportingAccess
+    +stats: Stats
+    +qualifications: Qualification[]
+    +createdAt: Date
+    +updatedAt: Date
+}
+
+User "1" --> "0..1" LearnerProfile : has
+User "1" --> "0..1" PedagogicalProfile : has
+
+note right of User
+  Main user model
+  (src/models/User.ts)
+
+  Supports multiple auth:
+  - Email/Password
+  - Google OAuth
+  - GitHub OAuth
+end note
+
+note right of LearnerProfile
+  Student profile
+  (src/models/LearnerProfile.ts)
+
+  Tracks academic progress,
+  learning style, and stats
+end note
+
+note right of PedagogicalProfile
+  Teacher/Admin profile
+  (src/models/PedagogicalProfile.ts)
+
+  Manages teaching permissions,
+  access scopes, and qualifications
+end note
+
+@enduml

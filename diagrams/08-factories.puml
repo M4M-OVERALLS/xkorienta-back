@@ -1,0 +1,79 @@
+@startuml Factories
+
+title Quizlock API - Factory Patterns
+
+skinparam class {
+    BackgroundColor #FFF9C4
+    BorderColor #424242
+    ArrowColor #616161
+}
+
+class ProfileFactory {
+    +{static} createUser(userData: CreateUserDTO, profileData): Promise<{user, profile}>
+    -{static} isPedagogicalRole(role: UserRole): boolean
+}
+
+class ProfileFactoryV2 {
+    +{static} createProfile(user: IUser): Promise<ILearnerProfile | IPedagogicalProfile>
+    -{static} createLearnerProfile(user: IUser): Promise<ILearnerProfile>
+    -{static} createPedagogicalProfile(user: IUser): Promise<IPedagogicalProfile>
+}
+
+class EvaluationStrategyFactory {
+    +{static} getStrategy(type: EvaluationType): EvaluationStrategy
+    +{static} getConceptSelfEvaluationStrategy(): ConceptSelfEvaluationStrategy
+    +{static} evaluateExam(exam, responses, questions): Promise<EvaluationResult>
+    +{static} evaluateConcept(input): ConceptEvaluationResult
+}
+
+class ExamDecoratorFactory {
+    +{static} applyDecorators(result: EvaluationResult, exam: IExam, options): EvaluationResult
+}
+
+class AccessHandlerChain {
+    -{static} instance: AccessHandler
+    +{static} getChain(): AccessHandler
+    +{static} checkAccess(request: AccessRequest): Promise<boolean>
+}
+
+class EducationalComponentFactory {
+    +{static} create(type: string, data: any): EducationalComponent
+    +{static} createFromId(type: string, id: ObjectId): Promise<EducationalComponent>
+}
+
+class AuthStrategyManager {
+    -{static} instance: AuthStrategyManager
+    -strategies: Map<string, IAuthStrategy>
+    +{static} getInstance(): AuthStrategyManager
+    -registerStrategies(): void
+    +getStrategy(id: string): IAuthStrategy
+    +getEnabledStrategies(): IAuthStrategy[]
+    +getEnabledProviders(): Provider[]
+    +handleSignIn(strategyId, profile, account): Promise<boolean>
+}
+
+note top of ProfileFactory
+  Factory Method Pattern
+  (src/lib/factories/ProfileFactory.ts)
+  Creates users and profiles in transaction
+end note
+
+note top of ProfileFactoryV2
+  Factory Method Pattern
+  (src/lib/profile-factory.ts)
+  Creates/retrieves profiles for existing users
+end note
+
+note top of EvaluationStrategyFactory
+  Factory Pattern
+  Creates evaluation strategies
+  based on exam type
+end note
+
+note top of AuthStrategyManager
+  Singleton + Strategy Factory
+  Manages authentication providers
+  (src/lib/auth/strategies/)
+end note
+
+@enduml
