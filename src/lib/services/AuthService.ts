@@ -23,12 +23,12 @@ export class AuthService {
         this.authRepository = new AuthRepository();
     }
 
-    async verifyCredentials(email: string, password: string) {
-        if (!email || !password) {
-            throw new Error("Email and password are required");
+    async verifyCredentials(identifier: string, password: string) {
+        if (!identifier || !password) {
+            throw new Error("Identifiant et mot de passe requis");
         }
 
-        const user = await this.authRepository.findByEmailWithPassword(email);
+        const user = await this.authRepository.findByIdentifierWithPassword(identifier);
 
         if (!user) {
             return null;

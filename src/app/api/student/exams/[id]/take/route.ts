@@ -156,7 +156,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             attempt = {
                 id: attemptDoc._id.toString(),
                 examId: attemptDoc.examId.toString(),
-                userId: attemptDoc.userId.toString(),
+                userId: attemptDoc.userId?.toString() || '',
                 startedAt: attemptDoc.startedAt.toISOString(),
                 expiresAt: attemptDoc.expiresAt.toISOString(),
                 submittedAt: attemptDoc.submittedAt?.toISOString(),

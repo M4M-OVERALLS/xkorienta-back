@@ -47,7 +47,8 @@ export interface AntiCheatEvent {
 export interface IAttempt extends Document {
   _id: mongoose.Types.ObjectId
   examId: mongoose.Types.ObjectId
-  userId: mongoose.Types.ObjectId
+  userId?: mongoose.Types.ObjectId // Optional for guest users
+  guestSessionId?: string // UUID for anonymous guest sessions (Freemium-Direct)
 
   // Temporalité
   startedAt: Date
@@ -94,7 +95,12 @@ const AttemptSchema = new Schema<IAttempt>(
     userId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false, // Optional for guest users
+      index: true
+    },
+    guestSessionId: {
+      type: String,
+      required: false, // UUID for anonymous guest sessions
       index: true
     },
 
@@ -198,6 +204,7 @@ const AttemptSchema = new Schema<IAttempt>(
 
 // Indexes composés pour requêtes optimisées
 AttemptSchema.index({ examId: 1, userId: 1 }) // Trouver les tentatives d'un étudiant pour un examen
+AttemptSchema.index({ examId: 1, guestSessionId: 1 }) // Trouver les tentatives guest pour un examen
 AttemptSchema.index({ userId: 1, status: 1 }) // Trouver les tentatives d'un étudiant par statut
 AttemptSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 86400 }) // TTL: supprime après 24h
 

@@ -4,7 +4,8 @@ import { UserRole, SubSystem } from './enums'
 export interface IUser extends Document {
     _id: mongoose.Types.ObjectId
     name: string
-    email: string
+    email?: string // Optional for students registering with phone
+    phone?: string // Alternative login identifier (common in Cameroon)
     password?: string // Optional for OAuth users
     role: UserRole
     subSystem?: SubSystem
@@ -68,7 +69,8 @@ export interface IUser extends Document {
 const UserSchema = new Schema<IUser>(
     {
         name: { type: String, required: true },
-        email: { type: String, required: true, unique: true },
+        email: { type: String, unique: true, sparse: true }, // Optional — students can use phone instead
+        phone: { type: String, unique: true, sparse: true }, // Alternative identifier for students
         password: { type: String, required: false },
         role: { type: String, enum: Object.values(UserRole), required: false }, // Optional during onboarding
         subSystem: { type: String, enum: Object.values(SubSystem) },
@@ -126,6 +128,7 @@ const UserSchema = new Schema<IUser>(
 // Indexes
 UserSchema.index({ role: 1, isActive: 1 })
 UserSchema.index({ subSystem: 1, institution: 1 })
+UserSchema.index({ phone: 1 }, { sparse: true })
 
 // Prevent model recompilation in development
 const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>('User', UserSchema)

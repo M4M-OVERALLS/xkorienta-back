@@ -37,7 +37,9 @@ export enum XPSource {
     STREAK_BONUS = 'STREAK_BONUS',
     SELF_EVAL = 'SELF_EVAL',
     DAILY_LOGIN = 'DAILY_LOGIN',
-    HELP_GIVEN = 'HELP_GIVEN'
+    HELP_GIVEN = 'HELP_GIVEN',
+    SCHOOL_LINKED = 'SCHOOL_LINKED',
+    PROFILE_COMPLETED = 'PROFILE_COMPLETED'
 }
 
 export interface UserGamificationStats {
@@ -95,7 +97,9 @@ const XP_REWARDS: Record<XPSource, number> = {
     [XPSource.STREAK_BONUS]: 10, // Per day of streak
     [XPSource.SELF_EVAL]: 5,
     [XPSource.DAILY_LOGIN]: 5,
-    [XPSource.HELP_GIVEN]: 15
+    [XPSource.HELP_GIVEN]: 15,
+    [XPSource.SCHOOL_LINKED]: 75,
+    [XPSource.PROFILE_COMPLETED]: 50
 }
 
 // ==========================================
