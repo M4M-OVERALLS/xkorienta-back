@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
         const attempt = await Attempt.findById(attemptId).lean()
 
-        if (!attempt || attempt.userId.toString() !== session.user.id) {
+        if (!attempt || !attempt.userId || attempt.userId.toString() !== session.user.id) {
             return NextResponse.json({ message: "Invalid attempt" }, { status: 403 })
         }
 

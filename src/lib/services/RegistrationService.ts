@@ -12,70 +12,115 @@ export class RegistrationService {
     }
 
     async registerUser(data: any) {
-        const { name, email, password, role, schoolId, classId, levelId, fieldId, subjects, newSchoolData, isCreatingSchool } = data;
+        const {
+            name, email, phone, password, role, schoolId, classId, levelId, fieldId,
+            subjects, newSchoolData, isCreatingSchool,
+            // Phase 1 — new fields
+            declaredSchoolName, // Free-text school name (student auto-declaration)
+            skipSchool          // Teacher "Classe Libre" mode — no school needed
+        } = data;
 
-        // 1. Check if user exists
-        const existingUser = await this.registrationRepository.findUserByEmail(email);
+        // 1. Validate identifiers — at least email OR phone required
+        if (!email && !phone) {
+            throw new Error("Email ou numéro de téléphone requis");
+        }
+
+        // For non-student roles, email remains mandatory
+        if (role !== UserRole.STUDENT && !email) {
+            throw new Error("L'email est requis pour ce type de compte");
+        }
+
+        // 2. Check if user already exists (by email or phone)
+        const existingUser = await this.registrationRepository.findUserByIdentifier({ email, phone });
         if (existingUser) {
             throw new Error("User already exists");
         }
 
-        // 2. Role Validation
+        // 3. Role Validation
         if (!role || ![UserRole.STUDENT, UserRole.TEACHER, UserRole.SCHOOL_ADMIN].includes(role)) {
             throw new Error("Invalid role");
         }
 
-        // 3. School Validation for TEACHER (existing school) and SCHOOL_ADMIN
-        if ((role === UserRole.TEACHER && !isCreatingSchool) || role === UserRole.SCHOOL_ADMIN) {
-            if (!schoolId) {
-                throw new Error("School selection is required");
-            }
-
+        // 3. School Validation — now flexible per role
+        //    STUDENT: school is optional (can auto-declare or skip)
+        //    TEACHER: can skip school entirely (Classe Libre)
+        //    SCHOOL_ADMIN: can select existing OR create new school (auto-référencement)
+        if (role === UserRole.TEACHER && !isCreatingSchool && !skipSchool && schoolId) {
             const school = await this.registrationRepository.findSchoolById(schoolId);
             if (!school) {
                 throw new Error("Selected school does not exist");
             }
+        }
 
-            // For School Admin, school must be VALIDATED (partner)
-            if (role === UserRole.SCHOOL_ADMIN && school.status !== SchoolStatus.VALIDATED) {
-                throw new Error("Only validated partner schools can have administrators");
+        if (role === UserRole.SCHOOL_ADMIN && !isCreatingSchool) {
+            if (schoolId) {
+                const school = await this.registrationRepository.findSchoolById(schoolId);
+                if (!school) {
+                    throw new Error("Selected school does not exist");
+                }
+                if (school.status !== SchoolStatus.VALIDATED) {
+                    throw new Error("Only validated partner schools can have administrators");
+                }
+            }
+            // If no schoolId and not creating — they MUST create or select
+            if (!schoolId && !newSchoolData) {
+                throw new Error("Please select an existing school or register yours");
             }
         }
 
-        // 4. Create User (School is created AFTER for new schools to have valid owner)
+        // 4. Create User
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = await this.registrationRepository.createUser({
+        const userData: any = {
             name,
-            email,
             password: hashedPassword,
             role,
             isActive: true,
             schools: schoolId ? [schoolId] : []
-        });
+        };
+        if (email) userData.email = email.toLowerCase();
+        if (phone) userData.phone = phone.trim();
 
-        // 5. Handle School Creation for TEACHER (after user is created)
+        const user = await this.registrationRepository.createUser(userData);
+
+        // 5. Handle School Creation (TEACHER or SCHOOL_ADMIN creating new school)
         let finalSchoolId = schoolId;
         let createdSchool: any = null;
-        
-        if (role === UserRole.TEACHER && isCreatingSchool && newSchoolData) {
-            // Create the new school with teacher as owner
+
+        if (isCreatingSchool && newSchoolData) {
             createdSchool = await School.create({
                 name: newSchoolData.name,
-                type: newSchoolData.type || "PUBLIC",
+                type: newSchoolData.type || "OTHER",
                 address: newSchoolData.address,
                 city: newSchoolData.city,
                 country: newSchoolData.country,
-                status: SchoolStatus.PENDING, // New schools need validation by QuizLock admin
+                status: SchoolStatus.PENDING,
                 isActive: true,
                 owner: user._id,
-                teachers: [user._id], // Teacher is immediately official
+                teachers: role === UserRole.TEACHER ? [user._id] : [],
                 admins: [user._id],
                 applicants: []
             });
-            
+
             finalSchoolId = createdSchool._id.toString();
-            
-            // Add school to user's schools array
+
+            if (!user.schools) user.schools = [];
+            user.schools.push(createdSchool._id);
+        }
+
+        // 6. Handle Student auto-declared school (free-text name → PENDING school)
+        if (role === UserRole.STUDENT && !schoolId && declaredSchoolName?.trim()) {
+            createdSchool = await School.create({
+                name: declaredSchoolName.trim(),
+                type: "OTHER",
+                status: SchoolStatus.PENDING,
+                isActive: true,
+                owner: user._id,
+                teachers: [],
+                admins: [],
+                applicants: []
+            });
+
+            finalSchoolId = createdSchool._id.toString();
             if (!user.schools) user.schools = [];
             user.schools.push(createdSchool._id);
         }
@@ -88,7 +133,6 @@ export class RegistrationService {
                 currentField: fieldId,
             });
 
-            // Link profile to user
             user.learnerProfile = profile._id;
 
             // Enroll in class if selected
@@ -105,11 +149,12 @@ export class RegistrationService {
             user.pedagogicalProfile = profile._id;
 
             if (isCreatingSchool && createdSchool) {
-                // Teacher created their own school - they are already owner and official teacher
-                // No need to add to applicants
                 console.log(`[Registration] Teacher ${user._id} created school ${createdSchool._id} and is now owner`);
-            } else {
-                // Teacher selected existing school - add to applicants
+            } else if (skipSchool) {
+                // Classe Libre mode — teacher works independently
+                console.log(`[Registration] Teacher ${user._id} registered in Classe Libre mode (no school)`);
+            } else if (finalSchoolId) {
+                // Teacher selected existing school — add to applicants
                 await this.registrationRepository.updateSchool(finalSchoolId, {
                     $addToSet: { applicants: user._id }
                 });
@@ -123,20 +168,25 @@ export class RegistrationService {
 
             user.pedagogicalProfile = profile._id;
 
-            // Add directly to school's admins array
-            await this.registrationRepository.updateSchool(finalSchoolId, {
-                $addToSet: { admins: user._id }
-            });
+            if (isCreatingSchool && createdSchool) {
+                // School Admin created their own school (auto-référencement)
+                console.log(`[Registration] School Admin ${user._id} self-registered school ${createdSchool._id}`);
+            } else if (finalSchoolId) {
+                // Add directly to school's admins array
+                await this.registrationRepository.updateSchool(finalSchoolId, {
+                    $addToSet: { admins: user._id }
+                });
+            }
         }
 
         await user.save();
-        
+
         // Return user with created school info if applicable
         const result: any = user.toObject();
         if (createdSchool) {
             result.createdSchool = createdSchool.toObject();
         }
-        
+
         return result;
     }
 
@@ -144,25 +194,32 @@ export class RegistrationService {
      * Register user without role (for onboarding flow)
      * User will complete role selection during onboarding
      */
-    async registerUserWithoutRole(data: { name: string; email: string; password: string }) {
-        const { name, email, password } = data;
+    async registerUserWithoutRole(data: { name: string; email?: string; phone?: string; password: string }) {
+        const { name, email, phone, password } = data;
 
-        // 1. Check if user exists
-        const existingUser = await this.registrationRepository.findUserByEmail(email);
+        // 1. Validate at least one identifier
+        if (!email && !phone) {
+            throw new Error("Email ou numéro de téléphone requis");
+        }
+
+        // 2. Check if user exists
+        const existingUser = await this.registrationRepository.findUserByIdentifier({ email, phone });
         if (existingUser) {
             throw new Error("User already exists");
         }
 
-        // 2. Hash password
+        // 3. Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // 3. Create user without role - will be set during onboarding
-        const user = await this.registrationRepository.createUser({
+        // 4. Create user without role - will be set during onboarding
+        const userData: any = {
             name,
-            email,
             password: hashedPassword,
-            // role will be undefined, set during onboarding
-        });
+        };
+        if (email) userData.email = email.toLowerCase();
+        if (phone) userData.phone = phone.trim();
+
+        const user = await this.registrationRepository.createUser(userData);
 
         return user;
     }

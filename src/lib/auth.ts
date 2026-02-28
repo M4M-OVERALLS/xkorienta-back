@@ -92,29 +92,40 @@ export const authOptions: NextAuthOptions = {
                     // so the 'user' object here doesn't have our DB fields
                     try {
                         await connectDB()
-                        const dbUser = await User.findOne({ email: user.email }).lean()
+                        // user.email may contain a phone number for phone-only users
+                        const identifier = (user.email || "") as string
+                        const isPhone = /^\+?[0-9]{8,15}$/.test(identifier)
+                        const dbUser = isPhone
+                            ? await User.findOne({ phone: identifier }).lean()
+                            : await User.findOne({ email: identifier }).lean()
                         if (dbUser) {
                             token.id = dbUser._id.toString()
                             token.role = dbUser.role
                             token.name = dbUser.name
                             token.picture = dbUser.image || dbUser.metadata?.avatar
                             token.schools = dbUser.schools?.map((id: any) => id.toString()) || []
+                            // Store the real phone in token if phone-only user
+                            if (isPhone) token.phone = identifier
                         } else {
-                            console.warn(`[Auth] User not found in DB: ${user.email}`)
+                            console.warn(`[Auth] User not found in DB: ${identifier}`)
                         }
                     } catch (error) {
                         console.error("Error fetching user in JWT callback:", error)
                         // Continue with existing token data
                     }
-                } else if (token.email) {
+                } else if (token.email || token.phone) {
                     // On subsequent calls, check if role has been updated (e.g. after onboarding)
                     // This ensures the session updates immediately after role selection
                     try {
                         await connectDB()
-                        const dbUser = await User.findOne({ email: token.email }).lean()
+                        const identifier = (token.email || token.phone) as string
+                        const isPhone = !token.email && !!token.phone
+                        const dbUser = isPhone
+                            ? await User.findOne({ phone: identifier }).lean()
+                            : await User.findOne({ email: identifier }).lean()
                         if (dbUser) {
                             if (dbUser.role !== token.role) {
-                                console.log(`[Auth] Role updated for ${token.email}: ${token.role} -> ${dbUser.role}`)
+                                console.log(`[Auth] Role updated for ${identifier}: ${token.role} -> ${dbUser.role}`)
                                 token.role = dbUser.role
                             }
                             // Always refresh schools

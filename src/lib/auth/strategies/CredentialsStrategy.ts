@@ -6,13 +6,13 @@ import User from "@/models/User"
 import bcrypt from "bcryptjs"
 
 /**
- * Credentials (Email/Password) Authentication Strategy
+ * Credentials (Email/Password/Phone) Authentication Strategy
  *
- * Traditional email and password login
+ * Supports login via email OR phone number + password
  */
 export class CredentialsAuthStrategy extends BaseAuthStrategy {
     readonly id = "credentials"
-    readonly name = "Email & Password"
+    readonly name = "Email, Téléphone & Mot de passe"
     readonly icon = "mail"
 
     getProvider(): Provider {
@@ -20,10 +20,10 @@ export class CredentialsAuthStrategy extends BaseAuthStrategy {
             id: this.id,
             name: this.name,
             credentials: {
-                email: {
-                    label: "Email",
-                    type: "email",
-                    placeholder: "votremail@example.com"
+                identifier: {
+                    label: "Email ou Téléphone",
+                    type: "text",
+                    placeholder: "email@exemple.com ou 6XXXXXXXX"
                 },
                 password: {
                     label: "Mot de passe",
@@ -31,18 +31,27 @@ export class CredentialsAuthStrategy extends BaseAuthStrategy {
                 },
             },
             async authorize(credentials) {
-                if (!credentials?.email || !credentials?.password) {
-                    throw new Error("Email et mot de passe requis")
+                if (!credentials?.identifier || !credentials?.password) {
+                    throw new Error("Identifiant et mot de passe requis")
                 }
 
                 await connectDB()
 
-                const user = await User.findOne({
-                    email: credentials.email.toLowerCase(),
-                })
+                const identifier = credentials.identifier.trim()
+                const isPhone = /^\+?[0-9]{8,15}$/.test(identifier)
+
+                const query = isPhone
+                    ? { phone: identifier }
+                    : { email: identifier.toLowerCase() }
+
+                const user = await User.findOne(query)
 
                 if (!user) {
-                    throw new Error("Aucun utilisateur trouvé avec cet email")
+                    throw new Error(
+                        isPhone
+                            ? "Aucun compte trouvé avec ce numéro de téléphone"
+                            : "Aucun utilisateur trouvé avec cet email"
+                    )
                 }
 
                 // Check if user has a password (OAuth users don't)
@@ -61,7 +70,7 @@ export class CredentialsAuthStrategy extends BaseAuthStrategy {
 
                 return {
                     id: user._id.toString(),
-                    email: user.email,
+                    email: user.email || user.phone || "",
                     name: user.name,
                     role: user.role,
                     image: user.image || null,

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         }
 
         // Verify this attempt belongs to the current user
-        if (attemptDoc.userId.toString() !== session.user.id) {
+        if (!attemptDoc.userId || attemptDoc.userId.toString() !== session.user.id) {
             return NextResponse.json(
                 { success: false, message: "Accès refusé" },
                 { status: 403 }
@@ -129,7 +129,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         const attempt = {
             id: attemptDoc._id.toString(),
             examId: attemptDoc.examId.toString(),
-            userId: attemptDoc.userId.toString(),
+            userId: attemptDoc.userId?.toString() || '',
             startedAt: attemptDoc.startedAt.toISOString(),
             expiresAt: attemptDoc.expiresAt.toISOString(),
             submittedAt: attemptDoc.submittedAt?.toISOString(),

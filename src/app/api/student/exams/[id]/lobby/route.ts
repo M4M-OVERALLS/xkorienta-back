@@ -65,7 +65,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         const attempts = attemptsDoc.map(a => ({
             id: a._id.toString(),
             examId: a.examId.toString(),
-            userId: a.userId.toString(),
+            userId: a.userId?.toString() || '',
             status: a.status,
             score: a.score,
             startedAt: a.startedAt?.toISOString(),

@@ -33,7 +33,10 @@ export class RegistrationController {
                 error.message === "Invalid role" ||
                 error.message === "School selection is required" ||
                 error.message === "Selected school does not exist" ||
-                error.message.includes("validated partner schools")) {
+                error.message.includes("validated partner schools") ||
+                error.message.includes("select an existing school or register") ||
+                error.message.includes("Email ou numéro de téléphone requis") ||
+                error.message.includes("L'email est requis pour ce type de compte")) {
                 return NextResponse.json(
                     { success: false, message: error.message },
                     { status: 400 }
@@ -55,20 +58,24 @@ export class RegistrationController {
             const body = await req.json();
 
             // Sanitize inputs before validation
-            const sanitizedBody = {
+            const sanitizedBody: any = {
                 name: sanitizeString(body.name),
-                email: sanitizeEmail(body.email),
                 password: body.password, // Don't sanitize password, just validate
             };
+            if (body.email) sanitizedBody.email = sanitizeEmail(body.email);
+            if (body.phone) sanitizedBody.phone = body.phone?.trim();
 
-            // Validation schema
+            // Validation schema — email OR phone required
             const registerSchema = z.object({
                 name: z.string().min(2).max(100),
-                email: z.string().email(),
+                email: z.string().email().optional(),
+                phone: z.string().min(8).max(15).regex(/^\+?[0-9]+$/, "Numéro de téléphone invalide").optional(),
                 password: z.string().min(8).max(128),
+            }).refine(data => data.email || data.phone, {
+                message: "Email ou numéro de téléphone requis",
             });
 
-            const { name, email, password } = registerSchema.parse(sanitizedBody);
+            const { name, email, phone, password } = registerSchema.parse(sanitizedBody);
 
             // Additional password validation
             const passwordValidation = validatePassword(password);
@@ -79,7 +86,7 @@ export class RegistrationController {
                 );
             }
 
-            const user = await registrationService.registerUserWithoutRole({ name, email, password });
+            const user = await registrationService.registerUserWithoutRole({ name, email, phone, password });
             
             return NextResponse.json(
                 {
@@ -88,6 +95,7 @@ export class RegistrationController {
                         id: user._id,
                         name: user.name,
                         email: user.email,
+                        phone: user.phone,
                     }
                 },
                 { status: 201 }
@@ -102,7 +110,8 @@ export class RegistrationController {
                 );
             }
 
-            if (error.message === "User already exists") {
+            if (error.message === "User already exists" ||
+                error.message.includes("Email ou numéro de téléphone requis")) {
                 return NextResponse.json(
                     { message: error.message },
                     { status: 400 }

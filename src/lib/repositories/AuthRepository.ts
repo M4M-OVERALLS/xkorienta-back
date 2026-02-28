@@ -8,6 +8,13 @@ export class AuthRepository {
         return await User.findOne({ email }).select("+password");
     }
 
+    async findByIdentifierWithPassword(identifier: string) {
+        await connectDB();
+        const isPhone = /^\+?[0-9]{8,15}$/.test(identifier);
+        const query = isPhone ? { phone: identifier } : { email: identifier.toLowerCase() };
+        return await User.findOne(query).select("+password");
+    }
+
     async incrementLoginAttempts(userId: string, lockUntil?: Date) {
         await connectDB();
         const update: any = { $inc: { loginAttempts: 1 } };

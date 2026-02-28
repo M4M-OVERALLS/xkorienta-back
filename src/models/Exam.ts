@@ -99,6 +99,7 @@ export interface IExam extends Document {
     status: ExamStatus // DRAFT, PENDING_VALIDATION, VALIDATED, PUBLISHED, ARCHIVED
     isPublished: boolean
     isActive: boolean // NOUVEAU
+    isPublicDemo: boolean // NOUVEAU - Mini-test accessible sans login (mode Freemium-Direct)
     publishedAt?: Date
     validatedBy?: mongoose.Types.ObjectId // Référence vers User (Inspector)
     validatedAt?: Date
@@ -238,6 +239,10 @@ const ExamSchema = new Schema<IExam>(
         isActive: {
             type: Boolean,
             default: true
+        },
+        isPublicDemo: {
+            type: Boolean,
+            default: false
         },
         publishedAt: {
             type: Date
@@ -404,6 +409,7 @@ ExamSchema.index({ title: 'text', description: 'text' }) // Full-text search
 ExamSchema.index({ subSystem: 1, targetLevels: 1, subject: 1 }) // Filtrage principal
 ExamSchema.index({ startTime: 1, endTime: 1 }) // Requêtes temporelles
 ExamSchema.index({ status: 1, isPublished: 1 }) // Filtrage par statut
+ExamSchema.index({ isPublicDemo: 1, isPublished: 1 }) // Mini-tests publics
 ExamSchema.index({ createdById: 1, status: 1 }) // Exams d'un teacher
 ExamSchema.index({ 'targetFields': 1 }) // Filtrage par série/filière
 ExamSchema.index({ 'targetedCompetencies': 1 }) // Filtrage par compétence

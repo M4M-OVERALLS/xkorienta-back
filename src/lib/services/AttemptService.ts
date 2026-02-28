@@ -180,8 +180,8 @@ export class AttemptService {
         if (!attempt) throw new Error("Attempt not found")
 
         // Vérifier que l'utilisateur est le propriétaire
-        if (attempt.userId.toString() !== userId) {
-            throw new Error("Unauthorized: Not your attempt")
+        if (!attempt.userId || attempt.userId.toString() !== userId) {
+            throw new Error("Unauthorized: This attempt does not belong to you")
         }
 
         return attempt
@@ -203,8 +203,8 @@ export class AttemptService {
         }
 
         // Vérifier que l'utilisateur est le propriétaire
-        if (attempt.userId.toString() !== userId) {
-            throw new Error("Unauthorized: Not your attempt")
+        if (!attempt.userId || attempt.userId.toString() !== userId) {
+            throw new Error("Unauthorized: This attempt does not belong to you")
         }
 
         // Vérifier que la tentative est toujours en cours
@@ -236,7 +236,7 @@ export class AttemptService {
         }
 
         // If user is logged in, check if it's the right user
-        if (currentUserId && attempt.userId.toString() !== currentUserId) {
+        if (currentUserId && (!attempt.userId || attempt.userId.toString() !== currentUserId)) {
             throw new Error("Logged in as wrong user. Please logout first.");
         }
 
@@ -263,8 +263,8 @@ export class AttemptService {
         if (!attempt) throw new Error("Attempt not found")
 
         // Vérifier que l'utilisateur est le propriétaire
-        if (attempt.userId.toString() !== userId) {
-            throw new Error("Unauthorized: Not your attempt")
+        if (!attempt.userId || attempt.userId.toString() !== userId) {
+            throw new Error("Unauthorized: This attempt does not belong to you")
         }
 
         // Vérifier que la tentative est en cours
@@ -337,7 +337,7 @@ export class AttemptService {
         console.log(`[submitAttempt] Found attempt, current status: ${attempt.status}`)
 
         // Vérifier que l'utilisateur est le propriétaire
-        if (attempt.userId.toString() !== userId) {
+        if (!attempt.userId || attempt.userId.toString() !== userId) {
             console.error(`[submitAttempt] User mismatch: ${attempt.userId} vs ${userId}`)
             throw new Error("Unauthorized: Not your attempt")
         }
@@ -510,7 +510,7 @@ export class AttemptService {
 
         const attempt = await attemptRepo.findById(attemptId);
 
-        if (!attempt || attempt.userId.toString() !== userId) {
+        if (!attempt || !attempt.userId || attempt.userId.toString() !== userId) {
             throw new Error("Invalid attempt");
         }
 
