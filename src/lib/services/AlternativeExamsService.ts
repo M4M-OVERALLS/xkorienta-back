@@ -1,7 +1,22 @@
 import mongoose from 'mongoose'
-import Exam from '@/models/Exam'
-import Class from '@/models/Class'
-import User from '@/models/User'
+
+// Helper to load models after DB connection
+const getModels = () => {
+    // Load all referenced models first to enable populate operations
+    require('@/models/LearningUnit')
+    require('@/models/Subject')
+    require('@/models/User')
+    require('@/models/Class')
+    require('@/models/Exam')
+
+    return {
+        Exam: mongoose.model('Exam'),
+        Class: mongoose.model('Class'),
+        User: mongoose.model('User'),
+        LearningUnit: mongoose.model('LearningUnit'),
+        Subject: mongoose.model('Subject')
+    }
+}
 
 /**
  * Service pour gérer les examens alternatifs et la navigation multi-enseignants
@@ -17,6 +32,8 @@ export class AlternativeExamsService {
         subjectId?: string
     ) {
         try {
+            const { Class, Exam } = getModels()
+
             // Trouver la classe de l'étudiant
             const studentClass = await Class.findOne({
                 students: new mongoose.Types.ObjectId(studentId),
@@ -83,13 +100,15 @@ export class AlternativeExamsService {
         limit: number = 10
     ) {
         try {
+            const { Class, Exam } = getModels()
+
             // Trouver la classe de l'étudiant pour exclure son prof
             const studentClass = await Class.findOne({
                 students: new mongoose.Types.ObjectId(studentId),
                 isActive: true
             })
 
-            const excludeTeacherId = studentClass?.owner
+            const excludeTeacherId = studentClass?.mainTeacher
 
             // Construire le filtre
             const filter: any = {
@@ -203,6 +222,7 @@ export class AlternativeExamsService {
         limit: number = 10
     ) {
         try {
+            const { Class, Exam } = getModels()
             const skip = (page - 1) * limit
 
             // Trouver la classe de l'étudiant pour exclure son prof
