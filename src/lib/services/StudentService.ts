@@ -484,12 +484,18 @@ export class StudentService {
             const examData = e as any;
             const lateDuration = examData.config?.lateDuration || 0;
             const delayResultsUntilLateEnd = examData.config?.delayResultsUntilLateEnd ?? false;
+            const showResultsImmediately = examData.config?.showResultsImmediately ?? true;
             const examEndTime = new Date(examData.endTime);
             const lateEndTime = addMinutes(examEndTime, lateDuration);
 
             const examEnded = isPast(examEndTime);
             const inLatePeriod = examEnded && isAfter(lateEndTime, now) && lateDuration > 0;
-            const resultsBlocked = !examEnded || (delayResultsUntilLateEnd && inLatePeriod);
+
+            // Si showResultsImmediately est activé, on affiche toujours les résultats
+            // Sinon, on applique la logique de blocage habituelle
+            const resultsBlocked = showResultsImmediately
+                ? false
+                : (!examEnded || (delayResultsUntilLateEnd && inLatePeriod));
 
             return {
                 ...e,
@@ -713,15 +719,19 @@ export class StudentService {
             // Calculate if results are delayed due to late exam period
             const lateDuration = (config?.lateDuration as number) || 0;
             const delayResultsUntilLateEnd = (config?.delayResultsUntilLateEnd as boolean) ?? false;
+            const showResultsImmediately = (config?.showResultsImmediately as boolean) ?? true;
             const examEndTime = examData.endTime ? new Date(examData.endTime as Date) : null;
             const lateEndTime = examEndTime ? addMinutes(examEndTime, lateDuration) : null;
 
             // Results are locked if:
-            // 1. Exam hasn't ended yet, OR
-            // 2. We're in late period AND delayResultsUntilLateEnd is enabled
+            // Si showResultsImmediately est activé, jamais verrouillé
+            // Sinon: 1. Exam hasn't ended yet, OR
+            //        2. We're in late period AND delayResultsUntilLateEnd is enabled
             const examEnded = examEndTime ? isPast(examEndTime) : false;
             const inLatePeriod = lateEndTime ? isAfter(lateEndTime, now) && examEnded : false;
-            const resultsLocked = !examEnded || (delayResultsUntilLateEnd && inLatePeriod && lateDuration > 0);
+            const resultsLocked = showResultsImmediately
+                ? false
+                : (!examEnded || (delayResultsUntilLateEnd && inLatePeriod && lateDuration > 0));
 
             // Time until results if locked due to late period
             const timeUntilResults = inLatePeriod && lateEndTime

@@ -298,7 +298,7 @@ export class ClassService {
 
         // Build query - only published exams for students
         const query: any = {
-            targetLevels: classData.level._id,
+            targetLevels: { $in: [classData.level._id] },
             status: 'PUBLISHED',
             isPublished: true
         };

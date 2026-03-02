@@ -76,7 +76,7 @@ export class TeacherRepository {
             ? await User.find({
                 _id: { $in: teacherIds },
                 isActive: true
-            }).select('name email role isActive metadata.avatar lastLogin createdAt subjects').populate('subjects', 'name').lean()
+            }).select('name email role isActive metadata.avatar lastLogin createdAt').lean()
             : [];
 
         // Fetch applicant details
@@ -84,7 +84,7 @@ export class TeacherRepository {
             ? await User.find({
                 _id: { $in: applicantIds },
                 isActive: true
-            }).select('name email role isActive metadata.avatar lastLogin createdAt subjects').populate('subjects', 'name').lean()
+            }).select('name email role isActive metadata.avatar lastLogin createdAt').lean()
             : [];
 
         return {
