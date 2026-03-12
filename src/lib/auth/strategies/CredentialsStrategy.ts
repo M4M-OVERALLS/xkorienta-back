@@ -4,6 +4,7 @@ import { BaseAuthStrategy } from "./AuthStrategy"
 import connectDB from "@/lib/mongodb"
 import User from "@/models/User"
 import bcrypt from "bcryptjs"
+import { AuthenticationError } from "@/lib/errors"
 
 /**
  * Credentials (Email/Password/Phone) Authentication Strategy
@@ -31,49 +32,60 @@ export class CredentialsAuthStrategy extends BaseAuthStrategy {
                 },
             },
             async authorize(credentials) {
-                if (!credentials?.identifier || !credentials?.password) {
-                    throw new Error("Identifiant et mot de passe requis")
-                }
+                try {
+                    if (!credentials?.identifier || !credentials?.password) {
+                        throw AuthenticationError.missingCredentials()
+                    }
 
-                await connectDB()
+                    await connectDB()
 
-                const identifier = credentials.identifier.trim()
-                const isPhone = /^\+?[0-9]{8,15}$/.test(identifier)
+                    const identifier = credentials.identifier.trim()
+                    const isPhone = /^\+?[0-9]{8,15}$/.test(identifier)
 
-                const query = isPhone
-                    ? { phone: identifier }
-                    : { email: identifier.toLowerCase() }
+                    const query = isPhone
+                        ? { phone: identifier }
+                        : { email: identifier.toLowerCase() }
 
-                const user = await User.findOne(query)
+                    const user = await User.findOne(query)
 
-                if (!user) {
-                    throw new Error(
-                        isPhone
-                            ? "Aucun compte trouvé avec ce numéro de téléphone"
-                            : "Aucun utilisateur trouvé avec cet email"
+                    if (!user) {
+                        throw isPhone
+                            ? AuthenticationError.userNotFoundByPhone(identifier)
+                            : AuthenticationError.userNotFoundByEmail(identifier)
+                    }
+
+                    // Check if user has a password (OAuth users don't)
+                    if (!user.password) {
+                        throw AuthenticationError.differentAuthMethod({
+                            userId: user._id.toString(),
+                        })
+                    }
+
+                    const isPasswordValid = await bcrypt.compare(
+                        credentials.password,
+                        user.password
                     )
-                }
 
-                // Check if user has a password (OAuth users don't)
-                if (!user.password) {
-                    throw new Error("Ce compte utilise une autre méthode de connexion")
-                }
+                    if (!isPasswordValid) {
+                        throw AuthenticationError.invalidPassword({
+                            userId: user._id.toString(),
+                            identifier,
+                        })
+                    }
 
-                const isPasswordValid = await bcrypt.compare(
-                    credentials.password,
-                    user.password
-                )
-
-                if (!isPasswordValid) {
-                    throw new Error("Mot de passe incorrect")
-                }
-
-                return {
-                    id: user._id.toString(),
-                    email: user.email || user.phone || "",
-                    name: user.name,
-                    role: user.role,
-                    image: user.image || null,
+                    return {
+                        id: user._id.toString(),
+                        email: user.email || user.phone || "",
+                        name: user.name,
+                        role: user.role,
+                        image: user.image || null,
+                    }
+                } catch (error) {
+                    // Log the error before re-throwing
+                    if (error instanceof AuthenticationError) {
+                        error.log()
+                    }
+                    throw error
                 }
             },
         })
