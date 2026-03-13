@@ -56,7 +56,7 @@ export class CredentialsAuthStrategy extends BaseAuthStrategy {
 
                     // Check if user has a password (OAuth users don't)
                     if (!user.password) {
-                        throw AuthenticationError.differentAuthMethod({
+                        throw AuthenticationError.differentAuthMethod(undefined, {
                             userId: user._id.toString(),
                         })
                     }
@@ -67,7 +67,7 @@ export class CredentialsAuthStrategy extends BaseAuthStrategy {
                     )
 
                     if (!isPasswordValid) {
-                        throw AuthenticationError.invalidPassword({
+                        throw AuthenticationError.invalidPassword(undefined, {
                             userId: user._id.toString(),
                             identifier,
                         })
