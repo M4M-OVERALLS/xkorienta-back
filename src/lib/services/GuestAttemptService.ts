@@ -128,8 +128,7 @@ export class GuestAttemptService {
             questions = this.shuffleArray(questions)
         }
 
-        // Pour les mini-tests, limiter à 5 questions max
-        questions = questions.slice(0, 5)
+        // Toutes les questions de l'examen sont servies (pas de limite arbitraire)
 
         // Récupérer les options pour chaque question
         const questionsWithOptions = await Promise.all(
