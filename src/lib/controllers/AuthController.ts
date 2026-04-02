@@ -86,7 +86,8 @@ export class AuthController {
                 );
             }
 
-            const result = await authService.requestPasswordReset(email);
+            // Pass request headers to detect frontend domain dynamically
+            const result = await authService.requestPasswordReset(email, req.headers);
             return NextResponse.json({
                 success: true,
                 message: "Si un compte existe avec cet email, un lien de réinitialisation a été envoyé."

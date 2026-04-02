@@ -12,6 +12,7 @@ import {
     sendTeacherAddedEmail,
     sendTeacherActivationEmail
 } from '@/lib/mail';
+import { getFrontendUrl } from '@/lib/utils/frontendUrl';
 
 export interface InviteTeacherResult {
     success: boolean;
@@ -36,7 +37,8 @@ export class TeacherInvitationService {
         subjectIds: string[],
         role: ClassTeacherRole,
         permissions: string[],
-        invitedByUserId: string
+        invitedByUserId: string,
+        headers?: Headers
     ): Promise<InviteTeacherResult> {
         try {
             // Normalize email
@@ -64,7 +66,9 @@ export class TeacherInvitationService {
             const subjects = await Subject.find({ _id: { $in: subjectIds } }).select('name');
             const subjectNames = subjects.map(s => s.name);
 
-            const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
+            // Dynamically detect frontend URL from request headers
+            const frontendUrl = getFrontendUrl(headers);
+            const loginUrl = `${frontendUrl}/login`;
 
             if (existingUser) {
                 // Teacher exists - add to class for each subject
@@ -181,7 +185,8 @@ export class TeacherInvitationService {
                 registeredStudents: []
             });
 
-            const activationLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/join/${token}`;
+            // Dynamically detect frontend URL for activation link
+            const activationLink = `${frontendUrl}/join/${token}`;
 
             // Add teacher to class for each subject immediately
             // They will be able to access once they activate their account
@@ -243,7 +248,8 @@ export class TeacherInvitationService {
         subjectIds: string[],
         role: ClassTeacherRole,
         permissions: string[],
-        invitedByUserId: string
+        invitedByUserId: string,
+        headers?: Headers
     ): Promise<InviteTeacherResult[]> {
         const results: InviteTeacherResult[] = [];
 
@@ -255,7 +261,8 @@ export class TeacherInvitationService {
                 subjectIds,
                 role,
                 permissions,
-                invitedByUserId
+                invitedByUserId,
+                headers
             );
             results.push(result);
         }

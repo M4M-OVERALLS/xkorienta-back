@@ -5,6 +5,7 @@ import crypto from "crypto";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import { sendPasswordResetEmail } from "@/lib/mail";
+import { getFrontendUrl } from "@/lib/utils/frontendUrl";
 
 type GoogleUserPayload = {
     email?: string;
@@ -84,7 +85,7 @@ export class AuthService {
      * Request a password reset
      * Generates a token, hashes it, stores it, and sends the email
      */
-    async requestPasswordReset(email: string) {
+    async requestPasswordReset(email: string, headers?: Headers) {
         if (!email) {
             throw new Error("Email is required");
         }
@@ -112,7 +113,8 @@ export class AuthService {
         await this.authRepository.saveResetToken(user._id.toString(), hashedToken, expires);
 
         // Build the reset URL with raw token
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        // Dynamically detect frontend URL from request headers
+        const appUrl = getFrontendUrl(headers);
         const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
 
         // Send the email

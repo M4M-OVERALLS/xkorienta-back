@@ -16,7 +16,7 @@ export async function GET(
     const { id } = await context.params;
     await connectDB();
 
-    return InvitationController.getOrCreateLink(id, session.user.id);
+    return InvitationController.getOrCreateLink(id, session.user.id, req.headers);
 }
 
 export async function POST(
@@ -36,12 +36,12 @@ export async function POST(
 
     if (type === 'LINK') {
         const { options } = body;
-        return InvitationController.createLink(id, session.user.id, options);
+        return InvitationController.createLink(id, session.user.id, options, req.headers);
     }
 
     if (type === 'INDIVIDUAL') {
         const { email, name } = body;
-        return InvitationController.inviteIndividual(id, email, name, session.user.id);
+        return InvitationController.inviteIndividual(id, email, name, session.user.id, req.headers);
     }
 
     if (type === 'BATCH') {
