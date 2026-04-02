@@ -5,6 +5,13 @@ import LearnerProfile from '@/models/LearnerProfile'
 
 /**
  * Observateur pour la gestion de l'expérience (XP) et des niveaux
+ *
+ * NOTE: Cet observateur gère les événements d'examens et de badges.
+ * D'autres sources de XP (SCHOOL_LINKED, PROFILE_COMPLETED, etc.) sont
+ * gérées directement par le GamificationService qui publie automatiquement
+ * les événements XP_GAINED et LEVEL_UP.
+ *
+ * @see GamificationService pour la liste complète des sources XP
  */
 export class XPUpdateObserver implements IObserver {
     // Configuration des gains d'XP

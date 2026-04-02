@@ -3,6 +3,7 @@ import { UserRole, SchoolStatus } from "@/models/enums";
 import bcrypt from "bcryptjs";
 import School from "@/models/School";
 import mongoose from "mongoose";
+import { UnverifiedSchoolService, DeclaredSchoolData } from "./UnverifiedSchoolService";
 
 export class RegistrationService {
     private registrationRepository: RegistrationRepository;
@@ -15,9 +16,11 @@ export class RegistrationService {
         const {
             name, email, phone, password, role, schoolId, classId, levelId, fieldId,
             subjects, newSchoolData, isCreatingSchool,
-            // Phase 1 — new fields
-            declaredSchoolName, // Free-text school name (student auto-declaration)
-            skipSchool          // Teacher "Classe Libre" mode — no school needed
+            // Champs hérités (ancienne API)
+            declaredSchoolName,
+            // Nouvelle API inscription autonome
+            declaredSchoolData, // { name, city?, country?, type? }
+            skipSchool          // true => inscription sans école
         } = data;
 
         // 1. Validate identifiers — at least email OR phone required
@@ -31,9 +34,17 @@ export class RegistrationService {
         }
 
         // 2. Check if user already exists (by email or phone)
-        const existingUser = await this.registrationRepository.findUserByIdentifier({ email, phone });
-        if (existingUser) {
-            throw new Error("User already exists");
+        if (email) {
+            const byEmail = await this.registrationRepository.findUserByIdentifier({ email });
+            if (byEmail) {
+                throw new Error("Un compte existe déjà avec cet email");
+            }
+        }
+        if (phone) {
+            const byPhone = await this.registrationRepository.findUserByIdentifier({ phone });
+            if (byPhone) {
+                throw new Error("Ce numéro de téléphone est déjà utilisé");
+            }
         }
 
         // 3. Role Validation
@@ -107,8 +118,19 @@ export class RegistrationService {
             user.schools.push(createdSchool._id);
         }
 
-        // 6. Handle Student auto-declared school (free-text name → PENDING school)
-        if (role === UserRole.STUDENT && !schoolId && declaredSchoolName?.trim()) {
+        // 6. Handle Student auto-declared school — NOUVELLE API (declaredSchoolData)
+        if (role === UserRole.STUDENT && !schoolId && declaredSchoolData?.name?.trim() && !skipSchool) {
+            const unverifiedSchool = await UnverifiedSchoolService.findOrCreate(
+                declaredSchoolData as DeclaredSchoolData,
+                user._id as mongoose.Types.ObjectId
+            );
+
+            user.unverifiedSchool = unverifiedSchool._id;
+            // Marquer le profil comme en attente (sera mis à jour après save du profile)
+        }
+
+        // 6b. Handle Student auto-declared school — ANCIENNE API (declaredSchoolName, rétro-compat)
+        else if (role === UserRole.STUDENT && !schoolId && declaredSchoolName?.trim() && !skipSchool) {
             createdSchool = await School.create({
                 name: declaredSchoolName.trim(),
                 type: "OTHER",
@@ -127,10 +149,13 @@ export class RegistrationService {
 
         // 7. Handle Role Specific Logic
         if (role === UserRole.STUDENT) {
+            const awaitingSchoolValidation = !!user.unverifiedSchool;
+
             const profile = await this.registrationRepository.createLearnerProfile({
                 user: user._id,
                 currentLevel: levelId,
                 currentField: fieldId,
+                awaitingSchoolValidation,
             });
 
             user.learnerProfile = profile._id;
@@ -186,6 +211,9 @@ export class RegistrationService {
         if (createdSchool) {
             result.createdSchool = createdSchool.toObject();
         }
+
+        // Expose awaitingSchoolValidation for the controller
+        result.awaitingSchoolValidation = !!result.unverifiedSchool;
 
         return result;
     }
