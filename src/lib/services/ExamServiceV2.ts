@@ -151,6 +151,20 @@ export class ExamServiceV2 {
                 data[field] = data[field].filter((id: string) => id !== "")
             }
         })
+
+        // linkedConcepts can arrive as:
+        // - string[] of ObjectId
+        // - object[] like [{ id, title }]
+        // - mixed array
+        if (Array.isArray(data.linkedConcepts)) {
+            data.linkedConcepts = data.linkedConcepts
+                .map((concept: any) => {
+                    if (typeof concept === 'string') return concept
+                    if (concept && typeof concept === 'object') return concept.id || concept._id
+                    return undefined
+                })
+                .filter((id: any) => typeof id === 'string' && id.trim() !== '')
+        }
     }
 
     /**

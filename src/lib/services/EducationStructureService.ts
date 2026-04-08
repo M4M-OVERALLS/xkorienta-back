@@ -18,7 +18,7 @@ export class EducationStructureService {
      * Récupère les niveaux d'éducation avec filtres optionnels
      */
     static async getEducationLevels(filters: {
-        subSystem?: SubSystem
+        subSystem?: SubSystem | { $in: SubSystem[] }
         cycle?: Cycle
         isActive?: boolean
     } = {}) {
@@ -29,7 +29,7 @@ export class EducationStructureService {
         if (filters.isActive !== undefined) query.isActive = filters.isActive
 
         return await EducationLevel.find(query)
-            .sort({ order: 1 })
+            .sort({ order: 1, cycle: 1 })
             .lean()
     }
 

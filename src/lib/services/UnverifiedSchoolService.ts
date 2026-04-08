@@ -66,14 +66,11 @@ export class UnverifiedSchoolService {
         data: DeclaredSchoolData,
         userId: mongoose.Types.ObjectId
     ): Promise<any> {
-        console.log(">>>>> ENTERING findOrCreate <<<<<", data.name);
-        console.log("MOCK_KEYS:", Object.keys(UnverifiedSchool), "TYPE_FINDONE:", typeof UnverifiedSchool.findOne, UnverifiedSchool.findOne?.mock); const sanitized = UnverifiedSchoolService.sanitize(data);
-        console.log(">>>>> POST SANITIZE <<<<<", sanitized.name);
+        const sanitized = UnverifiedSchoolService.sanitize(data)
 
         const normalizedName = sanitized.name
 
         // Chercher une école non vérifiée PENDING avec le même nom
-        console.log(">>>>> BEFORE findOne <<<<<");
         const existing = await UnverifiedSchool.findOne({
             declaredName: { $regex: new RegExp(`^${normalizedName}$`, 'i') },
             status: 'PENDING'

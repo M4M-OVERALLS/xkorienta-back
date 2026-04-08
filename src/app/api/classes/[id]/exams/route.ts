@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import connectDB from "@/lib/mongodb"
 import { ClassService } from "@/lib/services/ClassService"
+import { ClassTeacherService } from "@/lib/services/ClassTeacherService"
 import { UserRole } from "@/models/enums"
 
 export async function GET(
@@ -24,8 +25,11 @@ export async function GET(
             return NextResponse.json({ success: false, message: "Class not found" }, { status: 404 })
         }
 
-        if (session.user.role === UserRole.TEACHER && classData.mainTeacher._id.toString() !== session.user.id) {
-            return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 403 })
+        if (session.user.role === UserRole.TEACHER) {
+            const allowed = await ClassTeacherService.isTeacherInClass(id, session.user.id)
+            if (!allowed) {
+                return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 403 })
+            }
         }
 
         const exams = await ClassService.getClassExams(id)

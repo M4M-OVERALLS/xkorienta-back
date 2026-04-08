@@ -75,6 +75,8 @@ export class TeacherInvitationService {
                 let addedCount = 0;
                 let alreadyAssignedCount = 0;
 
+                const otherErrors: string[] = [];
+
                 for (const subjectId of subjectIds) {
                     const result = await ClassTeacherService.addTeacher(
                         classId,
@@ -87,20 +89,42 @@ export class TeacherInvitationService {
 
                     if (result.success) {
                         addedCount++;
-                    } else if (result.message.includes('déjà assigné')) {
+                    } else if (result.code === 'ALREADY_ASSIGNED') {
                         alreadyAssignedCount++;
+                    } else {
+                        otherErrors.push(result.message);
                     }
                 }
 
-                if (addedCount === 0 && alreadyAssignedCount > 0) {
-                    return {
-                        success: false,
-                        status: 'ERROR',
-                        message: 'Cet enseignant est déjà assigné à ces matières',
-                        teacherId: existingUser._id.toString(),
-                        teacherName: existingUser.name,
-                        teacherEmail: existingUser.email
-                    };
+                if (addedCount === 0) {
+                    const allSubjectsAlreadyAssigned =
+                        subjectIds.length > 0 &&
+                        alreadyAssignedCount === subjectIds.length;
+
+                    if (otherErrors.length > 0 && !allSubjectsAlreadyAssigned) {
+                        return {
+                            success: false,
+                            status: 'ERROR',
+                            message:
+                                otherErrors[0] ||
+                                'Impossible d\'ajouter l\'enseignant',
+                            teacherId: existingUser._id.toString(),
+                            teacherName: existingUser.name,
+                            teacherEmail: existingUser.email
+                        };
+                    }
+
+                    if (allSubjectsAlreadyAssigned) {
+                        return {
+                            success: false,
+                            status: 'ERROR',
+                            message:
+                                'Cet enseignant est déjà assigné à ces matières',
+                            teacherId: existingUser._id.toString(),
+                            teacherName: existingUser.name,
+                            teacherEmail: existingUser.email
+                        };
+                    }
                 }
 
                 // Send email to existing teacher

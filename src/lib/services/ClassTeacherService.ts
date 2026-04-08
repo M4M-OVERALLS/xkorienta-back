@@ -8,6 +8,28 @@ import {
     ClassTeacherInvitationStatus
 } from '@/models/enums'
 
+/** Compare deux refs Mongoose (ObjectId, string, ou doc peuplé avec _id) */
+function sameRefId(a: unknown, b: string): boolean {
+    if (a == null || b == null || b === '') return false
+    const rawA =
+        typeof a === 'object' &&
+        a !== null &&
+        '_id' in a &&
+        (a as { _id: unknown })._id != null
+            ? (a as { _id: unknown })._id
+            : a
+    const sa = String(rawA)
+    const sb = String(b).trim()
+    try {
+        if (!mongoose.Types.ObjectId.isValid(sa) || !mongoose.Types.ObjectId.isValid(sb)) {
+            return sa === sb
+        }
+        return new mongoose.Types.ObjectId(sa).equals(new mongoose.Types.ObjectId(sb))
+    } catch {
+        return sa === sb
+    }
+}
+
 /**
  * ClassTeacherService
  * 
@@ -73,7 +95,7 @@ export class ClassTeacherService {
         role: ClassTeacherRole = ClassTeacherRole.COLLABORATOR,
         permissions?: ClassTeacherPermission[],
         addedBy?: string
-    ): Promise<{ success: boolean; message: string; data?: any }> {
+    ): Promise<{ success: boolean; message: string; data?: any; code?: string }> {
         try {
             // Validate class exists
             const classDoc = await Class.findById(classId)
@@ -93,15 +115,17 @@ export class ClassTeacherService {
                 return { success: false, message: 'Matière non trouvée' }
             }
 
-            // Check if teacher already exists for this subject
+            // Doublon : même enseignant + même matière dans cette classe (liens ObjectId / peuplés)
             const existingTeacher = classDoc.teachers?.find(
                 (t: any) =>
-                    t.teacher.toString() === teacherId &&
-                    t.subject.toString() === subjectId
+                    sameRefId(t.teacher, teacherId) &&
+                    sameRefId(t.subject, subjectId) &&
+                    t.isActive !== false
             )
             if (existingTeacher) {
                 return {
                     success: false,
+                    code: 'ALREADY_ASSIGNED',
                     message: 'Cet enseignant est déjà assigné à cette matière dans cette classe'
                 }
             }
@@ -167,8 +191,8 @@ export class ClassTeacherService {
             // Find and remove the teacher entry
             const teacherIndex = classDoc.teachers?.findIndex(
                 (t: any) =>
-                    t.teacher.toString() === teacherId &&
-                    t.subject.toString() === subjectId
+                    sameRefId(t.teacher, teacherId) &&
+                    sameRefId(t.subject, subjectId)
             )
 
             if (teacherIndex === undefined || teacherIndex === -1) {
@@ -214,8 +238,8 @@ export class ClassTeacherService {
 
             const teacherEntry = classDoc.teachers?.find(
                 (t: any) =>
-                    t.teacher.toString() === teacherId &&
-                    t.subject.toString() === subjectId
+                    sameRefId(t.teacher, teacherId) &&
+                    sameRefId(t.subject, subjectId)
             )
 
             if (!teacherEntry) {
@@ -330,14 +354,12 @@ export class ClassTeacherService {
                 return false
             }
 
-            // Main teacher
-            if (classDoc.mainTeacher.toString() === userId) {
+            if (sameRefId(classDoc.mainTeacher, userId)) {
                 return true
             }
 
-            // Collaborating teachers
             return (classDoc.teachers || []).some(
-                (t: any) => t.teacher.toString() === userId && t.isActive
+                (t: any) => sameRefId(t.teacher, userId) && t.isActive !== false
             )
 
         } catch (error) {
@@ -351,10 +373,20 @@ export class ClassTeacherService {
      */
     static async getTeacherClasses(userId: string): Promise<any[]> {
         try {
+            let oid: mongoose.Types.ObjectId
+            try {
+                oid = new mongoose.Types.ObjectId(userId)
+            } catch {
+                return []
+            }
             const classes = await Class.find({
                 $or: [
-                    { mainTeacher: userId },
-                    { 'teachers.teacher': userId, 'teachers.isActive': true }
+                    { mainTeacher: oid },
+                    {
+                        teachers: {
+                            $elemMatch: { teacher: oid, isActive: true }
+                        }
+                    }
                 ],
                 isActive: true
             })
