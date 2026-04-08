@@ -16,9 +16,8 @@ WORKDIR /app
 # Copier uniquement les manifests
 COPY package.json package-lock.json* ./
 
-# Forcer npm à résoudre pour linux/x64 (le lockfile a été généré sur macOS ARM64)
-# npm_config_os et npm_config_cpu remplacent les vérifications de plateforme
-RUN npm_config_os=linux npm_config_cpu=x64 npm ci && npm cache clean --force
+# Installation de TOUTES les dépendances (dev nécessaires pour le build Next.js)
+RUN npm ci && npm cache clean --force
 
 # ====================
 # Stage 2: Builder
