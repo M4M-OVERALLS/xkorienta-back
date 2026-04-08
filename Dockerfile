@@ -16,10 +16,9 @@ WORKDIR /app
 # Copier uniquement les manifests
 COPY package.json package-lock.json* ./
 
-# npm install (pas npm ci) pour que npm résolve les binaires natifs SWC
-# pour la plateforme courante (linux-x64) au lieu de suivre le lockfile
-# généré sur macOS ARM64 qui contient @next/swc-darwin-arm64
-RUN npm install && npm cache clean --force
+# Forcer npm à résoudre pour linux/x64 (le lockfile a été généré sur macOS ARM64)
+# npm_config_os et npm_config_cpu remplacent les vérifications de plateforme
+RUN npm_config_os=linux npm_config_cpu=x64 npm ci && npm cache clean --force
 
 # ====================
 # Stage 2: Builder
