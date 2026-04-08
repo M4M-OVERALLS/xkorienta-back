@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 // CORS Configuration - Production domains + localhost for development
 const ALLOWED_ORIGINS = [
+    'https://xkorienta.com',
+    'https://www.xkorienta.com',
     'https://gradeforcast.com',
     'https://www.gradeforcast.com',
     'https://xkorin.com',
@@ -22,6 +24,7 @@ function addCorsHeaders(response: NextResponse, origin: string | null): NextResp
     // Check if origin matches any allowed domain (including subdomains)
     const isAllowed = origin && (
         ALLOWED_ORIGINS.includes(origin) ||
+        origin.endsWith('.xkorienta.com') ||
         origin.endsWith('.gradeforcast.com') ||
         origin.endsWith('.xkorin.com')
     );
