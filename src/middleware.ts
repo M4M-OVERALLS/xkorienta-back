@@ -6,8 +6,6 @@ const ALLOWED_ORIGINS = [
     'https://www.xkorienta.com',
     'https://gradeforcast.com',
     'https://www.gradeforcast.com',
-    'https://xkorin.com',
-    'https://www.xkorin.com',
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:3002',
