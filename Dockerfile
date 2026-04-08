@@ -17,7 +17,8 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Installation de TOUTES les dépendances (dev nécessaires pour le build Next.js)
-RUN npm ci && npm cache clean --force
+# --omit=optional évite les binaires natifs SWC liés à la plateforme (darwin-arm64 vs linux-x64)
+RUN npm ci --omit=optional && npm cache clean --force
 
 # ====================
 # Stage 2: Builder
