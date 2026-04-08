@@ -65,14 +65,7 @@ Client                                    API (NextAuth)
 | `STUDENT` | Apprenant | Élève / étudiant | ✅ |
 | `TEACHER` | Pédagogique | Professeur | ✅ |
 | `SCHOOL_ADMIN` | Pédagogique | Directeur / administrateur d'école | ✅ |
-| `INSPECTOR` | Pédagogique | Inspecteur | ❌ (assigné manuellement) |
-| `SURVEILLANT` | Pédagogique | Surveillant | ❌ |
-| `PREFET` | Pédagogique | Préfet de discipline | ❌ |
-| `PRINCIPAL` | Pédagogique | Principal de collège | ❌ |
-| `DG_ISIMMA` | Direction | Directeur général ISIMMA | ❌ |
-| `RECTOR` | Direction | Recteur | ❌ |
-| `DG_M4M` | Technique | DG M4M (super admin) | ❌ |
-| `TECH_SUPPORT` | Technique | Support technique | ❌ |
+
 
 > **Pour l'intégration front**, seuls `STUDENT`, `TEACHER` et `SCHOOL_ADMIN` sont utilisables lors de l'inscription.
 
