@@ -68,7 +68,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             );
         }
 
-        // Invite teacher
+        // Invite teacher - pass request headers for dynamic frontend URL detection
         const result = await TeacherInvitationService.inviteTeacher(
             classId,
             email,
@@ -76,7 +76,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             subjectIds,
             role || 'COLLABORATOR',
             permissions,
-            session.user.id
+            session.user.id,
+            request.headers
         );
 
         if (!result.success) {
@@ -146,14 +147,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             );
         }
 
-        // Process bulk import
+        // Process bulk import - pass request headers for dynamic frontend URL detection
         const results = await TeacherInvitationService.importTeachersFromExcel(
             classId,
             teachers,
             subjectIds,
             role || 'COLLABORATOR',
             permissions,
-            session.user.id
+            session.user.id,
+            request.headers
         );
 
         const successCount = results.filter(r => r.success).length;

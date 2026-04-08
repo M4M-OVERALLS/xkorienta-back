@@ -12,6 +12,7 @@ import {
     sendTeacherAddedEmail,
     sendTeacherActivationEmail
 } from '@/lib/mail';
+import { getFrontendUrl } from '@/lib/utils/frontendUrl';
 
 export interface InviteTeacherResult {
     success: boolean;
@@ -36,7 +37,8 @@ export class TeacherInvitationService {
         subjectIds: string[],
         role: ClassTeacherRole,
         permissions: string[],
-        invitedByUserId: string
+        invitedByUserId: string,
+        headers?: Headers
     ): Promise<InviteTeacherResult> {
         try {
             // Normalize email
@@ -64,12 +66,16 @@ export class TeacherInvitationService {
             const subjects = await Subject.find({ _id: { $in: subjectIds } }).select('name');
             const subjectNames = subjects.map(s => s.name);
 
-            const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
+            // Dynamically detect frontend URL from request headers
+            const frontendUrl = getFrontendUrl(headers);
+            const loginUrl = `${frontendUrl}/login`;
 
             if (existingUser) {
                 // Teacher exists - add to class for each subject
                 let addedCount = 0;
                 let alreadyAssignedCount = 0;
+
+                const otherErrors: string[] = [];
 
                 for (const subjectId of subjectIds) {
                     const result = await ClassTeacherService.addTeacher(
@@ -83,20 +89,42 @@ export class TeacherInvitationService {
 
                     if (result.success) {
                         addedCount++;
-                    } else if (result.message.includes('déjà assigné')) {
+                    } else if (result.code === 'ALREADY_ASSIGNED') {
                         alreadyAssignedCount++;
+                    } else {
+                        otherErrors.push(result.message);
                     }
                 }
 
-                if (addedCount === 0 && alreadyAssignedCount > 0) {
-                    return {
-                        success: false,
-                        status: 'ERROR',
-                        message: 'Cet enseignant est déjà assigné à ces matières',
-                        teacherId: existingUser._id.toString(),
-                        teacherName: existingUser.name,
-                        teacherEmail: existingUser.email
-                    };
+                if (addedCount === 0) {
+                    const allSubjectsAlreadyAssigned =
+                        subjectIds.length > 0 &&
+                        alreadyAssignedCount === subjectIds.length;
+
+                    if (otherErrors.length > 0 && !allSubjectsAlreadyAssigned) {
+                        return {
+                            success: false,
+                            status: 'ERROR',
+                            message:
+                                otherErrors[0] ||
+                                'Impossible d\'ajouter l\'enseignant',
+                            teacherId: existingUser._id.toString(),
+                            teacherName: existingUser.name,
+                            teacherEmail: existingUser.email
+                        };
+                    }
+
+                    if (allSubjectsAlreadyAssigned) {
+                        return {
+                            success: false,
+                            status: 'ERROR',
+                            message:
+                                'Cet enseignant est déjà assigné à ces matières',
+                            teacherId: existingUser._id.toString(),
+                            teacherName: existingUser.name,
+                            teacherEmail: existingUser.email
+                        };
+                    }
                 }
 
                 // Send email to existing teacher
@@ -181,7 +209,8 @@ export class TeacherInvitationService {
                 registeredStudents: []
             });
 
-            const activationLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/join/${token}`;
+            // Dynamically detect frontend URL for activation link
+            const activationLink = `${frontendUrl}/join/${token}`;
 
             // Add teacher to class for each subject immediately
             // They will be able to access once they activate their account
@@ -243,7 +272,8 @@ export class TeacherInvitationService {
         subjectIds: string[],
         role: ClassTeacherRole,
         permissions: string[],
-        invitedByUserId: string
+        invitedByUserId: string,
+        headers?: Headers
     ): Promise<InviteTeacherResult[]> {
         const results: InviteTeacherResult[] = [];
 
@@ -255,7 +285,8 @@ export class TeacherInvitationService {
                 subjectIds,
                 role,
                 permissions,
-                invitedByUserId
+                invitedByUserId,
+                headers
             );
             results.push(result);
         }

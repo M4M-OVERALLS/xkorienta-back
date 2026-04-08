@@ -50,7 +50,7 @@ export class OnboardingService {
             const cycle: Cycle =
                 details?.cycle && Object.values(Cycle).includes(details.cycle)
                     ? details.cycle
-                    : Cycle.COLLEGE;
+                    : Cycle.SECONDAIRE_PREMIER_CYCLE;
 
             const levelName: string =
                 typeof details?.level === "string" && details.level.trim().length > 0

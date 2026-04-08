@@ -11,6 +11,7 @@ import bcrypt from "bcryptjs";
 import { UserRole } from "@/models/enums";
 import { InvitationRepository } from "@/lib/repositories/InvitationRepository";
 import { UserRepository } from "@/lib/repositories/UserRepository";
+import { getFrontendUrl } from "@/lib/utils/frontendUrl";
 
 export interface CreateLinkOptions {
     expiresIn?: '24h' | '7d' | '30d' | 'never'
@@ -171,14 +172,17 @@ export class InvitationService {
     /**
      * Invite a single student manually
      */
-    static async inviteStudent(classId: string, email: string, name: string, teacherId: string) {
+    static async inviteStudent(classId: string, email: string, name: string, teacherId: string, headers?: Headers) {
         // Normalize email to lowercase for consistency
         const normalizedEmail = email.toLowerCase().trim();
-        
+
         const existingUser = await User.findOne({ email: normalizedEmail });
         const classData = await Class.findById(classId).populate('mainTeacher', 'name');
         const teacher = classData?.mainTeacher as any;
-        const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
+
+        // Dynamically detect frontend URL from request headers
+        const frontendUrl = getFrontendUrl(headers);
+        const loginUrl = `${frontendUrl}/login`;
 
         if (existingUser) {
             // User exists - enroll in class and send notification
@@ -244,7 +248,8 @@ export class InvitationService {
             registeredStudents: []
         });
 
-        const joinLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/join/${token}`;
+        // Dynamically detect frontend URL for join link
+        const joinLink = `${frontendUrl}/join/${token}`;
 
         // Send activation email WITHOUT temp password
         await sendAccountActivationEmail(normalizedEmail, joinLink, classData?.name || 'la classe');
@@ -255,7 +260,7 @@ export class InvitationService {
     /**
      * Invite a Teacher manually to a School
      */
-    static async inviteTeacher(schoolId: string, email: string, name: string, inviterId: string, role: string = 'TEACHER') {
+    static async inviteTeacher(schoolId: string, email: string, name: string, inviterId: string, role: string = 'TEACHER', headers?: Headers) {
         const existingUser = await User.findOne({ email });
 
         if (existingUser) {
@@ -291,7 +296,10 @@ export class InvitationService {
         });
 
         const schoolData = await School.findById(schoolId);
-        const joinLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/join/${token}`;
+
+        // Dynamically detect frontend URL for join link
+        const frontendUrl = getFrontendUrl(headers);
+        const joinLink = `${frontendUrl}/join/${token}`;
 
         await sendAccountActivationEmail(email, joinLink, schoolData?.name || "l'école", tempPassword);
 

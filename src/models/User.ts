@@ -11,6 +11,7 @@ export interface IUser extends Document {
     subSystem?: SubSystem
     institution?: string
     schools?: mongoose.Types.ObjectId[] // Refs to School
+    unverifiedSchool?: mongoose.Types.ObjectId // Ref: UnverifiedSchool — école déclarée non validée
     teachingSyllabuses?: mongoose.Types.ObjectId[] // Refs to Syllabus
 
     // Profiles
@@ -76,6 +77,7 @@ const UserSchema = new Schema<IUser>(
         subSystem: { type: String, enum: Object.values(SubSystem) },
         institution: String,
         schools: [{ type: Schema.Types.ObjectId, ref: 'School' }],
+        unverifiedSchool: { type: Schema.Types.ObjectId, ref: 'UnverifiedSchool', default: null },
         teachingSyllabuses: [{ type: Schema.Types.ObjectId, ref: 'Syllabus' }],
 
         learnerProfile: { type: Schema.Types.ObjectId, ref: 'LearnerProfile' },

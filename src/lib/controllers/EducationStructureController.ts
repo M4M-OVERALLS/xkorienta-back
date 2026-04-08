@@ -10,7 +10,10 @@ export class EducationStructureController {
             const filters: any = {};
 
             if (searchParams.get('subSystem')) {
-                filters.subSystem = searchParams.get('subSystem') as SubSystem;
+                const requestedSubSystem = searchParams.get('subSystem') as SubSystem;
+                // Les niveaux BILINGUAL (Université, BTS/HND…) sont visibles pour
+                // les deux sous-systèmes FR et EN → inclure BILINGUAL dans le filtre
+                filters.subSystem = { $in: [requestedSubSystem, SubSystem.BILINGUAL] };
             }
             if (searchParams.get('cycle')) {
                 filters.cycle = searchParams.get('cycle') as Cycle;

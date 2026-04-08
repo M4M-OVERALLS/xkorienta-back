@@ -6,8 +6,11 @@ import {
     EvaluationType,
     ExamStatus,
     LearningMode,
-    CloseMode
+    CloseMode,
+    ExamType,
+    SelfAssessmentLevel
 } from './enums'
+import { SchoolType } from './School'
 
 /**
  * Interface pour les statistiques d'un examen
@@ -19,6 +22,33 @@ export interface ExamStats {
     averageTime: number // NOUVEAU - Renommé de averageTimeSpent
     passRate: number // Pourcentage de réussite
     lastAttemptDate?: Date // NOUVEAU
+}
+
+/**
+ * Interface pour la pondération des chapitres
+ * Utilisée pour les examens multi-chapitres (ex: examen final)
+ */
+export interface ChapterWeight {
+    learningUnit: mongoose.Types.ObjectId
+    weight: number // Poids en pourcentage (ex: 25 pour 25%)
+}
+
+/**
+ * Interface pour la configuration d'auto-évaluation (V4)
+ * Pour les examens de type SELF_ASSESSMENT
+ */
+export interface SelfAssessmentConfig {
+    enabled: boolean
+    scale: {
+        min: number // Généralement 0
+        max: number // Généralement 6
+    }
+    levels: Array<{
+        value: number
+        emoji: string
+        label: string
+    }>
+    requireAllConcepts: boolean // L'élève doit évaluer TOUS les concepts
 }
 
 /**
@@ -74,11 +104,19 @@ export interface IExam extends Document {
     imageUrl?: string
 
     // Classification éducative (NOUVEAUX CHAMPS V2)
+    schoolType?: SchoolType // Type d'école (PRIMARY, SECONDARY, HIGHER_ED) - déduit auto si absent
     subSystem: SubSystem
     targetLevels: mongoose.Types.ObjectId[] // Références vers EducationLevel
-    subject: mongoose.Types.ObjectId // Référence vers Subject
+    subject?: mongoose.Types.ObjectId // Référence vers Subject (optionnel pour brouillons V4)
     syllabus?: mongoose.Types.ObjectId // Référence vers Syllabus (NOUVEAU)
-    learningUnit?: mongoose.Types.ObjectId // Référence vers LearningUnit (optionnel)
+
+    // 🆕 V4 - Support multi-chapitres
+    learningUnits?: mongoose.Types.ObjectId[] // Références vers LearningUnit (multi-chapitres)
+    chapterWeights?: ChapterWeight[] // Pondération par chapitre (optionnel, pour examens multi-chapitres)
+
+    // @deprecated V3 - Utilisez learningUnits à la place (rétrocompatibilité uniquement)
+    learningUnit?: mongoose.Types.ObjectId // Référence vers LearningUnit (optionnel, V3 legacy)
+
     targetFields?: mongoose.Types.ObjectId[] // Références vers Field (Séries/Filières)
     targetedCompetencies?: mongoose.Types.ObjectId[] // Références vers Competency
     linkedConcepts?: mongoose.Types.ObjectId[] // Références vers Concept (pour évaluations par concept)
@@ -88,6 +126,13 @@ export interface IExam extends Document {
     evaluationType: EvaluationType
     learningMode: LearningMode // NOUVEAU
     difficultyLevel: DifficultyLevel
+
+    // 🆕 V4 - Type d'examen précis et notation
+    examType?: ExamType // Type précis d'examen (SELF_ASSESSMENT, FORMATIVE_QUIZ, FINAL_EXAM, etc.)
+    graded?: boolean // L'examen est-il noté ? (false pour auto-évaluation, true pour examens notés)
+    weightInFinalGrade?: number // Poids dans la note finale (ex: 30 pour 30% de la note finale)
+    selfAssessmentConfig?: SelfAssessmentConfig // Configuration pour les auto-évaluations (type SELF_ASSESSMENT)
+    createdWithV4?: boolean // Flag pour identifier les examens créés avec l'architecture V4
 
     // Configuration temporelle
     startTime: Date
@@ -139,6 +184,11 @@ const ExamSchema = new Schema<IExam>(
         },
 
         // Classification éducative
+        schoolType: {
+            type: String,
+            enum: Object.values(SchoolType),
+            required: false // Optionnel - sera déduit depuis targetLevels ou schoolId
+        },
         subSystem: {
             type: String,
             enum: Object.values(SubSystem),
@@ -154,16 +204,42 @@ const ExamSchema = new Schema<IExam>(
         subject: {
             type: Schema.Types.ObjectId,
             ref: 'Subject',
-            required: true
+            required: false // Optionnel pour brouillons V4
         },
         syllabus: {
             type: Schema.Types.ObjectId,
             ref: 'Syllabus'
         },
+
+        // 🆕 V4 - Support multi-chapitres
+        learningUnits: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: 'LearningUnit'
+            }
+        ],
+        chapterWeights: [
+            {
+                learningUnit: {
+                    type: Schema.Types.ObjectId,
+                    ref: 'LearningUnit',
+                    required: true
+                },
+                weight: {
+                    type: Number,
+                    required: true,
+                    min: 0,
+                    max: 100
+                }
+            }
+        ],
+
+        // @deprecated V3 - Rétrocompatibilité
         learningUnit: {
             type: Schema.Types.ObjectId,
             ref: 'LearningUnit'
         },
+
         targetFields: [
             {
                 type: Schema.Types.ObjectId,
@@ -204,6 +280,62 @@ const ExamSchema = new Schema<IExam>(
             type: String,
             enum: Object.values(DifficultyLevel),
             required: true
+        },
+
+        // 🆕 V4 - Type d'examen précis et notation
+        examType: {
+            type: String,
+            enum: Object.values(ExamType),
+            required: false // Optionnel pour rétrocompatibilité V3
+        },
+        graded: {
+            type: Boolean,
+            default: true // Par défaut, les examens sont notés (sauf auto-évaluation)
+        },
+        weightInFinalGrade: {
+            type: Number,
+            min: 0,
+            max: 100
+        },
+        selfAssessmentConfig: {
+            enabled: {
+                type: Boolean,
+                default: false
+            },
+            scale: {
+                min: {
+                    type: Number,
+                    default: 0
+                },
+                max: {
+                    type: Number,
+                    default: 6
+                }
+            },
+            levels: [
+                {
+                    value: {
+                        type: Number,
+                        required: true
+                    },
+                    emoji: {
+                        type: String,
+                        required: true
+                    },
+                    label: {
+                        type: String,
+                        required: true
+                    }
+                }
+            ],
+            requireAllConcepts: {
+                type: Boolean,
+                default: true
+            }
+        },
+        createdWithV4: {
+            type: Boolean,
+            default: false // Par défaut false pour examens existants
         },
 
         // Configuration temporelle
@@ -406,6 +538,7 @@ const ExamSchema = new Schema<IExam>(
 
 // Indexes pour optimiser les requêtes
 ExamSchema.index({ title: 'text', description: 'text' }) // Full-text search
+ExamSchema.index({ schoolType: 1, subSystem: 1, targetLevels: 1 }) // Filtrage principal avec type d'école
 ExamSchema.index({ subSystem: 1, targetLevels: 1, subject: 1 }) // Filtrage principal
 ExamSchema.index({ startTime: 1, endTime: 1 }) // Requêtes temporelles
 ExamSchema.index({ status: 1, isPublished: 1 }) // Filtrage par statut
