@@ -16,9 +16,10 @@ WORKDIR /app
 # Copier uniquement les manifests
 COPY package.json package-lock.json* ./
 
-# Installation de TOUTES les dépendances (dev nécessaires pour le build Next.js)
-# --omit=optional évite les binaires natifs SWC liés à la plateforme (darwin-arm64 vs linux-x64)
-RUN npm ci --omit=optional && npm cache clean --force
+# npm install (pas npm ci) pour que npm résolve les binaires natifs SWC
+# pour la plateforme courante (linux-x64) au lieu de suivre le lockfile
+# généré sur macOS ARM64 qui contient @next/swc-darwin-arm64
+RUN npm install && npm cache clean --force
 
 # ====================
 # Stage 2: Builder
