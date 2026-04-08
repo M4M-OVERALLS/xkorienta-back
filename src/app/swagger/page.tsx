@@ -21,7 +21,9 @@ export default function SwaggerPage() {
     }, [])
 
     useEffect(() => {
-        fetch("/api/swagger")
+        // En production derrière le proxy, l'API est accessible via /xkorienta/backend
+        const base = process.env.NEXT_PUBLIC_API_URL || ""
+        fetch(`${base}/api/swagger`)
             .then((res) => res.json())
             .then(setSpec)
     }, [])
