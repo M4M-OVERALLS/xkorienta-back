@@ -89,9 +89,18 @@ export class SyllabusController {
 
     static async getById(req: Request, id: string, userId: string) {
         try {
-            // userId passed for potential future ACL checks, though service handles logic.
             const syllabus = await SyllabusService.getSyllabusById(id);
-            return NextResponse.json({ success: true, data: syllabus });
+            const json = syllabus.toJSON ? syllabus.toJSON() : syllabus;
+
+            if (!json.subject) {
+                const { SyllabusRepository } = await import("@/lib/repositories/SyllabusRepository");
+                const rawId = await SyllabusRepository.findSubjectIdRaw(id);
+                if (rawId) {
+                    json._rawSubjectId = rawId;
+                }
+            }
+
+            return NextResponse.json({ success: true, data: json });
         } catch (error: any) {
             console.error("[Syllabus Controller] Get Error:", error);
 

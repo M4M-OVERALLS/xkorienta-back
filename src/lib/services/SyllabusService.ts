@@ -152,6 +152,7 @@ export class SyllabusService {
     static async updateSyllabus(id: string, userId: string, updatePayload: {
         title?: string;
         description?: string;
+        subject?: string;
         structure?: SyllabusStructure;
         learningObjectives?: string[];
         status?: SyllabusStatus;
@@ -220,7 +221,7 @@ export class SyllabusService {
             throw new Error("Forbidden");
         }
 
-        const { title, description, structure, learningObjectives, status, classes } = updatePayload;
+        const { title, description, subject, structure, learningObjectives, status, classes } = updatePayload;
 
         // Use Builder Pattern
         const builder = SyllabusBuilder.fromExisting(existingSyllabus)
@@ -279,7 +280,12 @@ export class SyllabusService {
             },
             $inc: { version: 1 }
         };
-        
+
+        // Update subject if provided
+        if (subject && mongoose.Types.ObjectId.isValid(subject)) {
+            finalUpdate.$set.subject = new mongoose.Types.ObjectId(subject);
+        }
+
         // Update classes if provided (and user is owner)
         if (classes && isOwner) {
             finalUpdate.$set.classes = classes.map((c: string) => new mongoose.Types.ObjectId(c));
