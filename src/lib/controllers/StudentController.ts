@@ -113,7 +113,7 @@ export class StudentController {
 
             const { searchParams } = new URL(req.url);
             const type = (searchParams.get('type') as LeaderboardType) || LeaderboardType.CLASS;
-            const metric = (searchParams.get('metric') as LeaderboardMetric) || LeaderboardMetric.XP;
+            const metric = (searchParams.get('metric') as LeaderboardMetric) || LeaderboardMetric.EXAM_AVERAGE;
 
             const leaderboard = await StudentService.getLeaderboard(studentId, type, metric);
 
