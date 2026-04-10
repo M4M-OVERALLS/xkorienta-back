@@ -331,6 +331,9 @@ export class ClassService {
         const classData = await this.getClassById(classId);
         if (!classData) return [];
 
+        // A class without a level cannot match any exam target
+        if (!classData.level) return [];
+
         const Exam = mongoose.models.Exam || mongoose.model('Exam');
 
         // Build query - only published exams for students

@@ -1,16 +1,15 @@
 /**
  * LeaderboardService
- * 
+ *
  * Gestion des classements multi-niveaux :
- * - Classement de classe
+ * - Classement de classe (scoped aux examens de la classe)
  * - Classement d'école par niveau
  * - Classement national/application par niveau
- * 
- * Optimisé avec cache pour les performances
+ *
+ * Optimisé : zéro requête N+1 — agrégations batch pour tous les niveaux.
  */
 
 import mongoose from 'mongoose'
-import * as ss from 'simple-statistics'
 
 // ==========================================
 // TYPES
@@ -21,11 +20,13 @@ export interface LeaderboardEntry {
     studentId: string
     studentName: string
     avatarInitial: string
-    score: number // Average percentage or XP
+    /** Average score as percentage (0-100) or XP for national */
+    score: number
     trend: 'UP' | 'DOWN' | 'STABLE' | 'NEW'
     previousRank?: number
     badges?: number
     level?: number
+    examsCompleted?: number
     isCurrentUser?: boolean
 }
 
@@ -50,14 +51,115 @@ export interface LeaderboardResult {
 
 export enum LeaderboardType {
     CLASS = 'CLASS',
-    SCHOOL_LEVEL = 'SCHOOL_LEVEL',  // Same level within a school
-    NATIONAL_LEVEL = 'NATIONAL_LEVEL' // Same level across all schools
+    SCHOOL_LEVEL = 'SCHOOL_LEVEL',
+    NATIONAL_LEVEL = 'NATIONAL_LEVEL',
 }
 
 export enum LeaderboardMetric {
     XP = 'XP',
     EXAM_AVERAGE = 'EXAM_AVERAGE',
-    EXAMS_COMPLETED = 'EXAMS_COMPLETED'
+    EXAMS_COMPLETED = 'EXAMS_COMPLETED',
+}
+
+// ==========================================
+// HELPERS
+// ==========================================
+
+/**
+ * Resolve the exam IDs that are visible to a given class,
+ * mirroring the ClassService.getClassExams query logic.
+ */
+async function resolveClassExamIds(classId: string, classData: any): Promise<mongoose.Types.ObjectId[]> {
+    const Exam = mongoose.models.Exam
+    if (!Exam || !classData.level) return []
+
+    const query: any = {
+        targetLevels: { $in: [classData.level._id ?? classData.level] },
+        status: 'PUBLISHED',
+        isPublished: true,
+    }
+
+    if (classData.field) {
+        const fieldIds = [classData.field._id ?? classData.field]
+        if (classData.specialty) fieldIds.push(classData.specialty._id ?? classData.specialty)
+        query.$or = [
+            { targetFields: { $exists: false } },
+            { targetFields: { $size: 0 } },
+            { targetFields: { $in: fieldIds } },
+        ]
+    } else {
+        query.$or = [
+            { targetFields: { $exists: false } },
+            { targetFields: { $size: 0 } },
+        ]
+    }
+
+    const exams = await Exam.find(query).select('_id').lean()
+    return exams.map((e: any) => e._id)
+}
+
+/**
+ * Build ranked entries from a score map.
+ * Students with 0 completed exams fall to the bottom with score = null display.
+ */
+function buildRankedEntries(
+    students: Array<{ _id: mongoose.Types.ObjectId; name: string; gamification?: { totalXP?: number; level?: number } }>,
+    scoreMap: Map<string, { total: number; count: number }>,
+    currentUserId: string | undefined,
+    metric: LeaderboardMetric,
+): LeaderboardEntry[] {
+    const entries: LeaderboardEntry[] = students.map((student) => {
+        const sid = student._id.toString()
+        const data = scoreMap.get(sid)
+
+        let score = 0
+        if (metric === LeaderboardMetric.XP) {
+            score = student.gamification?.totalXP || 0
+        } else if (metric === LeaderboardMetric.EXAMS_COMPLETED) {
+            score = data?.count || 0
+        } else {
+            // EXAM_AVERAGE
+            score = data && data.count > 0 ? data.total / data.count : 0
+        }
+
+        return {
+            rank: 0,
+            studentId: sid,
+            studentName: student.name,
+            avatarInitial: student.name?.[0]?.toUpperCase() || '?',
+            score: Math.round(score * 10) / 10,
+            trend: 'STABLE',
+            level: student.gamification?.level || 1,
+            examsCompleted: data?.count || 0,
+            isCurrentUser: sid === currentUserId,
+        }
+    })
+
+    // Sort: higher score first; ties go to those with more exams completed; zero-exam students last
+    entries.sort((a, b) => {
+        const aHas = (a.examsCompleted || 0) > 0
+        const bHas = (b.examsCompleted || 0) > 0
+        if (!aHas && !bHas) return 0
+        if (!aHas) return 1
+        if (!bHas) return -1
+        return b.score - a.score
+    })
+
+    entries.forEach((e, i) => { e.rank = i + 1 })
+    return entries
+}
+
+function computeUserPosition(
+    entries: LeaderboardEntry[],
+    currentUserId: string | undefined,
+): LeaderboardResult['currentUserPosition'] | undefined {
+    if (!currentUserId) return undefined
+    const userEntry = entries.find((e) => e.isCurrentUser)
+    if (!userEntry) return undefined
+    return {
+        rank: userEntry.rank,
+        percentile: Math.round(((entries.length - userEntry.rank + 1) / entries.length) * 100),
+    }
 }
 
 // ==========================================
@@ -67,177 +169,154 @@ export enum LeaderboardMetric {
 export class LeaderboardService {
 
     /**
-     * Get class leaderboard
+     * Get class leaderboard.
+     * Scores are averaged only over exams that belong to this class.
+     * Uses a single aggregation — no N+1 queries.
      */
     static async getClassLeaderboard(
         classId: string,
         currentUserId?: string,
-        metric: LeaderboardMetric = LeaderboardMetric.EXAM_AVERAGE
+        metric: LeaderboardMetric = LeaderboardMetric.EXAM_AVERAGE,
     ): Promise<LeaderboardResult> {
         const Class = mongoose.models.Class
-        const User = mongoose.models.User
         const Attempt = mongoose.models.Attempt
+        const Exam = mongoose.models.Exam
 
-        const classData = await Class.findById(classId).populate('students', 'name gamification').lean()
+        // 1. Fetch class with its students
+        const classData = await Class.findById(classId)
+            .populate('students', 'name gamification')
+            .lean()
         if (!classData) throw new Error('Class not found')
 
-        const students = (classData as any).students || []
-        const entries: LeaderboardEntry[] = []
+        const students = ((classData as any).students || []) as Array<{
+            _id: mongoose.Types.ObjectId
+            name: string
+            gamification?: { totalXP?: number; level?: number }
+        }>
 
-        for (const student of students) {
-            let score = 0
+        const studentIds = students.map((s) => s._id)
 
-            if (metric === LeaderboardMetric.XP) {
-                score = student.gamification?.totalXP || 0
-            } else if (metric === LeaderboardMetric.EXAM_AVERAGE) {
-                const attempts = await Attempt.find({
-                    userId: student._id,
-                    status: 'COMPLETED'
-                }).lean()
+        let scoreMap = new Map<string, { total: number; count: number }>()
 
-                if (attempts.length > 0) {
-                    score = attempts.reduce((sum, a) =>
-                        sum + ((a.score || 0) / (a.maxScore || 100)) * 100, 0
-                    ) / attempts.length
-                }
-            } else if (metric === LeaderboardMetric.EXAMS_COMPLETED) {
-                score = await Attempt.countDocuments({ userId: student._id, status: 'COMPLETED' })
-            }
+        if (metric === LeaderboardMetric.EXAM_AVERAGE || metric === LeaderboardMetric.EXAMS_COMPLETED) {
+            // 2a. Resolve exam IDs scoped to this class (matches ClassService.getClassExams logic)
+            const examIds = await resolveClassExamIds(classId, classData)
 
-            entries.push({
-                rank: 0,
-                studentId: student._id.toString(),
-                studentName: student.name,
-                avatarInitial: student.name?.[0]?.toUpperCase() || '?',
-                score: Math.round(score * 10) / 10,
-                trend: 'STABLE',
-                level: student.gamification?.level || 1,
-                badges: 0, // Could be fetched from UserBadge
-                isCurrentUser: student._id.toString() === currentUserId
-            })
-        }
+            if (examIds.length > 0) {
+                // 2b. Aggregate all completed attempts for these exams in one shot
+                const agg = await Attempt.aggregate([
+                    {
+                        $match: {
+                            userId: { $in: studentIds },
+                            examId: { $in: examIds },
+                            status: 'COMPLETED',
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: '$userId',
+                            totalScore: {
+                                $sum: {
+                                    $multiply: [
+                                        { $divide: ['$score', { $ifNull: ['$maxScore', 100] }] },
+                                        100,
+                                    ],
+                                },
+                            },
+                            count: { $sum: 1 },
+                        },
+                    },
+                ])
 
-        // Sort by score descending
-        entries.sort((a, b) => b.score - a.score)
-
-        // Assign ranks
-        entries.forEach((entry, index) => {
-            entry.rank = index + 1
-        })
-
-        // Find current user position
-        let currentUserPosition: LeaderboardResult['currentUserPosition']
-        if (currentUserId) {
-            const userEntry = entries.find(e => e.isCurrentUser)
-            if (userEntry) {
-                currentUserPosition = {
-                    rank: userEntry.rank,
-                    percentile: Math.round(((entries.length - userEntry.rank + 1) / entries.length) * 100)
+                for (const row of agg) {
+                    scoreMap.set(row._id.toString(), { total: row.totalScore, count: row.count })
                 }
             }
         }
+        // XP: handled in buildRankedEntries from student.gamification
+
+        const entries = buildRankedEntries(students, scoreMap, currentUserId, metric)
+        const currentUserPosition = computeUserPosition(entries, currentUserId)
 
         return {
             type: LeaderboardType.CLASS,
-            scope: {
-                classId,
-                className: (classData as any).name
-            },
-            entries: entries.slice(0, 50), // Limit to top 50
+            scope: { classId, className: (classData as any).name },
+            entries: entries.slice(0, 100),
             totalParticipants: entries.length,
             currentUserPosition,
-            lastUpdated: new Date()
+            lastUpdated: new Date(),
         }
     }
 
     /**
-     * Get school leaderboard for a specific level
+     * Get school leaderboard for a specific level.
+     * Uses a single aggregation across all students — no N+1.
      */
     static async getSchoolLevelLeaderboard(
         schoolId: string,
         levelId: string,
         currentUserId?: string,
-        metric: LeaderboardMetric = LeaderboardMetric.EXAM_AVERAGE
+        metric: LeaderboardMetric = LeaderboardMetric.EXAM_AVERAGE,
     ): Promise<LeaderboardResult> {
         const School = mongoose.models.School
         const Class = mongoose.models.Class
-        const User = mongoose.models.User
         const Attempt = mongoose.models.Attempt
         const EducationLevel = mongoose.models.EducationLevel
 
-        const school = await School.findById(schoolId).lean()
-        const level = await EducationLevel.findById(levelId).lean()
-
+        const [school, level] = await Promise.all([
+            School.findById(schoolId).lean(),
+            EducationLevel.findById(levelId).lean(),
+        ])
         if (!school) throw new Error('School not found')
 
-        // Get all classes in this school at this level
-        const classes = await Class.find({
-            school: schoolId,
-            level: levelId,
-            isActive: true
-        }).populate('students', 'name gamification').lean()
+        // Get all active classes in this school at this level (with students)
+        const classes = await Class.find({ school: schoolId, level: levelId, isActive: true })
+            .populate('students', 'name gamification')
+            .lean()
 
-        // Collect all students from these classes
-        const allStudents = new Map<string, any>()
+        // Deduplicate students across classes
+        const studentMap = new Map<string, { _id: mongoose.Types.ObjectId; name: string; gamification?: { totalXP?: number; level?: number } }>()
         for (const cls of classes) {
-            for (const student of (cls as any).students || []) {
-                if (!allStudents.has(student._id.toString())) {
-                    allStudents.set(student._id.toString(), {
-                        ...student,
-                        className: (cls as any).name
-                    })
-                }
+            for (const s of ((cls as any).students || []) as any[]) {
+                const sid = s._id.toString()
+                if (!studentMap.has(sid)) studentMap.set(sid, s)
+            }
+        }
+        const students = Array.from(studentMap.values())
+        const studentIds = students.map((s) => s._id)
+
+        const scoreMap = new Map<string, { total: number; count: number }>()
+
+        if (metric === LeaderboardMetric.EXAM_AVERAGE || metric === LeaderboardMetric.EXAMS_COMPLETED) {
+            const agg = await Attempt.aggregate([
+                {
+                    $match: {
+                        userId: { $in: studentIds },
+                        status: 'COMPLETED',
+                    },
+                },
+                {
+                    $group: {
+                        _id: '$userId',
+                        totalScore: {
+                            $sum: {
+                                $multiply: [
+                                    { $divide: ['$score', { $ifNull: ['$maxScore', 100] }] },
+                                    100,
+                                ],
+                            },
+                        },
+                        count: { $sum: 1 },
+                    },
+                },
+            ])
+            for (const row of agg) {
+                scoreMap.set(row._id.toString(), { total: row.totalScore, count: row.count })
             }
         }
 
-        const entries: LeaderboardEntry[] = []
-
-        for (const [studentId, student] of allStudents) {
-            let score = 0
-
-            if (metric === LeaderboardMetric.XP) {
-                score = student.gamification?.totalXP || 0
-            } else if (metric === LeaderboardMetric.EXAM_AVERAGE) {
-                const attempts = await Attempt.find({
-                    userId: studentId,
-                    status: 'COMPLETED'
-                }).lean()
-
-                if (attempts.length > 0) {
-                    score = attempts.reduce((sum, a) =>
-                        sum + ((a.score || 0) / (a.maxScore || 100)) * 100, 0
-                    ) / attempts.length
-                }
-            }
-
-            entries.push({
-                rank: 0,
-                studentId,
-                studentName: student.name,
-                avatarInitial: student.name?.[0]?.toUpperCase() || '?',
-                score: Math.round(score * 10) / 10,
-                trend: 'STABLE',
-                level: student.gamification?.level || 1,
-                isCurrentUser: studentId === currentUserId
-            })
-        }
-
-        // Sort and rank
-        entries.sort((a, b) => b.score - a.score)
-        entries.forEach((entry, index) => {
-            entry.rank = index + 1
-        })
-
-        let currentUserPosition: LeaderboardResult['currentUserPosition']
-        if (currentUserId) {
-            const userEntry = entries.find(e => e.isCurrentUser)
-            if (userEntry) {
-                currentUserPosition = {
-                    rank: userEntry.rank,
-                    percentile: Math.round(((entries.length - userEntry.rank + 1) / entries.length) * 100)
-                }
-            }
-        }
+        const entries = buildRankedEntries(students, scoreMap, currentUserId, metric)
+        const currentUserPosition = computeUserPosition(entries, currentUserId)
 
         return {
             type: LeaderboardType.SCHOOL_LEVEL,
@@ -245,168 +324,164 @@ export class LeaderboardService {
                 schoolId,
                 schoolName: (school as any).name,
                 levelId,
-                levelName: (level as any)?.name || 'Niveau'
+                levelName: (level as any)?.name || 'Niveau',
             },
             entries: entries.slice(0, 100),
             totalParticipants: entries.length,
             currentUserPosition,
-            lastUpdated: new Date()
+            lastUpdated: new Date(),
         }
     }
 
     /**
-     * Get national/app-wide leaderboard for a specific level
+     * Get national leaderboard for a specific level.
+     * Uses XP by default (gamification), with EXAM_AVERAGE as fallback.
+     * Single aggregation — no N+1.
      */
     static async getNationalLevelLeaderboard(
         levelId: string,
         currentUserId?: string,
         metric: LeaderboardMetric = LeaderboardMetric.XP,
-        limit: number = 100
+        limit = 100,
     ): Promise<LeaderboardResult> {
         const Class = mongoose.models.Class
-        const User = mongoose.models.User
+        const Attempt = mongoose.models.Attempt
         const EducationLevel = mongoose.models.EducationLevel
 
         const level = await EducationLevel.findById(levelId).lean()
 
-        // Get all classes at this level
-        const classes = await Class.find({
-            level: levelId,
-            isActive: true
-        }).populate('students', 'name gamification').lean()
+        const classes = await Class.find({ level: levelId, isActive: true })
+            .populate('students', 'name gamification')
+            .lean()
 
-        // Collect unique students
-        const allStudents = new Map<string, any>()
+        const studentMap = new Map<string, { _id: mongoose.Types.ObjectId; name: string; gamification?: { totalXP?: number; level?: number } }>()
         for (const cls of classes) {
-            for (const student of (cls as any).students || []) {
-                if (!allStudents.has(student._id.toString())) {
-                    allStudents.set(student._id.toString(), student)
-                }
+            for (const s of ((cls as any).students || []) as any[]) {
+                const sid = s._id.toString()
+                if (!studentMap.has(sid)) studentMap.set(sid, s)
             }
         }
+        const students = Array.from(studentMap.values())
+        const studentIds = students.map((s) => s._id)
 
-        const entries: LeaderboardEntry[] = []
+        const scoreMap = new Map<string, { total: number; count: number }>()
 
-        for (const [studentId, student] of allStudents) {
-            const score = student.gamification?.totalXP || 0
-
-            entries.push({
-                rank: 0,
-                studentId,
-                studentName: student.name,
-                avatarInitial: student.name?.[0]?.toUpperCase() || '?',
-                score,
-                trend: 'STABLE',
-                level: student.gamification?.level || 1,
-                isCurrentUser: studentId === currentUserId
-            })
-        }
-
-        // Sort and rank
-        entries.sort((a, b) => b.score - a.score)
-        entries.forEach((entry, index) => {
-            entry.rank = index + 1
-        })
-
-        let currentUserPosition: LeaderboardResult['currentUserPosition']
-        if (currentUserId) {
-            const userIndex = entries.findIndex(e => e.isCurrentUser)
-            if (userIndex !== -1) {
-                currentUserPosition = {
-                    rank: userIndex + 1,
-                    percentile: Math.round(((entries.length - userIndex) / entries.length) * 100)
-                }
+        if (metric === LeaderboardMetric.EXAM_AVERAGE || metric === LeaderboardMetric.EXAMS_COMPLETED) {
+            const agg = await Attempt.aggregate([
+                {
+                    $match: {
+                        userId: { $in: studentIds },
+                        status: 'COMPLETED',
+                    },
+                },
+                {
+                    $group: {
+                        _id: '$userId',
+                        totalScore: {
+                            $sum: {
+                                $multiply: [
+                                    { $divide: ['$score', { $ifNull: ['$maxScore', 100] }] },
+                                    100,
+                                ],
+                            },
+                        },
+                        count: { $sum: 1 },
+                    },
+                },
+            ])
+            for (const row of agg) {
+                scoreMap.set(row._id.toString(), { total: row.totalScore, count: row.count })
             }
         }
+        // XP: resolved in buildRankedEntries from student.gamification.totalXP
+
+        const entries = buildRankedEntries(students, scoreMap, currentUserId, metric)
+        const currentUserPosition = computeUserPosition(entries, currentUserId)
 
         return {
             type: LeaderboardType.NATIONAL_LEVEL,
             scope: {
                 levelId,
-                levelName: (level as any)?.name || 'Niveau'
+                levelName: (level as any)?.name || 'Niveau',
             },
             entries: entries.slice(0, limit),
             totalParticipants: entries.length,
             currentUserPosition,
-            lastUpdated: new Date()
+            lastUpdated: new Date(),
         }
     }
 
     /**
-     * Get student's position across all leaderboards
+     * Get student's position across all leaderboards.
+     * Reuses the optimized methods above.
      */
-    static async getStudentAllRankings(
-        studentId: string
-    ): Promise<{
-        class?: LeaderboardResult['currentUserPosition'] & { className: string }
-        school?: LeaderboardResult['currentUserPosition'] & { schoolName: string }
-        national?: LeaderboardResult['currentUserPosition']
+    static async getStudentAllRankings(studentId: string): Promise<{
+        class?: LeaderboardResult['currentUserPosition'] & { className: string; totalStudents: number }
+        school?: LeaderboardResult['currentUserPosition'] & { schoolName: string; totalStudents: number }
+        national?: LeaderboardResult['currentUserPosition'] & { totalStudents: number }
     }> {
-        const User = mongoose.models.User
         const Class = mongoose.models.Class
 
-        // Find student's class
-        const studentClass = await Class.findOne({
-            students: studentId,
-            isActive: true
-        }).populate('school').lean()
+        const studentClass = await Class.findOne({ students: studentId, isActive: true })
+            .populate('school', 'name')
+            .lean()
 
-        if (!studentClass) {
-            return {}
-        }
+        if (!studentClass) return {}
+
+        const classId = (studentClass as any)._id.toString()
+        const school = (studentClass as any).school
+        const levelId = (studentClass as any).level?.toString()
 
         const result: any = {}
 
-        // Class ranking
-        try {
-            const classLeaderboard = await this.getClassLeaderboard(
-                (studentClass as any)._id.toString(),
-                studentId
-            )
-            if (classLeaderboard.currentUserPosition) {
-                result.class = {
-                    ...classLeaderboard.currentUserPosition,
-                    className: (studentClass as any).name,
-                    totalStudents: classLeaderboard.totalParticipants
-                }
-            }
-        } catch (e) {
-            console.error('Error getting class ranking', e)
-        }
+        await Promise.all([
+            // Class ranking
+            this.getClassLeaderboard(classId, studentId, LeaderboardMetric.EXAM_AVERAGE)
+                .then((lb) => {
+                    if (lb.currentUserPosition) {
+                        result.class = {
+                            ...lb.currentUserPosition,
+                            className: (studentClass as any).name,
+                            totalStudents: lb.totalParticipants,
+                        }
+                    }
+                })
+                .catch((e) => console.error('Error getting class ranking', e)),
 
-        // School level ranking
-        try {
-            const schoolLeaderboard = await this.getSchoolLevelLeaderboard(
-                (studentClass as any).school._id.toString(),
-                (studentClass as any).level.toString(),
-                studentId
-            )
-            if (schoolLeaderboard.currentUserPosition) {
-                result.school = {
-                    ...schoolLeaderboard.currentUserPosition,
-                    schoolName: (studentClass as any).school.name,
-                    totalStudents: schoolLeaderboard.totalParticipants
-                }
-            }
-        } catch (e) {
-            console.error('Error getting school ranking', e)
-        }
+            // School ranking
+            school?._id && levelId
+                ? this.getSchoolLevelLeaderboard(
+                    school._id.toString(),
+                    levelId,
+                    studentId,
+                    LeaderboardMetric.EXAM_AVERAGE,
+                )
+                    .then((lb) => {
+                        if (lb.currentUserPosition) {
+                            result.school = {
+                                ...lb.currentUserPosition,
+                                schoolName: school.name,
+                                totalStudents: lb.totalParticipants,
+                            }
+                        }
+                    })
+                    .catch((e) => console.error('Error getting school ranking', e))
+                : Promise.resolve(),
 
-        // National ranking
-        try {
-            const nationalLeaderboard = await this.getNationalLevelLeaderboard(
-                (studentClass as any).level.toString(),
-                studentId
-            )
-            if (nationalLeaderboard.currentUserPosition) {
-                result.national = {
-                    ...nationalLeaderboard.currentUserPosition,
-                    totalStudents: nationalLeaderboard.totalParticipants
-                }
-            }
-        } catch (e) {
-            console.error('Error getting national ranking', e)
-        }
+            // National ranking
+            levelId
+                ? this.getNationalLevelLeaderboard(levelId, studentId, LeaderboardMetric.EXAM_AVERAGE)
+                    .then((lb) => {
+                        if (lb.currentUserPosition) {
+                            result.national = {
+                                ...lb.currentUserPosition,
+                                totalStudents: lb.totalParticipants,
+                            }
+                        }
+                    })
+                    .catch((e) => console.error('Error getting national ranking', e))
+                : Promise.resolve(),
+        ])
 
         return result
     }
