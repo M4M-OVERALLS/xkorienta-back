@@ -40,7 +40,7 @@ export async function GET() {
         // Schools where the student is listed as an applicant
         const applicantSchools = await School.find({ applicants: userId })
             .select("_id name city")
-            .lean() as Array<{ _id: unknown; name: string; city?: string }>;
+            .lean() as unknown as Array<{ _id: unknown; name: string; city?: string }>;
 
         const applicantMapped = applicantSchools.map((s) => ({
             _id: s._id?.toString() ?? "",
