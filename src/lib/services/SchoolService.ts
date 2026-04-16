@@ -1,4 +1,5 @@
 import School, { ISchool } from "@/models/School";
+import { SchoolStatus } from "@/models/enums";
 import User, { IUser } from "@/models/User";
 import Class from "@/models/Class";
 import Attempt from "@/models/Attempt";
@@ -31,8 +32,22 @@ export class SchoolService {
      * Get School Stats
      * Returns: Total Students, Total Teachers, Active Classes, Average Score
      */
-    static async searchSchools(search?: string, type?: string) {
+    /**
+     * Search schools visible to teachers.
+     * @param status - if provided, filter by this status; if omitted, returns all statuses.
+     *                 Students-facing calls should always pass SchoolStatus.VALIDATED explicitly.
+     */
+    static async searchSchools(search?: string, type?: string, status?: SchoolStatus | 'all') {
         const query: any = { isActive: true };
+
+        // Apply status filter: default to VALIDATED for backwards-compat,
+        // but allow callers to pass 'all' to skip the filter or a specific status.
+        if (!status || status === SchoolStatus.VALIDATED) {
+            query.status = SchoolStatus.VALIDATED;
+        } else if (status !== 'all') {
+            query.status = status;
+        }
+        // if status === 'all' → no status filter
 
         if (type) {
             query.type = type;
@@ -42,7 +57,6 @@ export class SchoolService {
             query.name = { $regex: search, $options: 'i' };
         }
 
-        // TODO: Move query logic to SchoolRepository completely
         return School.find(query)
             .populate('admins', 'name email')
             .sort({ name: 1 })
@@ -498,17 +512,90 @@ export class SchoolService {
         return school;
     }
 
-    static async validateSchool(schoolId: string, adminId: string, status?: any): Promise<ISchool | null> {
+    /**
+     * PLATFORM ADMIN: Validate a pending school (marks it as legitimate and visible)
+     */
+    static async validateSchool(schoolId: string, adminId: string): Promise<ISchool> {
         const { SchoolRepository } = await import("@/lib/repositories/SchoolRepository");
         const schoolRepo = new SchoolRepository();
 
-        const school = await schoolRepo.updateValidationStatus(schoolId, true, adminId, status);
+        const school = await schoolRepo.findById(schoolId);
+        if (!school) throw new Error("School not found");
 
-        if (!school) {
-            throw new Error("School not found");
+        if (school.status === SchoolStatus.VALIDATED) {
+            throw new Error("School is already validated");
         }
 
-        return school;
+        const updated = await schoolRepo.updateValidationStatus(schoolId, SchoolStatus.VALIDATED, adminId);
+        if (!updated) throw new Error("School not found");
+
+        return updated;
+    }
+
+    /**
+     * PLATFORM ADMIN: Reject a pending school (fraud, duplicate, bad data)
+     * The school owner keeps their account but the school won't appear in any listing.
+     */
+    static async rejectSchool(schoolId: string, adminId: string, notes: string): Promise<ISchool> {
+        const { SchoolRepository } = await import("@/lib/repositories/SchoolRepository");
+        const schoolRepo = new SchoolRepository();
+
+        const school = await schoolRepo.findById(schoolId);
+        if (!school) throw new Error("School not found");
+
+        if (school.status === SchoolStatus.REJECTED) {
+            throw new Error("School is already rejected");
+        }
+
+        if (!notes?.trim()) {
+            throw new Error("Rejection notes are required");
+        }
+
+        const updated = await schoolRepo.updateValidationStatus(schoolId, SchoolStatus.REJECTED, adminId, notes.trim());
+        if (!updated) throw new Error("School not found");
+
+        return updated;
+    }
+
+    /**
+     * PLATFORM ADMIN: Suspend a validated school (violation discovered after validation).
+     * Softer than rejection — can be unsuspended later.
+     */
+    static async suspendSchool(schoolId: string, adminId: string, notes: string): Promise<ISchool> {
+        const { SchoolRepository } = await import("@/lib/repositories/SchoolRepository");
+        const schoolRepo = new SchoolRepository();
+
+        const school = await schoolRepo.findById(schoolId);
+        if (!school) throw new Error("School not found");
+
+        if (school.status !== SchoolStatus.VALIDATED) {
+            throw new Error("Only validated schools can be suspended");
+        }
+
+        if (!notes?.trim()) {
+            throw new Error("Suspension reason is required");
+        }
+
+        const updated = await schoolRepo.updateValidationStatus(schoolId, SchoolStatus.SUSPENDED, adminId, notes.trim());
+        if (!updated) throw new Error("School not found");
+
+        return updated;
+    }
+
+    /**
+     * PLATFORM ADMIN: List schools by status for the admin panel
+     */
+    static async getSchoolsByStatus(
+        status: SchoolStatus,
+        page = 1,
+        limit = 20,
+        search?: string
+    ): Promise<{ schools: ISchool[]; total: number; totalPages: number }> {
+        const { SchoolRepository } = await import("@/lib/repositories/SchoolRepository");
+        const schoolRepo = new SchoolRepository();
+
+        const { schools, total } = await schoolRepo.findByStatus(status, page, limit, search);
+        return { schools, total, totalPages: Math.ceil(total / limit) };
     }
 
     /**

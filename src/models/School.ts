@@ -68,8 +68,14 @@ export interface ISchool extends Document {
     applicants: mongoose.Types.ObjectId[] // Refs to User
 
     // Metadata
-    certificationBadge?: string // URL or Badge ID 
-    owner: mongoose.Types.ObjectId // Ref to User (Teacher who created it)
+    certificationBadge?: string // URL or Badge ID
+    owner: mongoose.Types.ObjectId // Ref to User (Teacher who created it during registration)
+
+    // Verification audit trail
+    verifiedBy?: mongoose.Types.ObjectId // Ref to User (platform admin who validated/rejected)
+    verifiedAt?: Date
+    rejectionNotes?: string  // Admin notes when rejecting or suspending
+
     isActive: boolean
     createdAt: Date
     updatedAt: Date
@@ -177,12 +183,22 @@ const SchoolSchema = new Schema<ISchool>(
         status: {
             type: String,
             enum: Object.values(SchoolStatus),
-            default: SchoolStatus.PENDING
+            default: SchoolStatus.PENDING,
+            index: true
         },
         owner: {
             type: Schema.Types.ObjectId,
             ref: 'User',
             required: true
+        },
+        verifiedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        verifiedAt: Date,
+        rejectionNotes: {
+            type: String,
+            maxlength: 1000
         },
         isActive: {
             type: Boolean,

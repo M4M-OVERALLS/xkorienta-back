@@ -3,6 +3,13 @@ import { authStrategyManager } from "./auth/strategies/AuthStrategyManager"
 import User from "@/models/User"
 import connectDB from "@/lib/mongodb"
 
+function sanitizeTokenImage(image?: unknown): string | undefined {
+    if (typeof image !== "string" || image.length === 0) return undefined
+    // Never store base64 image payloads in JWT cookies
+    if (image.startsWith("data:image/")) return undefined
+    return image
+}
+
 /**
  * NextAuth Configuration with Strategy Pattern
  *
@@ -83,8 +90,18 @@ export const authOptions: NextAuthOptions = {
         /**
          * JWT callback - add user data to token
          */
-        async jwt({ token, user, account, profile }) {
+        async jwt({ token, user, trigger, session }) {
             try {
+                // When client calls session.update(...), persist updated fields in JWT
+                if (trigger === "update" && session) {
+                    if (typeof session.name === "string" && session.name.length > 0) {
+                        token.name = session.name
+                    }
+                    if (typeof session.image === "string" && session.image.length > 0) {
+                        token.picture = sanitizeTokenImage(session.image)
+                    }
+                }
+
                 // Initial sign in
                 if (user) {
                     // Fetch user from DB to get the role
@@ -102,7 +119,7 @@ export const authOptions: NextAuthOptions = {
                             token.id = dbUser._id.toString()
                             token.role = dbUser.role
                             token.name = dbUser.name
-                            token.picture = dbUser.image || dbUser.metadata?.avatar
+                            token.picture = sanitizeTokenImage(dbUser.image || dbUser.metadata?.avatar)
                             token.schools = dbUser.schools?.map((id: any) => id.toString()) || []
                             // Store the real phone in token if phone-only user
                             if (isPhone) token.phone = identifier
@@ -128,6 +145,9 @@ export const authOptions: NextAuthOptions = {
                                 console.log(`[Auth] Role updated for ${identifier}: ${token.role} -> ${dbUser.role}`)
                                 token.role = dbUser.role
                             }
+                            // Keep session identity fields in sync with DB
+                            token.name = dbUser.name
+                            token.picture = sanitizeTokenImage(dbUser.image || dbUser.metadata?.avatar)
                             // Always refresh schools
                             token.schools = dbUser.schools?.map((id: any) => id.toString()) || []
                         }

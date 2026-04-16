@@ -78,7 +78,7 @@ export async function PUT(req: Request) {
         await connectDB()
 
         const data = await req.json()
-        const { name, email, currentPassword, newPassword } = data
+        const { name, email, currentPassword, newPassword, image } = data
 
         // Get user to check password if needed
         const user = await User.findById(session.user.id)
@@ -94,6 +94,14 @@ export async function PUT(req: Request) {
         if (name) user.name = name
         // Email update might require verification in a real app, keeping it simple here
         if (email) user.email = email
+
+        // Legacy fallback: image update now lives on /api/user/profile/avatar
+        if (typeof image === "string" && image.length > 0) {
+            return NextResponse.json(
+                { success: false, message: "Utilisez /api/user/profile/avatar pour uploader une image" },
+                { status: 400 }
+            )
+        }
 
         // Handle password change
         if (newPassword) {

@@ -7,8 +7,9 @@ export class SchoolController {
             const { searchParams } = new URL(req.url);
             const search = searchParams.get('search') || undefined;
             const type = searchParams.get('type') || undefined;
+            const status = searchParams.get('status') || undefined;
 
-            const schools = await SchoolService.searchSchools(search, type);
+            const schools = await SchoolService.searchSchools(search, type, status as any);
             return NextResponse.json({ success: true, data: schools });
         } catch (error: any) {
             console.error("[Schools Controller] Error:", error);
