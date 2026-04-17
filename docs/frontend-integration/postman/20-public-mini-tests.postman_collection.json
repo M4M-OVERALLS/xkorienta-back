@@ -1,0 +1,317 @@
+{
+  "info": {
+    "_postman_id": "0f0a45b3-8c69-4c91-8d87-2c0f9e4da120",
+    "name": "20 - Public Mini-Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Collection Postman pour le module 20 (Public Mini-Tests). Routes a valider avec le backend."
+  },
+  "item": [
+    {
+      "name": "01 - Lister mini-tests publics",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/public/mini-tests?difficulty={{difficulty}}&limit={{limit}}&page={{page}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "public",
+            "mini-tests"
+          ],
+          "query": [
+            {
+              "key": "difficulty",
+              "value": "{{difficulty}}"
+            },
+            {
+              "key": "limit",
+              "value": "{{limit}}"
+            },
+            {
+              "key": "page",
+              "value": "{{page}}"
+            }
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 ou 404 (route a confirmer)', function () {",
+              "  pm.expect([200, 404]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Detail mini-test public",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/public/mini-tests/{{miniTestId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "public",
+            "mini-tests",
+            "{{miniTestId}}"
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 ou 404', function () {",
+              "  pm.expect([200, 404]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Demarrer tentative publique",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nickname\": \"Invite\",\n  \"consent\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/public/mini-tests/{{miniTestId}}/start",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "public",
+            "mini-tests",
+            "{{miniTestId}}",
+            "start"
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201/200/404', function () {",
+              "  pm.expect([200, 201, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "try {",
+              "  const json = pm.response.json();",
+              "  const attemptId = json?.data?.attemptId;",
+              "  if (attemptId) {",
+              "    pm.collectionVariables.set('publicAttemptId', attemptId);",
+              "  }",
+              "} catch (e) {",
+              "  // Ignore JSON parse errors",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Questions de la tentative",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/public/mini-tests/attempts/{{publicAttemptId}}/questions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "public",
+            "mini-tests",
+            "attempts",
+            "{{publicAttemptId}}",
+            "questions"
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 ou 404', function () {",
+              "  pm.expect([200, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "try {",
+              "  const json = pm.response.json();",
+              "  const firstQuestionId = json?.data?.questions?.[0]?._id;",
+              "  const firstChoiceId = json?.data?.questions?.[0]?.choices?.[0]?._id;",
+              "  if (firstQuestionId) pm.collectionVariables.set('publicQuestionId', firstQuestionId);",
+              "  if (firstChoiceId) pm.collectionVariables.set('publicChoiceId', firstChoiceId);",
+              "} catch (e) {",
+              "  // Ignore JSON parse errors",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Soumettre tentative publique",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"answers\": [\n    { \"questionId\": \"{{publicQuestionId}}\", \"choiceId\": \"{{publicChoiceId}}\" }\n  ],\n  \"timeSpentSec\": 120\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/public/mini-tests/attempts/{{publicAttemptId}}/submit",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "public",
+            "mini-tests",
+            "attempts",
+            "{{publicAttemptId}}",
+            "submit"
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200/201/404/410', function () {",
+              "  pm.expect([200, 201, 404, 410]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Claim tentative (optionnel)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/public/mini-tests/attempts/{{publicAttemptId}}/claim",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "public",
+            "mini-tests",
+            "attempts",
+            "{{publicAttemptId}}",
+            "claim"
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200/201/401/403/404', function () {",
+              "  pm.expect([200, 201, 401, 403, 404]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "miniTestId",
+      "value": "mt_001",
+      "type": "string"
+    },
+    {
+      "key": "publicAttemptId",
+      "value": "att_public_001",
+      "type": "string"
+    },
+    {
+      "key": "publicQuestionId",
+      "value": "q_001",
+      "type": "string"
+    },
+    {
+      "key": "publicChoiceId",
+      "value": "c_001",
+      "type": "string"
+    },
+    {
+      "key": "difficulty",
+      "value": "EASY",
+      "type": "string"
+    },
+    {
+      "key": "limit",
+      "value": "6",
+      "type": "string"
+    },
+    {
+      "key": "page",
+      "value": "1",
+      "type": "string"
+    }
+  ]
+}

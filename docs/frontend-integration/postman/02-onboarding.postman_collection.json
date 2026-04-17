@@ -1,0 +1,492 @@
+{
+  "info": {
+    "name": "QuizLock — 02. Onboarding & Registration",
+    "description": "Flux complet d'inscription et d'onboarding utilisateur pour QuizLock.\n\nÉtape 1 : POST /api/register\nÉtape 2 : Se connecter (NextAuth)\nÉtape 3 : POST /api/onboarding",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "ql-onboarding-v1"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string",
+      "description": "URL de base de l'API (changer en prod)"
+    },
+    {
+      "key": "sessionToken",
+      "value": "",
+      "type": "string",
+      "description": "Valeur du cookie next-auth.session-token après connexion"
+    }
+  ],
+  "item": [
+    {
+      "name": "Étape 1 — Créer un compte (sans rôle)",
+      "item": [
+        {
+          "name": "Register — avec email (nominal)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', function() { pm.response.to.have.status(201); });",
+                  "pm.test('Has user.id', function() {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.user).to.have.property('id');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jean Dupont\",\n  \"email\": \"jean.dupont@example.com\",\n  \"password\": \"MonMotDePasse1!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "register"]
+            },
+            "description": "Crée un compte utilisateur sans rôle. Retourne 201 avec l'ID utilisateur."
+          },
+          "response": [
+            {
+              "name": "201 - Succès",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"User created successfully. Please complete onboarding.\",\n  \"user\": {\n    \"id\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n    \"name\": \"Jean Dupont\",\n    \"email\": \"jean.dupont@example.com\",\n    \"phone\": null\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register — avec téléphone uniquement",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Amina Mballa\",\n  \"phone\": \"+237699123456\",\n  \"password\": \"SecurePass9@\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "register"]
+            },
+            "description": "Inscription avec numéro de téléphone uniquement (pas d'email)."
+          },
+          "response": []
+        },
+        {
+          "name": "Register — erreur : email déjà pris (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', function() { pm.response.to.have.status(400); });",
+                  "pm.test('Message user already exists', function() {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.message).to.include('already');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jean Dupont\",\n  \"email\": \"jean.dupont@example.com\",\n  \"password\": \"MonMotDePasse1!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "register"]
+            },
+            "description": "Retourne 400 si l'email est déjà utilisé."
+          },
+          "response": [
+            {
+              "name": "400 - Email déjà utilisé",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"message\": \"User already exists\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register — erreur : mot de passe trop faible (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"password\": \"123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "register"]
+            },
+            "description": "Retourne 400 si le mot de passe ne respecte pas les exigences."
+          },
+          "response": [
+            {
+              "name": "400 - Mot de passe trop faible",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"message\": \"Invalid input data\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register — erreur : ni email ni téléphone (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"password\": \"MonMotDePasse1!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "register"]
+            },
+            "description": "Retourne 400 si ni email ni téléphone n'est fourni."
+          },
+          "response": [
+            {
+              "name": "400 - Champ de contact manquant",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"message\": \"Invalid input data\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Étape 2 — Se connecter",
+      "item": [
+        {
+          "name": "⚠️ LOGIN VIA NEXTAUTH (hors Postman)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signin",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signin"]
+            },
+            "description": "La connexion se fait via NextAuth.\n\nDans un contexte Postman :\n1. POST {{baseUrl}}/api/auth/callback/credentials avec { email, password }\n2. Récupérer le cookie 'next-auth.session-token' dans la réponse\n3. Le coller dans la variable {{sessionToken}} de la collection\n\nEnsuite, passer le cookie dans tous les appels authentifiés :\nCookie: next-auth.session-token={{sessionToken}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Étape 3 — Compléter l'onboarding",
+      "item": [
+        {
+          "name": "Onboarding — Rôle STUDENT (nominal)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "pm.test('Has studentCode', function() {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.user).to.have.property('studentCode');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"STUDENT\",\n  \"details\": {\n    \"subSystem\": \"FRANCOPHONE\",\n    \"cycle\": \"SECONDAIRE_SECOND_CYCLE\",\n    \"level\": \"Terminale\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/onboarding",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "onboarding"]
+            },
+            "description": "Complète l'onboarding en tant qu'étudiant. Crée automatiquement un LearnerProfile et un niveau scolaire si nécessaire."
+          },
+          "response": [
+            {
+              "name": "200 - Étudiant onboardé",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Onboarding completed successfully\",\n  \"user\": {\n    \"_id\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n    \"name\": \"Jean Dupont\",\n    \"email\": \"jean.dupont@example.com\",\n    \"role\": \"STUDENT\",\n    \"studentCode\": \"X7K3M2P1\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Onboarding — Rôle STUDENT avec subSystem ANGLOPHONE",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"STUDENT\",\n  \"details\": {\n    \"subSystem\": \"ANGLOPHONE\",\n    \"cycle\": \"SECONDAIRE_PREMIER_CYCLE\",\n    \"level\": \"Form 4\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/onboarding",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "onboarding"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Onboarding — Rôle TEACHER (nominal)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "pm.test('Role is TEACHER', function() {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.user.role).to.equal('TEACHER');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"TEACHER\",\n  \"details\": {}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/onboarding",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "onboarding"]
+            },
+            "description": "Complète l'onboarding en tant qu'enseignant. Crée automatiquement un PedagogicalProfile."
+          },
+          "response": [
+            {
+              "name": "200 - Enseignant onboardé",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"message\": \"Onboarding completed successfully\",\n  \"user\": {\n    \"_id\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n    \"name\": \"Marie Curie\",\n    \"email\": \"marie@lycee.cm\",\n    \"role\": \"TEACHER\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Onboarding — erreur : rôle invalide (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', function() { pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\",\n  \"details\": {}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/onboarding",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "onboarding"]
+            }
+          },
+          "response": [
+            {
+              "name": "400 - Rôle invalide",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"message\": \"Invalid role selected\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Onboarding — erreur : non authentifié (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', function() { pm.response.to.have.status(401); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"STUDENT\",\n  \"details\": {}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/onboarding",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "onboarding"]
+            },
+            "description": "Sans cookie de session, retourne 401."
+          },
+          "response": [
+            {
+              "name": "401 - Non authentifié",
+              "status": "Unauthorized",
+              "code": 401,
+              "body": "{\n  \"message\": \"Unauthorized\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Flux alternatif — Inscription complète avec rôle",
+      "item": [
+        {
+          "name": "Register v2 — TEACHER avec école existante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "pm.test('success is true', function() {",
+                  "  pm.expect(pm.response.json().success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Marie Curie\",\n  \"email\": \"marie@lycee.cm\",\n  \"password\": \"Secure123!\",\n  \"role\": \"TEACHER\",\n  \"schoolId\": \"64f1a2b3c4d5e6f7a8b9c0e2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/register/v2",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "register", "v2"]
+            },
+            "description": "Inscription complète en une seule étape avec rôle TEACHER et association à une école existante."
+          },
+          "response": [
+            {
+              "name": "200 - Enseignant créé",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Inscription réussie\",\n  \"user\": {\n    \"id\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n    \"name\": \"Marie Curie\",\n    \"email\": \"marie@lycee.cm\",\n    \"phone\": null,\n    \"role\": \"TEACHER\",\n    \"awaitingSchoolValidation\": false\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register v2 — SCHOOL_ADMIN (crée une école)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Paul Admin\",\n  \"email\": \"paul@lyceetech.cm\",\n  \"password\": \"AdminPass1!\",\n  \"role\": \"SCHOOL_ADMIN\",\n  \"school\": {\n    \"name\": \"Lycée Technique de Yaoundé\",\n    \"type\": \"LYCEE\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/register/v2",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "register", "v2"]
+            },
+            "description": "Crée simultanément un compte SCHOOL_ADMIN et une nouvelle école (statut PENDING)."
+          },
+          "response": [
+            {
+              "name": "200 - Admin + école créés",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Inscription réussie. Votre école a été créée et vous en êtes l'administrateur.\",\n  \"user\": {\n    \"id\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n    \"name\": \"Paul Admin\",\n    \"email\": \"paul@lyceetech.cm\",\n    \"phone\": null,\n    \"role\": \"SCHOOL_ADMIN\",\n    \"awaitingSchoolValidation\": true\n  },\n  \"createdSchool\": {\n    \"id\": \"64f1a2b3c4d5e6f7a8b9c0e2\",\n    \"name\": \"Lycée Technique de Yaoundé\",\n    \"status\": \"PENDING\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register v2 — erreur : email déjà utilisé (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Doublon\",\n  \"email\": \"marie@lycee.cm\",\n  \"password\": \"Secure123!\",\n  \"role\": \"TEACHER\",\n  \"schoolId\": \"64f1a2b3c4d5e6f7a8b9c0e2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/register/v2",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "register", "v2"]
+            }
+          },
+          "response": [
+            {
+              "name": "400 - Email doublon",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"success\": false,\n  \"message\": \"Un compte existe déjà avec cet email\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

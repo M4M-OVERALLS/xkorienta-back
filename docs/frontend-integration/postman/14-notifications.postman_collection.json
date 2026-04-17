@@ -1,0 +1,118 @@
+{
+  "info": {
+    "_postman_id": "14-notifications-quizlock-frontend-integration",
+    "name": "QuizLock API — 14. Notifications",
+    "description": "Module 14 — Notifications et Événements\n\nCe fichier contient l'API des notifications utilisable par le frontend pour construire un système de cloche.\n\n1. Récupérer\n2. Marquer comme lues\n3. Supprimer\n\n**Auth** : Cookie next-auth.session-token\n**Base URL** : {{baseUrl}}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "notificationId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Récupérer les notifications",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    var res = pm.response.json();",
+              "    if (res.data && res.data.length > 0) {",
+              "        pm.collectionVariables.set('notificationId', res.data[0].id);",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/notifications",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notifications"]
+        },
+        "description": "GET /api/notifications\n\nRécupère les 50 dernières notifications et retourne le total non lues dans unreadCount."
+      },
+      "response": []
+    },
+    {
+      "name": "Marquer UNE notification lue",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/notifications",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notifications"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"notificationId\": \"{{notificationId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "PATCH /api/notifications"
+      },
+      "response": []
+    },
+    {
+      "name": "TOUT marquer comme lu",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/notifications",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notifications"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"markAllAsRead\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "PATCH /api/notifications (Tout)"
+      },
+      "response": []
+    },
+    {
+      "name": "Supprimer notification",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/notifications?id={{notificationId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notifications"],
+          "query": [
+            {
+              "key": "id",
+              "value": "{{notificationId}}"
+            }
+          ]
+        },
+        "description": "DELETE /api/notifications"
+      },
+      "response": []
+    }
+  ]
+}

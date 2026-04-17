@@ -1,0 +1,393 @@
+{
+  "info": {
+    "_postman_id": "10-teachers-quizlock-frontend-integration",
+    "name": "QuizLock API — 10. Teachers (Dashboard Enseignant)",
+    "description": "Module 10 — Dashboard Enseignant\n\nTous les endpoints permettant de gérer les classes, les élèves et les collaborateurs :\n\n1. Gestion des écoles (Lister, rejoinder)\n2. Mes Classes & Statistiques\n3. Gestion des Etudiants et Invitations\n4. Enseignants Collaborateurs\n5. Annuaire (Chercher des enseignants)\n\n**Auth** : Cookie next-auth.session-token (login TEACHER requis)\n**Base URL** : {{baseUrl}}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "classId",
+      "value": "",
+      "type": "string",
+      "description": "À remplir en générant ou listant les classes"
+    },
+    {
+      "key": "schoolId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "teacherId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "subjectId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Gestion des Établissements",
+      "item": [
+        {
+          "name": "1.1 Lister mes écoles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teacher/schools",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teacher", "schools"]
+            },
+            "description": "GET /api/teacher/schools\n\nRetourne les écoles assignées ou demandées par l'enseignant."
+          },
+          "response": []
+        },
+        {
+          "name": "1.2 Postuler à une école",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teacher/link-school",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teacher", "link-school"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schoolId\": \"{{schoolId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "POST /api/teacher/link-school\n\nApplique à une école. Émet une requête PENDING."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Mes Classes & Statistiques",
+      "item": [
+        {
+          "name": "2.1 Lister mes classes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var res = pm.response.json();",
+                  "    if (res.data && res.data.length > 0) {",
+                  "        pm.collectionVariables.set('classId', res.data[0]._id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes"]
+            },
+            "description": "GET /api/classes\n\nRetourne la table principale des classes d'un enseignant (main + collaborateur).\nExpose le score moyen global et le sparkline (performanceHistory)."
+          },
+          "response": []
+        },
+        {
+          "name": "2.2 Créer une classe",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Terminale C - Maths\",\n  \"academicYear\": \"2024-2025\",\n  \"level\": \"ID_LEVEL\",\n  \"school\": \"ID_SCHOOL\",\n  \"field\": \"ID_FIELD\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "POST /api/classes\n\nCrée une classe avec statut PENDING (si school) ou INDEPENDENT (sans school)."
+          },
+          "response": []
+        },
+        {
+          "name": "2.3 Détail d'une classe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}"]
+            },
+            "description": "GET /api/classes/:classId"
+          },
+          "response": []
+        },
+        {
+          "name": "2.4 Statistiques de la classe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "stats"]
+            },
+            "description": "GET /api/classes/:classId/stats\n\nExige d'avoir des étudiants et des examens complétés. Sinon retourne des données à 0."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Gestion Étudiants & invitations",
+      "item": [
+        {
+          "name": "3.1 Tous mes étudiants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teachers/students?search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teachers", "students"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "GET /api/teachers/students\n\nPool des étudiants de l'enseignant pour envoi de messages."
+          },
+          "response": []
+        },
+        {
+          "name": "3.2 Retirer un étudiant de la classe",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/students/ID_STUDENT",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "students", "ID_STUDENT"]
+            },
+            "description": "DELETE /api/classes/:classId/students/:studentId\n\nRequiert isMainTeacher = true."
+          },
+          "response": []
+        },
+        {
+          "name": "3.3 Obtenir liens invitation par défaut",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "invitations"]
+            },
+            "description": "Le crée si non existant."
+          },
+          "response": []
+        },
+        {
+          "name": "3.4 Créer invitation spécifique (LINK)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "invitations"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"LINK\",\n  \"options\": {\n    \"maxUses\": 50\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Types : LINK, INDIVIDUAL, BATCH"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Enseignants Collaborateurs",
+      "item": [
+        {
+          "name": "4.1 Lister collaborateurs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/teachers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "teachers"]
+            },
+            "description": "GET /api/classes/:id/teachers\n\nmainTeacher + collaborateurs."
+          },
+          "response": []
+        },
+        {
+          "name": "4.2 Ajouter un collaborateur",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/teachers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "teachers"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teacherId\": \"{{teacherId}}\",\n  \"subjectId\": \"{{subjectId}}\",\n  \"role\": \"COLLABORATOR\",\n  \"permissions\": [\"VIEW_STATS\", \"CREATE_EXAMS\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "POST /api/classes/:id/teachers\n\nRequiert ClassTeacherPermission.INVITE_TEACHERS ou être prioritaire."
+          },
+          "response": []
+        },
+        {
+          "name": "4.3 Mettre à jour collaborateurs",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/teachers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "teachers"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teacherId\": \"{{teacherId}}\",\n  \"subjectId\": \"{{subjectId}}\",\n  \"permissions\": [\"VIEW_STATS\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "PUT /api/classes/:id/teachers"
+          },
+          "response": []
+        },
+        {
+          "name": "4.4 Retirer collaborateur",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/teachers?teacherId={{teacherId}}&subjectId={{subjectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "teachers"]
+            },
+            "description": "DELETE /api/classes/:id/teachers"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Annuaire (Recherche)",
+      "item": [
+        {
+          "name": "5.1 Chercher enseignants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teachers?search=Prof&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teachers"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Prof"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "GET /api/teachers"
+          },
+          "response": []
+        },
+        {
+          "name": "5.2 Créer un enseignant manuellement",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teachers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teachers"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nouveau Prof\",\n  \"email\": \"nouveau.prof@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "POST /api/teachers\n\nCrée un utilisateur TEACHER inactif ou actif avec un MdP tmp."
+          },
+          "response": []
+        },
+        {
+          "name": "5.3 Chercher enseignants externes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teachers/external?subject={{subjectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teachers", "external"],
+              "query": [
+                {
+                  "key": "subject",
+                  "value": "{{subjectId}}"
+                }
+              ]
+            },
+            "description": "GET /api/teachers/external"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

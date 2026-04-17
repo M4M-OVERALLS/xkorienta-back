@@ -1,0 +1,652 @@
+{
+  "info": {
+    "name": "QuizLock — 03. User Profile",
+    "description": "Gestion complète du profil utilisateur QuizLock.\n\nPRÉREQUIS : Être authentifié via NextAuth.\nRenseigner le cookie de session dans la variable {{sessionToken}} de la collection.\n\nEndpoints couverts :\n• GET/PUT /api/user/profile\n• POST /api/user/profile/avatar\n• GET/PUT /api/profiles/learner  (STUDENT uniquement)\n• GET/PUT /api/profiles/pedagogical  (TEACHER et rôles pédagogiques)\n• GET /api/profiles/stats\n• GET /api/profiles/activities\n• GET /api/student/profile",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "ql-user-profile-v1"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string",
+      "description": "URL de base de l'API QuizLock"
+    },
+    {
+      "key": "sessionToken",
+      "value": "",
+      "type": "string",
+      "description": "Valeur du cookie next-auth.session-token (récupéré après connexion)"
+    },
+    {
+      "key": "educationLevelId",
+      "value": "REMPLACER_PAR_UN_ID_VALIDE",
+      "type": "string",
+      "description": "ObjectId d'un EducationLevel existant (GET /api/education-levels)"
+    },
+    {
+      "key": "fieldId",
+      "value": "REMPLACER_PAR_UN_ID_VALIDE",
+      "type": "string",
+      "description": "ObjectId d'un Field existant (GET /api/fields)"
+    },
+    {
+      "key": "subjectId",
+      "value": "REMPLACER_PAR_UN_ID_VALIDE",
+      "type": "string",
+      "description": "ObjectId d'un Subject existant (GET /api/subjects)"
+    }
+  ],
+  "auth": {
+    "type": "noauth"
+  },
+  "item": [
+    {
+      "name": "1. Profil de base",
+      "item": [
+        {
+          "name": "GET Profil de base",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.success).to.be.true;",
+                  "  pm.expect(body.user).to.have.property('_id');",
+                  "  pm.expect(body.user).to.have.property('role');",
+                  "});",
+                  "",
+                  "// Sauvegarder l'ID pour d'autres requêtes",
+                  "const body = pm.response.json();",
+                  "if (body.user && body.user._id) {",
+                  "  pm.collectionVariables.set('userId', body.user._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "next-auth.session-token={{sessionToken}}",
+                "description": "Session NextAuth"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "profile"]
+            },
+            "description": "Récupère le profil de base de l'utilisateur connecté.\n\nRETOURNE :\n- _id, name, email, image, role\n- classes[] (uniquement pour STUDENT — classes actives peuplées)"
+          },
+          "response": [
+            {
+              "name": "200 - Profil STUDENT",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"user\": {\n    \"_id\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n    \"name\": \"Jean Dupont\",\n    \"email\": \"jean.dupont@example.com\",\n    \"image\": \"http://localhost:3001/uploads/avatars/64f1a2b3-uuid.jpg\",\n    \"role\": \"STUDENT\",\n    \"classes\": [\n      {\n        \"_id\": \"64f1a2b3c4d5e6f7a8b9c0e1\",\n        \"name\": \"Terminale A - 2024\",\n        \"level\": { \"_id\": \"...\", \"name\": \"Terminale\" },\n        \"school\": { \"_id\": \"...\", \"name\": \"Lycée Général de Yaoundé\" }\n      }\n    ]\n  }\n}"
+            },
+            {
+              "name": "200 - Profil TEACHER",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"user\": {\n    \"_id\": \"64f1a2b3c4d5e6f7a8b9c0d2\",\n    \"name\": \"Marie Curie\",\n    \"email\": \"marie@lycee.cm\",\n    \"image\": null,\n    \"role\": \"TEACHER\",\n    \"classes\": []\n  }\n}"
+            },
+            {
+              "name": "401 - Non authentifié",
+              "status": "Unauthorized",
+              "code": 401,
+              "body": "{ \"success\": false, \"message\": \"Non autorisé\" }"
+            }
+          ]
+        },
+        {
+          "name": "PUT Modifier nom et email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.success).to.be.true;",
+                  "  pm.expect(body.message).to.include('mis à jour');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jean-Pierre Dupont\",\n  \"email\": \"jpdupont@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/user/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "profile"]
+            },
+            "description": "Met à jour le nom et/ou l'email. Tous les champs sont optionnels — envoyer uniquement ce qui change."
+          },
+          "response": [
+            {
+              "name": "200 - Succès",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Profil mis à jour avec succès\",\n  \"user\": {\n    \"name\": \"Jean-Pierre Dupont\",\n    \"email\": \"jpdupont@example.com\",\n    \"image\": \"http://localhost:3001/uploads/avatars/64f1a2b3-uuid.jpg\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "PUT Changer le mot de passe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"AncienMotDePasse1!\",\n  \"newPassword\": \"NouveauMotDePasse2@\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/user/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "profile"]
+            },
+            "description": "Change le mot de passe. Nécessite le mot de passe actuel."
+          },
+          "response": [
+            {
+              "name": "400 - currentPassword manquant",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{ \"success\": false, \"message\": \"Mot de passe actuel requis pour changer le mot de passe\" }"
+            }
+          ]
+        },
+        {
+          "name": "PUT Erreur : champ image interdit (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Redirect message present', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.message).to.include('/api/user/profile/avatar');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"data:image/png;base64,iVBORw0KGgo=\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/user/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "profile"]
+            },
+            "description": "Le champ 'image' n'est pas accepté dans PUT /api/user/profile. Utiliser POST /api/user/profile/avatar."
+          },
+          "response": [
+            {
+              "name": "400 - Image non acceptée ici",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{ \"success\": false, \"message\": \"Utilisez /api/user/profile/avatar pour uploader une image\" }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Avatar",
+      "item": [
+        {
+          "name": "POST Uploader un avatar (multipart)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has image URL', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.success).to.be.true;",
+                  "  pm.expect(body.user.image).to.include('/uploads/avatars/');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "avatar",
+                  "type": "file",
+                  "src": "",
+                  "description": "Fichier image — JPG, PNG ou WebP, max 2MB"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/user/profile/avatar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "profile", "avatar"]
+            },
+            "description": "Upload un avatar.\n\nIMPORTANT : Content-Type = multipart/form-data (géré automatiquement par Postman).\nNE PAS définir Content-Type manuellement.\n\nFormats acceptés : JPEG, JPG, PNG, WebP\nTaille max : 2 MB\n\nL'ancien avatar local est automatiquement supprimé du serveur."
+          },
+          "response": [
+            {
+              "name": "200 - Avatar uploadé",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Avatar mis à jour\",\n  \"user\": {\n    \"image\": \"http://localhost:3001/uploads/avatars/64f1a2b3c4d5e6f7a8b9c0d1-a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg\"\n  }\n}"
+            },
+            {
+              "name": "400 - Format non supporté",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{ \"success\": false, \"message\": \"Format non supporté (jpg, png, webp)\" }"
+            },
+            {
+              "name": "400 - Fichier trop grand",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{ \"success\": false, \"message\": \"Taille invalide. Max 2MB.\" }"
+            },
+            {
+              "name": "400 - Champ manquant",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{ \"success\": false, \"message\": \"Fichier avatar manquant\" }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Profil apprenant (STUDENT)",
+      "item": [
+        {
+          "name": "GET Profil apprenant complet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has learner data', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.success).to.be.true;",
+                  "  pm.expect(body.data).to.have.property('gamification');",
+                  "  pm.expect(body.data).to.have.property('stats');",
+                  "  pm.expect(body.data).to.have.property('subscriptionStatus');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/learner",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "learner"]
+            },
+            "description": "Récupère le profil apprenant complet.\n\nCONTIENT :\n- currentLevel (peuplé)\n- currentField (peuplé)\n- cognitiveProfile, learnerType, preferredLearningMode\n- subscriptionStatus\n- stats (totalExamsTaken, averageScore, strongSubjects, weakSubjects)\n- gamification (level, xp, badges, streak)\n\nACCÈS : STUDENT uniquement — retourne 403 pour TEACHER"
+          },
+          "response": [
+            {
+              "name": "200 - Profil apprenant",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"64f1a2b3c4d5e6f7a8b9c0p1\",\n    \"user\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n    \"currentLevel\": {\n      \"_id\": \"64f1a2b3c4d5e6f7a8b9c0f1\",\n      \"name\": \"Terminale\",\n      \"code\": \"TERM_FR\",\n      \"cycle\": \"SECONDAIRE_SECOND_CYCLE\"\n    },\n    \"currentField\": {\n      \"_id\": \"64f1a2b3c4d5e6f7a8b9c0h1\",\n      \"name\": \"Sciences\",\n      \"code\": \"SC\"\n    },\n    \"enrollmentDate\": \"2024-09-01T00:00:00.000Z\",\n    \"expectedGraduationDate\": \"2025-07-31T00:00:00.000Z\",\n    \"awaitingSchoolValidation\": false,\n    \"cognitiveProfile\": \"VISUAL\",\n    \"learnerType\": \"EXAM_PREP\",\n    \"subscriptionStatus\": \"FREEMIUM\",\n    \"subscriptionExpiry\": null,\n    \"preferredLearningMode\": \"EXAM\",\n    \"stats\": {\n      \"totalExamsTaken\": 12,\n      \"averageScore\": 14.3,\n      \"totalStudyTime\": 3600,\n      \"strongSubjects\": [],\n      \"weakSubjects\": [],\n      \"lastActivityDate\": \"2025-03-15T10:30:00.000Z\"\n    },\n    \"gamification\": {\n      \"level\": 3,\n      \"xp\": 1250,\n      \"badges\": [\n        { \"badgeId\": \"first_exam\", \"earnedAt\": \"2024-09-15T08:00:00.000Z\" }\n      ],\n      \"streak\": 7\n    },\n    \"createdAt\": \"2024-09-01T00:00:00.000Z\",\n    \"updatedAt\": \"2025-03-15T10:30:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "403 - Rôle non STUDENT",
+              "status": "Forbidden",
+              "code": 403,
+              "body": "{ \"success\": false, \"message\": \"Forbidden: Not a student\" }"
+            },
+            {
+              "name": "404 - Profil non créé",
+              "status": "Not Found",
+              "code": 404,
+              "body": "{ \"success\": false, \"message\": \"Profile not found\" }"
+            }
+          ]
+        },
+        {
+          "name": "PUT Modifier préférences apprenant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Profile updated', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.success).to.be.true;",
+                  "  pm.expect(body.message).to.equal('Profile updated successfully');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cognitiveProfile\": \"VISUAL\",\n  \"learnerType\": \"EXAM_PREP\",\n  \"preferredLearningMode\": \"EXAM\",\n  \"currentLevel\": \"{{educationLevelId}}\",\n  \"currentField\": \"{{fieldId}}\",\n  \"expectedGraduationDate\": \"2025-07-31T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/learner",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "learner"]
+            },
+            "description": "Met à jour les préférences apprenant.\n\nCHAMPS MODIFIABLES UNIQUEMENT :\n- currentLevel (ObjectId)\n- currentField (ObjectId)\n- cognitiveProfile : VISUAL | AUDITORY | LOGIC_MATH | LITERARY\n- learnerType : EXAM_PREP | REMEDIAL | ADVANCED | STRUGGLING\n- preferredLearningMode : AUTO_EVAL | COMPETITION | EXAM | CLASS_CHALLENGE\n- enrollmentDate (ISO date)\n- expectedGraduationDate (ISO date)\n\nCHAMPS PROTÉGÉS (ignorés même si envoyés) :\n- stats, gamification, subscriptionStatus"
+          },
+          "response": [
+            {
+              "name": "200 - Profil mis à jour",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Profile updated successfully\",\n  \"data\": {\n    \"_id\": \"64f1a2b3c4d5e6f7a8b9c0p1\",\n    \"cognitiveProfile\": \"VISUAL\",\n    \"learnerType\": \"EXAM_PREP\",\n    \"preferredLearningMode\": \"EXAM\",\n    \"updatedAt\": \"2025-03-20T14:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "400 - Aucun champ valide",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{ \"success\": false, \"message\": \"No valid fields to update\" }"
+            }
+          ]
+        },
+        {
+          "name": "GET Profil étudiant (alias /api/student/profile)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "profile"]
+            },
+            "description": "Alias de GET /api/profiles/learner depuis le namespace /api/student/.\nMêmes données, même structure."
+          },
+          "response": [
+            {
+              "name": "200 - Profil étudiant",
+              "status": "OK",
+              "code": 200,
+              "body": "{ \"success\": true, \"data\": { \"_id\": \"...\", \"gamification\": {}, \"stats\": {} } }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Profil pédagogique (TEACHER+)",
+      "item": [
+        {
+          "name": "GET Profil pédagogique complet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has pedagogical data', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.success).to.be.true;",
+                  "  pm.expect(body.data).to.have.property('teachingSubjects');",
+                  "  pm.expect(body.data).to.have.property('stats');",
+                  "  pm.expect(body.data).to.have.property('qualifications');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/pedagogical",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "pedagogical"]
+            },
+            "description": "Récupère le profil pédagogique complet de l'enseignant.\n\nCONTIENT :\n- teachingSubjects[] (peuplés)\n- interventionLevels[] (peuplés)\n- interventionFields[] (peuplés)\n- contributionTypes[]\n- accessScope, reportingAccess\n- stats (examens créés, étudiants supervisés, etc.)\n- qualifications[]\n\nACCÈS : TEACHER, INSPECTOR, SURVEILLANT, PREFET, PRINCIPAL, DG_ISIMMA, RECTOR, DG_M4M, TECH_SUPPORT\nRetourne 403 pour STUDENT"
+          },
+          "response": [
+            {
+              "name": "200 - Profil pédagogique",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"64f1a2b3c4d5e6f7a8b9c0q1\",\n    \"user\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n    \"teachingSubjects\": [\n      { \"_id\": \"...\", \"name\": \"Mathématiques\", \"code\": \"MATH\" }\n    ],\n    \"interventionLevels\": [\n      { \"_id\": \"...\", \"name\": \"Terminale\", \"code\": \"TERM_FR\" }\n    ],\n    \"interventionFields\": [\n      { \"_id\": \"...\", \"name\": \"Série C\", \"code\": \"C\" }\n    ],\n    \"contributionTypes\": [\"CREATOR\", \"VALIDATOR\"],\n    \"accessScope\": \"SUBJECT\",\n    \"reportingAccess\": \"CLASS\",\n    \"stats\": {\n      \"totalExamsCreated\": 24,\n      \"totalExamsValidated\": 18,\n      \"totalStudentsSupervised\": 120,\n      \"averageStudentScore\": 12.5,\n      \"lastActivityDate\": \"2025-03-15T10:30:00.000Z\"\n    },\n    \"qualifications\": [\n      {\n        \"title\": \"DIPES II\",\n        \"issuedBy\": \"ENS Yaoundé\",\n        \"issuedDate\": \"2018-07-15T00:00:00.000Z\",\n        \"expiryDate\": null,\n        \"certificateUrl\": null\n      }\n    ]\n  }\n}"
+            },
+            {
+              "name": "403 - Rôle non pédagogique",
+              "status": "Forbidden",
+              "code": 403,
+              "body": "{ \"success\": false, \"message\": \"Forbidden: Not a pedagogical user\" }"
+            }
+          ]
+        },
+        {
+          "name": "PUT Modifier matières et qualifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Profile updated', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teachingSubjects\": [\"{{subjectId}}\"],\n  \"interventionLevels\": [\"{{educationLevelId}}\"],\n  \"interventionFields\": [\"{{fieldId}}\"],\n  \"qualifications\": [\n    {\n      \"title\": \"DIPES II\",\n      \"issuedBy\": \"ENS Yaoundé\",\n      \"issuedDate\": \"2018-07-15T00:00:00.000Z\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/pedagogical",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "pedagogical"]
+            },
+            "description": "Met à jour le profil pédagogique.\n\nCHAMPS MODIFIABLES UNIQUEMENT :\n- teachingSubjects : ObjectId[]\n- interventionLevels : ObjectId[]\n- interventionFields : ObjectId[]\n- qualifications : { title, issuedBy, issuedDate, expiryDate?, certificateUrl? }[]\n\nCHAMPS PROTÉGÉS (ignorés même si envoyés) :\n- accessScope, contributionTypes, reportingAccess, stats"
+          },
+          "response": [
+            {
+              "name": "200 - Profil mis à jour",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Profile updated successfully\",\n  \"data\": {\n    \"_id\": \"64f1a2b3c4d5e6f7a8b9c0q1\",\n    \"teachingSubjects\": [\"{{subjectId}}\"],\n    \"updatedAt\": \"2025-03-20T14:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "400 - Aucun champ valide",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{ \"success\": false, \"message\": \"No valid fields to update\" }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Stats et Activités",
+      "item": [
+        {
+          "name": "GET Stats dashboard (STUDENT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has stats data', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.success).to.be.true;",
+                  "  pm.expect(body.data).to.have.property('basic');",
+                  "  pm.expect(body.data).to.have.property('gamification');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "stats"]
+            },
+            "description": "Retourne les stats adaptées au rôle :\n\nPour STUDENT :\n  data.basic → totalExamsTaken, averageScore, totalStudyTime, lastActivityDate\n  data.subjects → strong[], weak[] (peuplés)\n  data.gamification → level, xp, badges[], streak\n  data.subscription → status, expiry\n\nPour TEACHER (temps réel) :\n  data.basic → totalExamsCreated, totalStudentsReached, averageStudentScore, activeExams\n  data.details → publishedExams, ongoingExams, draftExams\n  data.gamification → xp, level, nextLevelXp, title"
+          },
+          "response": [
+            {
+              "name": "200 - Stats STUDENT",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"basic\": {\n      \"totalExamsTaken\": 12,\n      \"averageScore\": 14.3,\n      \"totalStudyTime\": 3600,\n      \"lastActivityDate\": \"2025-03-15T10:30:00.000Z\"\n    },\n    \"subjects\": {\n      \"strong\": [{ \"_id\": \"...\", \"name\": \"Mathématiques\" }],\n      \"weak\": [{ \"_id\": \"...\", \"name\": \"Histoire-Géographie\" }]\n    },\n    \"gamification\": {\n      \"level\": 3,\n      \"xp\": 1250,\n      \"badges\": [{ \"badgeId\": \"first_exam\", \"earnedAt\": \"...\" }],\n      \"streak\": 7\n    },\n    \"subscription\": {\n      \"status\": \"FREEMIUM\",\n      \"expiry\": null\n    }\n  }\n}"
+            },
+            {
+              "name": "200 - Stats TEACHER (temps réel)",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"basic\": {\n      \"totalExamsCreated\": 24,\n      \"totalStudentsReached\": 87,\n      \"averageStudentScore\": 12.5,\n      \"activeExams\": 6\n    },\n    \"details\": {\n      \"publishedExams\": 6,\n      \"ongoingExams\": 2,\n      \"draftExams\": 18\n    },\n    \"gamification\": {\n      \"xp\": 2950,\n      \"level\": 6,\n      \"nextLevelXp\": 3000,\n      \"title\": \"Professeur Expert\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET Activités récentes (défaut : 5)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data is array', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/activities",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "activities"]
+            },
+            "description": "Retourne les 5 dernières activités de l'utilisateur.\nActuellement : examens créés (type EXAM_CREATED).\nD'autres types seront ajoutés ultérieurement."
+          },
+          "response": [
+            {
+              "name": "200 - Activités récentes",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"id\": \"64f1a2b3c4d5e6f7a8b9c0e1\",\n      \"type\": \"EXAM_CREATED\",\n      \"title\": \"Nouvel examen créé\",\n      \"description\": \"Mathématiques - Terminale, Première\",\n      \"timestamp\": \"2025-03-14T09:15:00.000Z\",\n      \"user\": { \"name\": \"Moi\" },\n      \"metadata\": {\n        \"examId\": \"64f1a2b3c4d5e6f7a8b9c0e1\",\n        \"status\": \"DRAFT\"\n      }\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET Activités récentes (limit=10)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/activities?limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "activities"],
+              "query": [
+                { "key": "limit", "value": "10", "description": "Nombre max d'activités retournées" }
+              ]
+            },
+            "description": "Retourne jusqu'à 10 activités récentes."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

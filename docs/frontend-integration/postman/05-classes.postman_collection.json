@@ -1,0 +1,1168 @@
+{
+  "info": {
+    "name": "QuizLock — 05 Classes",
+    "description": "Module Classes : gestion complète des classes, collaboration enseignants, invitations élèves, et vue élève enrichie.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
+    { "key": "sessionToken", "value": "REMPLACER_PAR_VOTRE_SESSION_TOKEN", "type": "string" },
+    { "key": "classId", "value": "", "type": "string" },
+    { "key": "teacherId", "value": "", "type": "string" },
+    { "key": "studentId", "value": "", "type": "string" },
+    { "key": "subjectId", "value": "", "type": "string" },
+    { "key": "invitationToken", "value": "", "type": "string" },
+    { "key": "levelId", "value": "", "type": "string" },
+    { "key": "schoolId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Vue Enseignant",
+      "item": [
+        {
+          "name": "01 — Lister mes classes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "next-auth.session-token={{sessionToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes"]
+            },
+            "description": "Retourne toutes les classes dont l'enseignant est mainTeacher ou collaborateur. Retourne [] pour les autres rôles."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success true', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data).to.be.an('array');",
+                  "});",
+                  "// Auto-save first classId",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.length > 0) {",
+                  "    pm.collectionVariables.set('classId', json.data[0]._id);",
+                  "    console.log('classId auto-set:', json.data[0]._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 — Créer une classe",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Terminale A1\",\n  \"level\": \"{{levelId}}\",\n  \"academicYear\": \"2024-2025\",\n  \"school\": \"{{schoolId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes"]
+            },
+            "description": "Crée une classe. school est optionnel (omis = classe indépendante). Rôle TEACHER requis."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('success true avec _id', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data._id).to.be.a('string');",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data._id) {",
+                  "    pm.collectionVariables.set('classId', json.data._id);",
+                  "    console.log('classId créé:', json.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "02b — Créer une classe indépendante (sans école)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ma Classe Indépendante\",\n  \"level\": \"{{levelId}}\",\n  \"academicYear\": \"2024-2025\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes"]
+            },
+            "description": "Classe sans école (isIndependent: true). Se rattachera automatiquement si l'enseignant est approuvé par une école."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('isIndependent true', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.isIndependent).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 — Détail d'une classe",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}"]
+            },
+            "description": "Accessible par le mainTeacher ou tout collaborateur. Inclut isMainTeacherForCurrentUser."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('isMainTeacherForCurrentUser présent', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data).to.have.property('isMainTeacherForCurrentUser');",
+                  "    pm.expect(json.data.isMainTeacherForCurrentUser).to.be.a('boolean');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 — Modifier une classe",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Terminale A1 — Mis à jour\",\n  \"academicYear\": \"2025-2026\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}"]
+            },
+            "description": "mainTeacher uniquement. Envoyer seulement les champs à modifier."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 — Statistiques de la classe",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "stats"]
+            },
+            "description": "Accessible par mainTeacher ou collaborateur."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('stats présentes', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data).to.have.property('totalStudents');",
+                  "    pm.expect(json.data).to.have.property('totalExams');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 — Examens de la classe",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/exams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "exams"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data est un array', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 — Retirer un élève",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/students/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "students", "{{studentId}}"]
+            },
+            "description": "mainTeacher uniquement. Définir studentId dans les variables."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 — Stats d'un élève dans la classe",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/students/{{studentId}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "students", "{{studentId}}", "stats"]
+            },
+            "description": "mainTeacher uniquement. Définir studentId dans les variables."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 — Supprimer une classe",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}"]
+            },
+            "description": "mainTeacher uniquement. Action IRRÉVERSIBLE."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('message deleted', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('deleted');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Collaboration Enseignants",
+      "item": [
+        {
+          "name": "10 — Lister les collaborateurs",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/teachers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "teachers"]
+            },
+            "description": "Accessible par mainTeacher ou tout collaborateur. Attention: les erreurs retournent { error: '...' } sans success: false."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('data est array', () => pm.expect(pm.response.json().data).to.be.an('array'));",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.length > 0 && json.data[0].teacher) {",
+                  "    pm.collectionVariables.set('teacherId', json.data[0].teacher._id);",
+                  "    pm.collectionVariables.set('subjectId', json.data[0].subject._id);",
+                  "    console.log('teacherId auto-set:', json.data[0].teacher._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 — Ajouter un collaborateur (par ID)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teacherId\": \"{{teacherId}}\",\n  \"subjectId\": \"{{subjectId}}\",\n  \"role\": \"COLLABORATOR\",\n  \"permissions\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/teachers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "teachers"]
+            },
+            "description": "L'enseignant doit déjà exister. Pour créer un compte + inviter, utiliser POST /teachers/invite."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 — Modifier les permissions d'un collaborateur",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teacherId\": \"{{teacherId}}\",\n  \"subjectId\": \"{{subjectId}}\",\n  \"permissions\": [\"INVITE_TEACHERS\"],\n  \"role\": \"COLLABORATOR\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/teachers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "teachers"]
+            },
+            "description": "Accorde/révoque INVITE_TEACHERS. Requiert d'être mainTeacher ou d'avoir INVITE_TEACHERS."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "13 — Retirer un collaborateur",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/teachers?teacherId={{teacherId}}&subjectId={{subjectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "teachers"],
+              "query": [
+                { "key": "teacherId", "value": "{{teacherId}}" },
+                { "key": "subjectId", "value": "{{subjectId}}" }
+              ]
+            },
+            "description": "mainTeacher peut retirer n'importe qui. Un enseignant peut se retirer lui-même (teacherId = son propre ID)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "14 — Inviter un enseignant par email (crée compte si besoin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nouveau.prof@school.cm\",\n  \"name\": \"Prof. Nouveau\",\n  \"subjectIds\": [\"{{subjectId}}\"],\n  \"role\": \"COLLABORATOR\",\n  \"permissions\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/teachers/invite",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "teachers", "invite"]
+            },
+            "description": "Si l'enseignant existe → status ENROLLED. Si nouveau → crée compte + envoie email, status INVITED."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('status ENROLLED ou INVITED', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(['ENROLLED', 'INVITED']).to.include(json.status);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "15 — Importer des enseignants en lot",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teachers\": [\n    { \"email\": \"prof1@school.cm\", \"name\": \"Prof. Un\" },\n    { \"email\": \"prof2@school.cm\", \"name\": \"Prof. Deux\" }\n  ],\n  \"subjectIds\": [\"{{subjectId}}\"],\n  \"role\": \"COLLABORATOR\",\n  \"permissions\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/teachers/invite",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "teachers", "invite"]
+            },
+            "description": "Import en lot depuis Excel (JSON). Chaque entrée indique enrolled/invited/error."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('résumé présent', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data).to.have.property('total');",
+                  "    pm.expect(json.data).to.have.property('enrolled');",
+                  "    pm.expect(json.data).to.have.property('invited');",
+                  "    pm.expect(json.data).to.have.property('errors');",
+                  "    pm.expect(json.data.results).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Invitations Élèves",
+      "item": [
+        {
+          "name": "16 — Obtenir ou créer le lien principal",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "invitations"]
+            },
+            "description": "Retourne le lien existant ou en crée un nouveau. Utilisé pour obtenir l'URL de partage."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.token) {",
+                  "    pm.collectionVariables.set('invitationToken', json.data.token);",
+                  "    console.log('invitationToken auto-set:', json.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "17a — Créer un nouveau lien LINK",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"LINK\",\n  \"options\": {\n    \"maxUses\": 50,\n    \"expiresAt\": \"2025-06-30T23:59:59.000Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "invitations"]
+            },
+            "description": "Crée un nouveau lien partageable. options.maxUses et options.expiresAt sont optionnels."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 2xx', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.token) {",
+                  "    pm.collectionVariables.set('invitationToken', json.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "17b — Invitation INDIVIDUAL (par email)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"INDIVIDUAL\",\n  \"email\": \"jean.dupont@gmail.com\",\n  \"name\": \"Jean Dupont\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "invitations"]
+            },
+            "description": "Crée un compte élève pré-activé et envoie un email avec lien d'activation. L'élève devra définir son mot de passe."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 2xx', () => pm.response.to.be.success);",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.token) {",
+                  "    pm.collectionVariables.set('invitationToken', json.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "17c — Invitation BATCH (lot d'élèves)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"BATCH\",\n  \"students\": [\n    { \"email\": \"eleve1@gmail.com\", \"name\": \"Élève Un\" },\n    { \"email\": \"eleve2@gmail.com\", \"name\": \"Élève Deux\" },\n    { \"email\": \"eleve3@gmail.com\", \"name\": \"Élève Trois\" }\n  ],\n  \"fileInfo\": {\n    \"filename\": \"liste-classe.xlsx\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "invitations"]
+            },
+            "description": "Invite plusieurs élèves en une fois. fileInfo est optionnel (pour traçabilité)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 2xx', () => pm.response.to.be.success);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "18 — Voir tous les liens d'invitation",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/{{classId}}/invitations/links",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "{{classId}}", "invitations", "links"]
+            },
+            "description": "Retourne tous les liens (LINK, INDIVIDUAL, BATCH) créés pour cette classe."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "pm.test('data est array', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rejoindre via Token (PUBLIC)",
+      "item": [
+        {
+          "name": "19 — Valider un token (PUBLIC)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/invitations/{{invitationToken}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invitations", "{{invitationToken}}"]
+            },
+            "description": "Endpoint public. Valide le token et retourne les infos de la classe. Vérifier isActivation pour déterminer le formulaire à afficher."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('données classe présentes', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data).to.have.property('className');",
+                  "    pm.expect(json.data).to.have.property('teacherName');",
+                  "    pm.expect(json.data).to.have.property('isActivation');",
+                  "});",
+                  "console.log('isActivation:', pm.response.json().data?.isActivation);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "20a — Rejoindre via lien LINK (nouveau compte)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jean Dupont\",\n  \"email\": \"jean.dupont@gmail.com\",\n  \"password\": \"MonMotDePasse123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/invitations/{{invitationToken}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invitations", "{{invitationToken}}"]
+            },
+            "description": "Endpoint public. Crée un nouveau compte et inscrit l'élève dans la classe. Utiliser quand isActivation: false."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('compte créé', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.message).to.include('créé');",
+                  "    pm.expect(json.data.userId).to.be.a('string');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "20b — Activer compte via INDIVIDUAL (mot de passe seulement)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"MonMotDePasse123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/invitations/{{invitationToken}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invitations", "{{invitationToken}}"]
+            },
+            "description": "Endpoint public. Active un compte pré-créé (isActivation: true). Seul le mot de passe est requis."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('compte activé', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.message).to.include('activé');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Vue Élève",
+      "item": [
+        {
+          "name": "21 — Mes classes inscrites",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "classes"]
+            },
+            "description": "Rôle STUDENT. Retourne les classes avec classement et moyenne de l'élève."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.length > 0) {",
+                  "    const cid = json.data[0]._id || json.data[0].id;",
+                  "    pm.collectionVariables.set('classId', cid);",
+                  "    console.log('classId (élève) auto-set:', cid);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "22 — Détail d'une classe (vue élève enrichie)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/classes/{{classId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "classes", "{{classId}}"]
+            },
+            "description": "Vue complète : class + exams (avec statut) + students + teachers + syllabuses + ranking. L'élève doit être inscrit."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('toutes les sections présentes', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('class');",
+                  "    pm.expect(json).to.have.property('exams');",
+                  "    pm.expect(json).to.have.property('students');",
+                  "    pm.expect(json).to.have.property('teachers');",
+                  "    pm.expect(json).to.have.property('syllabuses');",
+                  "    pm.expect(json).to.have.property('ranking');",
+                  "});",
+                  "pm.test('statuts examen valides', () => {",
+                  "    const validStatuses = ['upcoming', 'active', 'in_progress', 'completed', 'missed'];",
+                  "    pm.response.json().exams.forEach(e => {",
+                  "        pm.expect(validStatuses).to.include(e.status);",
+                  "    });",
+                  "});",
+                  "pm.test('classement avec isCurrentUser', () => {",
+                  "    const ranking = pm.response.json().ranking;",
+                  "    pm.expect(ranking).to.be.an('array');",
+                  "    ranking.forEach(r => {",
+                  "        pm.expect(r).to.have.property('rank');",
+                  "        pm.expect(r).to.have.property('isCurrentUser');",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Administration (SCHOOL_ADMIN)",
+      "item": [
+        {
+          "name": "23 — Lister les classes à valider",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/classes?status=PENDING",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "classes"],
+              "query": [
+                { "key": "status", "value": "PENDING", "description": "PENDING | VALIDATED | REJECTED" }
+              ]
+            },
+            "description": "SCHOOL_ADMIN uniquement. Retourne les classes de toutes les écoles administrées."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data et schools présents', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data).to.be.an('array');",
+                  "    pm.expect(json.schools).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "24a — Valider une classe",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"VALIDATE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/classes/{{classId}}/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "classes", "{{classId}}", "validate"]
+            },
+            "description": "SCHOOL_ADMIN uniquement. Valide une classe en attente."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('message validated', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('validated');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "24b — Rejeter une classe",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"REJECT\",\n  \"reason\": \"Classe dupliquée, fusionner avec Terminale A2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/classes/{{classId}}/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "classes", "{{classId}}", "validate"]
+            },
+            "description": "SCHOOL_ADMIN uniquement. reason est OBLIGATOIRE pour REJECT."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cas d'erreur",
+      "item": [
+        {
+          "name": "ERR — ID de classe invalide",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes/invalid-id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes", "invalid-id"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('message Invalid class ID', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('Invalid class ID');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "ERR — Token d'invitation invalide",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/invitations/token-inexistant-xyz",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invitations", "token-inexistant-xyz"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('message invalide ou expiré', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('invalide');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "ERR — Créer classe sans les champs requis",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Classe sans niveau\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('message Missing required fields', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('Missing required fields');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "ERR — Non autorisé (sans session)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classes"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Unauthorized', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('Unauthorized');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "ERR — Invitation REJECT sans raison",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"REJECT\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/classes/{{classId}}/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "classes", "{{classId}}", "validate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Rejection reason required', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('reason');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

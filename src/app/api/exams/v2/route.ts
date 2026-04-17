@@ -57,6 +57,9 @@ export async function GET(req: Request) {
         if (searchParams.get('isPublished')) {
             filters.isPublished = searchParams.get('isPublished') === 'true'
         }
+        if (searchParams.get('schoolId')) {
+            filters.schoolId = searchParams.get('schoolId')!
+        }
         if (searchParams.get('limit')) {
             filters.limit = parseInt(searchParams.get('limit')!)
         }
