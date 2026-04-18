@@ -17,10 +17,9 @@ export async function GET(req: Request) {
         await connectDB()
 
         const { searchParams } = new URL(req.url)
-        const subject = searchParams.get('subject') // This might be null if not passed
+        const subject = searchParams.get('subject')
         const search = searchParams.get('search')
-
-        console.log('[API] Get Syllabuses - Params:', { subject, search, userId: session.user.id })
+        const schoolId = searchParams.get('schoolId')
 
         const query: any = {
             teacher: session.user.id,
@@ -28,8 +27,6 @@ export async function GET(req: Request) {
         }
 
         if (subject && subject !== 'undefined' && subject !== 'null') {
-            // Ensure valid ObjectId or just let Mongoose cast it. 
-            // Trimming just in case.
             query.subject = subject.trim()
         }
 
@@ -37,15 +34,15 @@ export async function GET(req: Request) {
             query.title = { $regex: search, $options: 'i' }
         }
 
-        console.log('[API] Syllabus Query:', JSON.stringify(query))
+        if (schoolId && schoolId !== 'undefined' && schoolId !== 'null') {
+            query.school = schoolId.trim()
+        }
 
         const syllabuses = await Syllabus.find(query)
             .populate('subject', 'name')
             .populate('school', 'name')
             .sort({ updatedAt: -1 })
-            .lean() // Use lean for performance
-
-        console.log(`[API] Found ${syllabuses.length} syllabuses`)
+            .lean()
 
         return NextResponse.json({ success: true, data: syllabuses })
 

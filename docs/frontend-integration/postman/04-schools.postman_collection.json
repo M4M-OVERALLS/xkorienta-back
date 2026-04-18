@@ -1,0 +1,902 @@
+{
+  "info": {
+    "name": "QuizLock — 04. Schools (Établissements)",
+    "description": "Documentation complète du module Schools.\n\nPRÉREQUIS :\n- Renseigner {{sessionToken}} avec le cookie next-auth.session-token après connexion\n- Renseigner {{schoolId}} avec un ObjectId d'école valide\n- Renseigner {{teacherId}} avec un ObjectId d'enseignant valide\n\nROLES TESTÉS : Public, TEACHER, SCHOOL_ADMIN, Platform Admin (RECTOR/DG_M4M)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "ql-schools-v1"
+  },
+  "variable": [
+    { "key": "baseUrl",    "value": "http://localhost:3001", "type": "string" },
+    { "key": "sessionToken", "value": "", "type": "string", "description": "Cookie next-auth.session-token" },
+    { "key": "schoolId",   "value": "REMPLACER_PAR_UN_ID_ECOLE", "type": "string" },
+    { "key": "teacherId",  "value": "REMPLACER_PAR_UN_ID_ENSEIGNANT", "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "1. Accès public (sans authentification)",
+      "item": [
+
+        {
+          "name": "GET Liste publique des écoles validées",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.true;",
+                  "  pm.expect(b.data).to.be.an('array');",
+                  "});",
+                  "// Sauvegarder le premier ID pour les tests suivants",
+                  "const b = pm.response.json();",
+                  "if (b.data && b.data.length > 0) {",
+                  "  pm.collectionVariables.set('schoolId', b.data[0]._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/public",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "public"]
+            },
+            "description": "Aucune auth requise.\nRetourne max 20 écoles VALIDATED, triées par nom.\nUtilisé lors de la création de compte SCHOOL_ADMIN."
+          },
+          "response": [
+            {
+              "name": "200 - Liste des écoles validées",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"64f1a2b3c4d5e6f7a8b9c0e1\",\n      \"name\": \"Lycée Général de Yaoundé\",\n      \"type\": \"SECONDARY_GENERAL\",\n      \"address\": \"Rue de l'Éducation, Yaoundé\",\n      \"logoUrl\": null,\n      \"status\": \"VALIDATED\",\n      \"contactInfo\": {\n        \"email\": \"contact@lycee-yaounde.cm\",\n        \"phone\": \"+237222000001\",\n        \"website\": \"https://lycee-yaounde.cm\"\n      }\n    }\n  ]\n}"
+            }
+          ]
+        },
+
+        {
+          "name": "GET Liste publique — avec filtre nom",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/public?search=lycee",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "public"],
+              "query": [{ "key": "search", "value": "lycee" }]
+            },
+            "description": "Filtre les écoles dont le nom contient 'lycee' (insensible à la casse)."
+          },
+          "response": []
+        },
+
+        {
+          "name": "GET Recherche fuzzy d'écoles (autocomplete)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has schools array', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.have.property('schools');",
+                  "  pm.expect(b).to.have.property('hasExactMatch');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/search?q=lycee&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "search"],
+              "query": [
+                { "key": "q",     "value": "lycee", "description": "Terme de recherche (min 2 caractères)" },
+                { "key": "limit", "value": "5" }
+              ]
+            },
+            "description": "Recherche fuzzy — idéal pour un champ d'auto-complétion.\nRetourne { schools[], hasExactMatch } même si q < 2 caractères (tableau vide)."
+          },
+          "response": [
+            {
+              "name": "200 - Résultats de recherche",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"schools\": [\n    { \"_id\": \"...\", \"name\": \"Lycée Général de Yaoundé\", \"type\": \"SECONDARY_GENERAL\" }\n  ],\n  \"hasExactMatch\": false\n}"
+            },
+            {
+              "name": "200 - q trop court (retour vide)",
+              "status": "OK",
+              "code": 200,
+              "body": "{ \"schools\": [], \"hasExactMatch\": false }"
+            }
+          ]
+        },
+
+        {
+          "name": "GET Recherche fuzzy — avec filtres city et type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/search?q=lycee&city=Yaoundé&type=SECONDARY_GENERAL",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "search"],
+              "query": [
+                { "key": "q",    "value": "lycee" },
+                { "key": "city", "value": "Yaoundé" },
+                { "key": "type", "value": "SECONDARY_GENERAL" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "2. Consultation des écoles (authentifié)",
+      "item": [
+
+        {
+          "name": "GET Toutes les écoles validées",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools"]
+            },
+            "description": "Retourne toutes les écoles VALIDATED par défaut.\nLes admins peuplés sont inclus dans les résultats."
+          },
+          "response": [
+            {
+              "name": "200 - Liste des écoles",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"64f1a2b3c4d5e6f7a8b9c0e1\",\n      \"name\": \"Lycée Général de Yaoundé\",\n      \"type\": \"SECONDARY_GENERAL\",\n      \"status\": \"VALIDATED\",\n      \"admins\": [{ \"_id\": \"...\", \"name\": \"Paul Admin\", \"email\": \"paul@lycee.cm\" }],\n      \"isActive\": true\n    }\n  ]\n}"
+            }
+          ]
+        },
+
+        {
+          "name": "GET Écoles — filtres search et type",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools?search=lycee&type=SECONDARY_GENERAL",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools"],
+              "query": [
+                { "key": "search", "value": "lycee" },
+                { "key": "type",   "value": "SECONDARY_GENERAL" }
+              ]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "GET Écoles — toutes statuts (status=all)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools?status=all",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools"],
+              "query": [{ "key": "status", "value": "all" }]
+            },
+            "description": "Retourne TOUTES les écoles (PENDING, VALIDATED, REJECTED, SUSPENDED).\nUtile pour les outils d'administration."
+          },
+          "response": []
+        },
+
+        {
+          "name": "GET Stats d'une école",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has stats and charts', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.have.property('stats');",
+                  "  pm.expect(b).to.have.property('charts');",
+                  "  pm.expect(b.charts).to.have.property('scoreDistribution');",
+                  "  pm.expect(b.charts).to.have.property('recentPerformance');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/{{schoolId}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "{{schoolId}}", "stats"]
+            },
+            "description": "Calcul temps réel.\nRetourne :\n- stats : totalStudents, totalTeachers, adminsCount, activeClasses, examsCount, averageScore/20, completionRate%\n- charts.scoreDistribution : 5 tranches (0-20%, 21-40%...)\n- charts.recentPerformance : 8 dernières semaines\n- charts.classDistribution : par niveau\n- charts.recentExams : 5 derniers examens"
+          },
+          "response": [
+            {
+              "name": "200 - Stats école",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"details\": { \"_id\": \"...\", \"name\": \"Lycée Général de Yaoundé\", \"status\": \"VALIDATED\" },\n  \"stats\": {\n    \"totalStudents\": 248,\n    \"totalTeachers\": 12,\n    \"adminsCount\": 2,\n    \"activeClasses\": 9,\n    \"examsCount\": 47,\n    \"averageScore\": 12.4,\n    \"completionRate\": 78\n  },\n  \"charts\": {\n    \"scoreDistribution\": [\n      { \"range\": \"0-20%\", \"count\": 8, \"color\": \"#ef4444\" },\n      { \"range\": \"21-40%\", \"count\": 15, \"color\": \"#f97316\" },\n      { \"range\": \"41-60%\", \"count\": 42, \"color\": \"#eab308\" },\n      { \"range\": \"61-80%\", \"count\": 98, \"color\": \"#3b82f6\" },\n      { \"range\": \"81-100%\", \"count\": 85, \"color\": \"#22c55e\" }\n    ],\n    \"recentPerformance\": [\n      { \"name\": \"S1\", \"score\": 11.2, \"exams\": 4 },\n      { \"name\": \"S2\", \"score\": 12.8, \"exams\": 6 }\n    ],\n    \"classDistribution\": [\n      { \"name\": \"Terminale\", \"value\": 3 }\n    ],\n    \"recentExams\": [\n      { \"id\": \"...\", \"title\": \"Bac Blanc Maths\", \"subject\": \"Mathématiques\", \"date\": \"2025-03-10T08:00:00.000Z\", \"status\": \"COMPLETED\" }\n    ]\n  }\n}"
+            },
+            {
+              "name": "404 - École introuvable",
+              "status": "Not Found",
+              "code": 404,
+              "body": "{ \"error\": \"School not found\" }"
+            }
+          ]
+        },
+
+        {
+          "name": "GET Enseignants d'une école",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has teachers and applicants', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/{{schoolId}}/teachers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "{{schoolId}}", "teachers"]
+            },
+            "description": "Retourne les enseignants membres ET les candidats en attente (applicants).\nUtilisé dans le dashboard SCHOOL_ADMIN pour les validations."
+          },
+          "response": [
+            {
+              "name": "200 - Enseignants",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"teachers\": [\n      { \"_id\": \"...\", \"name\": \"Marie Curie\", \"email\": \"marie@lycee.cm\", \"role\": \"TEACHER\" }\n    ],\n    \"applicants\": [\n      { \"_id\": \"...\", \"name\": \"Albert Einstein\", \"email\": \"albert@lycee.cm\", \"createdAt\": \"2025-03-01T00:00:00.000Z\" }\n    ]\n  }\n}"
+            }
+          ]
+        },
+
+        {
+          "name": "GET Classes d'une école",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/{{schoolId}}/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "{{schoolId}}", "classes"]
+            },
+            "description": "Retourne toutes les classes de l'école avec niveau et enseignant principal peuplés."
+          },
+          "response": [
+            {
+              "name": "200 - Classes",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"...\",\n      \"name\": \"Terminale A - 2024\",\n      \"level\": { \"_id\": \"...\", \"name\": \"Terminale\" },\n      \"mainTeacher\": { \"_id\": \"...\", \"name\": \"Marie Curie\" },\n      \"isActive\": true,\n      \"validationStatus\": \"VALIDATED\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "3. Actions TEACHER — Rejoindre une école",
+      "item": [
+
+        {
+          "name": "GET Mes écoles (TEACHER)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/teacher/schools",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teacher", "schools"]
+            },
+            "description": "Retourne les écoles où l'enseignant est membre OU en attente d'approbation.\nisPending: true → candidature en cours\nisPending: false → membre approuvé\n\nACCÈS : TEACHER uniquement"
+          },
+          "response": [
+            {
+              "name": "200 - Mes écoles",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    { \"_id\": \"...\", \"name\": \"Lycée Général\", \"status\": \"VALIDATED\", \"isPending\": false },\n    { \"_id\": \"...\", \"name\": \"Collège Bilingue\", \"status\": \"VALIDATED\", \"isPending\": true }\n  ]\n}"
+            },
+            {
+              "name": "401 - Non enseignant",
+              "status": "Unauthorized",
+              "code": 401,
+              "body": "{ \"success\": false, \"message\": \"Unauthorized\" }"
+            }
+          ]
+        },
+
+        {
+          "name": "POST Postuler à une école (TEACHER)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schoolId\": \"{{schoolId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/teacher/link-school",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teacher", "link-school"]
+            },
+            "description": "Soumet une candidature pour rejoindre une école.\nL'école doit approuver la demande (voir section SCHOOL_ADMIN).\n\nACCÈS : TEACHER uniquement"
+          },
+          "response": [
+            {
+              "name": "200 - Candidature soumise",
+              "status": "OK",
+              "code": 200,
+              "body": "{ \"success\": true, \"message\": \"Application submitted successfully\" }"
+            },
+            {
+              "name": "400 - Déjà membre",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{ \"success\": false, \"message\": \"Vous êtes déjà membre de cette école\" }"
+            },
+            {
+              "name": "400 - Déjà postulé",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{ \"success\": false, \"message\": \"Vous avez déjà postulé à cette école\" }"
+            },
+            {
+              "name": "404 - École introuvable",
+              "status": "Not Found",
+              "code": 404,
+              "body": "{ \"success\": false, \"message\": \"École non trouvée\" }"
+            },
+            {
+              "name": "403 - Rôle non TEACHER",
+              "status": "Forbidden",
+              "code": 403,
+              "body": "{ \"success\": false, \"message\": \"Accès réservé aux enseignants\" }"
+            }
+          ]
+        },
+
+        {
+          "name": "POST Postuler à une école (tous rôles — /api/schools/apply)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schoolId\": \"{{schoolId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/apply",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "apply"]
+            },
+            "description": "Alternative à /api/teacher/link-school, sans restriction de rôle.\nNote : les erreurs retournent 'error' au lieu de 'message'."
+          },
+          "response": [
+            {
+              "name": "200 - Candidature soumise",
+              "status": "OK",
+              "code": 200,
+              "body": "{ \"success\": true, \"message\": \"Application submitted successfully\" }"
+            },
+            {
+              "name": "404 - École introuvable",
+              "status": "Not Found",
+              "code": 404,
+              "body": "{ \"error\": \"School not found\" }"
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "4. Actions SCHOOL_ADMIN — Gestion des enseignants",
+      "item": [
+
+        {
+          "name": "POST Approuver un enseignant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/{{schoolId}}/teachers/{{teacherId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "{{schoolId}}", "teachers", "{{teacherId}}", "approve"]
+            },
+            "description": "Approuve la candidature d'un enseignant.\n\nEFFETS DE BORD :\n1. L'enseignant passe de applicants[] → teachers[]\n2. L'école est ajoutée dans la liste schools[] de l'enseignant\n3. Ses classes indépendantes (isIndependent: true) sont greffées à l'école\n   et leur statut passe à VALIDATED automatiquement\n\nACCÈS : SCHOOL_ADMIN (non vérifié au niveau de la route — à gérer côté frontend)"
+          },
+          "response": [
+            {
+              "name": "200 - Enseignant approuvé",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Professeur approuvé avec succès\",\n  \"data\": {\n    \"_id\": \"...\",\n    \"name\": \"Lycée Général de Yaoundé\",\n    \"teachers\": [\"...\", \"...\"]\n  }\n}"
+            },
+            {
+              "name": "401 - Non authentifié",
+              "status": "Unauthorized",
+              "code": 401,
+              "body": "{ \"success\": false, \"message\": \"Non authentifié\" }"
+            }
+          ]
+        },
+
+        {
+          "name": "POST Rejeter un enseignant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true', () => pm.expect(pm.response.json().success).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/{{schoolId}}/teachers/{{teacherId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "{{schoolId}}", "teachers", "{{teacherId}}", "reject"]
+            },
+            "description": "Rejette la candidature d'un enseignant.\nL'école est retirée de sa liste d'écoles."
+          },
+          "response": [
+            {
+              "name": "200 - Enseignant rejeté",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Professeur rejeté avec succès\",\n  \"data\": { \"_id\": \"...\", \"name\": \"Lycée Général de Yaoundé\" }\n}"
+            }
+          ]
+        },
+
+        {
+          "name": "GET Obtenir le lien d'invitation",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/{{schoolId}}/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "{{schoolId}}", "invitations"]
+            },
+            "description": "Récupère (ou crée) le lien d'invitation générique de l'école.\nCe lien peut être partagé à des enseignants externes pour qu'ils rejoignent l'école."
+          },
+          "response": []
+        },
+
+        {
+          "name": "POST Inviter un enseignant (individuel)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"single\",\n  \"email\": \"nouveau.prof@example.com\",\n  \"name\": \"Nouveau Professeur\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/{{schoolId}}/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "{{schoolId}}", "invitations"]
+            },
+            "description": "Envoie une invitation par email à un enseignant individuel."
+          },
+          "response": []
+        },
+
+        {
+          "name": "POST Inviter des enseignants (batch)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"batch\",\n  \"teachers\": [\n    { \"email\": \"prof1@example.com\", \"name\": \"Prof Un\" },\n    { \"email\": \"prof2@example.com\", \"name\": \"Prof Deux\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/schools/{{schoolId}}/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "schools", "{{schoolId}}", "invitations"]
+            },
+            "description": "Envoie des invitations en masse à plusieurs enseignants."
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "5. Orientation étudiant (STUDENT)",
+      "item": [
+
+        {
+          "name": "GET Écoles pour l'orientation (sans filtre)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success = true et data est tableau', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.true;",
+                  "  pm.expect(b.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/schools",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "schools"]
+            },
+            "description": "Retourne toutes les écoles disponibles pour le module d'orientation étudiant.\nACCÈS : STUDENT (utilise la session pour identifier l'étudiant)"
+          },
+          "response": [
+            {
+              "name": "200 - Écoles orientation",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"...\",\n      \"name\": \"École Polytechnique de Yaoundé\",\n      \"type\": \"HIGHER_ED\",\n      \"city\": \"Yaoundé\",\n      \"country\": \"Cameroun\",\n      \"specialties\": [\"Génie Civil\", \"Informatique\"],\n      \"tuitionFee\": { \"min\": 300000, \"max\": 450000, \"currency\": \"XAF\" },\n      \"modality\": \"PRESENTIEL\",\n      \"languages\": [\"FRANCAIS\"],\n      \"xkorientaScore\": 87,\n      \"badges\": { \"employment\": true, \"alternance\": false },\n      \"academicLevel\": [\"Licence\", \"Master\"],\n      \"studentCount\": 2400,\n      \"foundedYear\": 1971\n    }\n  ]\n}"
+            }
+          ]
+        },
+
+        {
+          "name": "GET Écoles orientation — avec filtres avancés",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/schools?query=ingenieur&type=HIGHER_ED&modality=PRESENTIEL&costMax=500000&scoreMin=70",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "schools"],
+              "query": [
+                { "key": "query",    "value": "ingenieur",   "description": "Recherche sur le nom" },
+                { "key": "type",     "value": "HIGHER_ED",   "description": "Type d'établissement" },
+                { "key": "modality", "value": "PRESENTIEL",  "description": "PRESENTIEL | HYBRIDE | DISTANCE" },
+                { "key": "costMax",  "value": "500000",       "description": "Frais max en XAF" },
+                { "key": "scoreMin", "value": "70",           "description": "Score Xkorienta minimum" }
+              ]
+            },
+            "description": "Filtres disponibles :\n- query : texte libre sur le nom\n- country : nom du pays\n- city : nom de la ville\n- type : SchoolType\n- level : niveau académique (ex: Licence)\n- specialty : spécialité\n- accreditation : organisme accréditation\n- modality : PRESENTIEL | HYBRIDE | DISTANCE\n- language : FRANCAIS | ANGLAIS | ...\n- costMin / costMax : frais scolarité (XAF)\n- scoreMin : score Xkorienta minimum"
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "6. Administration plateforme (RECTOR / DG_M4M / DG_ISIMMA / TECH_SUPPORT)",
+      "item": [
+
+        {
+          "name": "GET Écoles en attente de validation (PENDING)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has pagination', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.have.property('pagination');",
+                  "  pm.expect(b.pagination).to.have.property('total');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/schools?status=PENDING&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "schools"],
+              "query": [
+                { "key": "status", "value": "PENDING", "description": "PENDING | VALIDATED | REJECTED | SUSPENDED" },
+                { "key": "page",   "value": "1" },
+                { "key": "limit",  "value": "20", "description": "Max 100" }
+              ]
+            },
+            "description": "Liste paginée des écoles par statut pour le panel d'administration.\nACCÈS : RECTOR, DG_M4M, DG_ISIMMA, TECH_SUPPORT uniquement"
+          },
+          "response": [
+            {
+              "name": "200 - Écoles PENDING",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    { \"_id\": \"...\", \"name\": \"Nouveau Lycée de Douala\", \"type\": \"SECONDARY_GENERAL\", \"status\": \"PENDING\", \"createdAt\": \"2025-03-01T00:00:00.000Z\" }\n  ],\n  \"pagination\": { \"page\": 1, \"limit\": 20, \"total\": 5, \"totalPages\": 1 }\n}"
+            },
+            {
+              "name": "403 - Rôle non autorisé",
+              "status": "Forbidden",
+              "code": 403,
+              "body": "{ \"success\": false, \"message\": \"Accès réservé aux administrateurs de la plateforme\" }"
+            }
+          ]
+        },
+
+        {
+          "name": "POST Valider une école (VALIDATE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('status VALIDATED', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.true;",
+                  "  pm.expect(b.school.status).to.equal('VALIDATED');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"VALIDATE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/schools/{{schoolId}}/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "schools", "{{schoolId}}", "validate"]
+            },
+            "description": "Valide une école PENDING → VALIDATED.\nnotes non requis pour VALIDATE."
+          },
+          "response": [
+            {
+              "name": "200 - École validée",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"École validée avec succès\",\n  \"school\": { \"_id\": \"...\", \"name\": \"Nouveau Lycée de Douala\", \"status\": \"VALIDATED\" }\n}"
+            }
+          ]
+        },
+
+        {
+          "name": "POST Rejeter une école (REJECT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('status REJECTED', () => {",
+                  "  pm.expect(pm.response.json().school.status).to.equal('REJECTED');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"REJECT\",\n  \"notes\": \"Établissement inexistant — adresse non vérifiable\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/schools/{{schoolId}}/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "schools", "{{schoolId}}", "validate"]
+            },
+            "description": "Rejette une école PENDING → REJECTED.\nnotes OBLIGATOIRE pour REJECT."
+          },
+          "response": [
+            {
+              "name": "200 - École rejetée",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"École rejetée\",\n  \"school\": { \"_id\": \"...\", \"name\": \"Nouveau Lycée de Douala\", \"status\": \"REJECTED\" }\n}"
+            },
+            {
+              "name": "400 - notes manquantes pour REJECT",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{ \"success\": false, \"message\": \"Une raison de rejet est obligatoire (champ notes)\" }"
+            }
+          ]
+        },
+
+        {
+          "name": "POST Suspendre une école (SUSPEND)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"SUSPEND\",\n  \"notes\": \"Plainte signalée — enquête en cours\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/schools/{{schoolId}}/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "schools", "{{schoolId}}", "validate"]
+            },
+            "description": "Suspend une école VALIDATED → SUSPENDED.\nnotes OBLIGATOIRE pour SUSPEND.\nSeul une école VALIDATED peut être suspendue."
+          },
+          "response": [
+            {
+              "name": "200 - École suspendue",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"École suspendue\",\n  \"school\": { \"_id\": \"...\", \"name\": \"Lycée Général de Yaoundé\", \"status\": \"SUSPENDED\" }\n}"
+            },
+            {
+              "name": "500 - École non validée (ne peut pas être suspendue)",
+              "status": "Internal Server Error",
+              "code": 500,
+              "body": "{ \"success\": false, \"message\": \"Only validated schools can be suspended\" }"
+            }
+          ]
+        },
+
+        {
+          "name": "POST Erreur : action invalide (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"DELETE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/schools/{{schoolId}}/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "schools", "{{schoolId}}", "validate"]
+            }
+          },
+          "response": [
+            {
+              "name": "400 - Action invalide",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{ \"success\": false, \"message\": \"Action invalide. Valeurs acceptées: VALIDATE, REJECT, SUSPEND\" }"
+            }
+          ]
+        }
+      ]
+    }
+
+  ]
+}

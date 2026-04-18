@@ -2,12 +2,27 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import connectDB from "@/lib/mongodb"
-import { SchoolController } from "@/lib/controllers/SchoolController"
+import { SchoolService } from "@/lib/services/SchoolService"
 import { UserRole } from "@/models/enums"
+
+/** Roles allowed to validate / reject / suspend schools on the platform */
+const PLATFORM_ADMIN_ROLES = [
+    UserRole.RECTOR,
+    UserRole.DG_M4M,
+    UserRole.TECH_SUPPORT,
+    UserRole.DG_ISIMMA,
+]
 
 /**
  * POST /api/admin/schools/[id]/validate
- * Validate or reject a school application
+ *
+ * Body: { action: 'VALIDATE' | 'REJECT' | 'SUSPEND', notes?: string }
+ *
+ * - VALIDATE : marks the school as officially verified (PENDING → VALIDATED)
+ * - REJECT   : marks as rejected with mandatory notes (PENDING → REJECTED)
+ * - SUSPEND  : suspends a previously validated school (VALIDATED → SUSPENDED)
+ *
+ * Access: platform admins only (RECTOR, DG_M4M, TECH_SUPPORT, DG_ISIMMA)
  */
 export async function POST(
     req: Request,
@@ -16,45 +31,78 @@ export async function POST(
     try {
         const { id } = await params
         const session = await getServerSession(authOptions)
+
         if (!session?.user?.id) {
-            return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 })
+            return NextResponse.json({ success: false, message: "Non autorisé" }, { status: 401 })
         }
 
-        // Check if user is Admin (or has rights)
-        // Allow RECTOR, DG_M4M, TECH_SUPPORT, DG_ISIMMA, and existing check for TEACHER for dev/testing if meant for that.
-        // Assuming strict role check logic is desired:
-        const allowedRoles = [
-            UserRole.RECTOR,
-            UserRole.DG_M4M,
-            UserRole.TECH_SUPPORT,
-            UserRole.DG_ISIMMA,
-            UserRole.SCHOOL_ADMIN // Maybe school admin can do something? Unlikely for validating schools itself.
-        ]
+        if (!PLATFORM_ADMIN_ROLES.includes(session.user.role as UserRole)) {
+            return NextResponse.json(
+                { success: false, message: "Accès réservé aux administrateurs de la plateforme" },
+                { status: 403 }
+            )
+        }
 
-        // For development/demo purposes as per original file comments:
-        // "Let's assume TEACHER can validate for testing"
-        // But ideally we should restrict. I will keep it loose if current user relies on it, 
-        // OR better: Just ensure they are logged in and maybe have some 'admin' claim if roles aren't fully set.
-        // Let's stick to checking if they have one of the roles OR is a 'TEACHER' (legacy dev mode comment).
+        if (!id || id === 'undefined') {
+            return NextResponse.json({ success: false, message: "ID d'école invalide" }, { status: 400 })
+        }
 
-        const isDevMode = true; // Implicit from comments
+        const body = await req.json()
+        const { action, notes } = body as { action?: string; notes?: string }
 
-        const hasRole = allowedRoles.includes(session.user.role as UserRole) ||
-            (isDevMode && session.user.role === UserRole.TEACHER);
-
-        if (!hasRole) {
-            return NextResponse.json({ success: false, message: "Forbidden" }, { status: 403 })
+        if (!action || !['VALIDATE', 'REJECT', 'SUSPEND'].includes(action)) {
+            return NextResponse.json(
+                { success: false, message: "Action invalide. Valeurs acceptées: VALIDATE, REJECT, SUSPEND" },
+                { status: 400 }
+            )
         }
 
         await connectDB()
 
-        return await SchoolController.validateSchool(req, id, session.user.id)
+        let school
+        switch (action) {
+            case 'VALIDATE':
+                school = await SchoolService.validateSchool(id, session.user.id)
+                return NextResponse.json({
+                    success: true,
+                    message: "École validée avec succès",
+                    school: { _id: school._id, name: school.name, status: school.status }
+                })
 
-    } catch (error) {
-        console.error("Validation Error:", error)
+            case 'REJECT':
+                if (!notes?.trim()) {
+                    return NextResponse.json(
+                        { success: false, message: "Une raison de rejet est obligatoire (champ notes)" },
+                        { status: 400 }
+                    )
+                }
+                school = await SchoolService.rejectSchool(id, session.user.id, notes)
+                return NextResponse.json({
+                    success: true,
+                    message: "École rejetée",
+                    school: { _id: school._id, name: school.name, status: school.status }
+                })
+
+            case 'SUSPEND':
+                if (!notes?.trim()) {
+                    return NextResponse.json(
+                        { success: false, message: "Une raison de suspension est obligatoire (champ notes)" },
+                        { status: 400 }
+                    )
+                }
+                school = await SchoolService.suspendSchool(id, session.user.id, notes)
+                return NextResponse.json({
+                    success: true,
+                    message: "École suspendue",
+                    school: { _id: school._id, name: school.name, status: school.status }
+                })
+        }
+
+    } catch (error: any) {
+        console.error("[Admin Schools Validate] Error:", error)
         return NextResponse.json(
-            { success: false, message: "Internal server error" },
-            { status: 500 }
+            { success: false, message: error.message || "Erreur serveur" },
+            { status: error.message?.includes("not found") ? 404 : 500 }
         )
     }
 }

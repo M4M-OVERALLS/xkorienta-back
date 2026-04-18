@@ -248,9 +248,10 @@ export enum ClassValidationStatus {
 }
 
 export enum SchoolStatus {
-    PENDING = 'PENDING',
-    VALIDATED = 'VALIDATED',
-    REJECTED = 'REJECTED'
+    PENDING = 'PENDING',       // Awaiting platform admin review
+    VALIDATED = 'VALIDATED',   // Admin confirmed as a legitimate school
+    REJECTED = 'REJECTED',     // Admin rejected (fraud, duplicate, error)
+    SUSPENDED = 'SUSPENDED'    // Previously validated, now suspended (violation discovered)
 }
 
 export enum CognitiveProfile {

@@ -1,0 +1,480 @@
+{
+  "info": {
+    "_postman_id": "07-exams-quizlock-frontend-integration",
+    "name": "QuizLock API — 07. Exams",
+    "description": "Module 07 — Exams (CRUD + Workflow)\n\nCe module couvre la gestion complète des examens côté enseignant :\n- Création d'examens avec questions/options\n- Workflow de statuts (DRAFT → PUBLISHED)\n- Validation pédagogique\n- Résultats et statistiques\n- Codes d'accès tardifs\n\n**Auth** : Cookie next-auth.session-token (login requis au préalable)\n**Base URL** : {{baseUrl}} (défaut: http://localhost:3000)\n\nOrganisation des dossiers :\n1. CRUD de base (GET/POST/PUT/DELETE)\n2. Workflow (status, validate, publish)\n3. Résultats & monitoring",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "URL de base de l'API"
+    },
+    {
+      "key": "examId",
+      "value": "",
+      "type": "string",
+      "description": "ID MongoDB d'un examen existant — rempli automatiquement lors de la création"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "1. CRUD — Exams",
+      "item": [
+        {
+          "name": "1.1 Lister mes examens",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams"]
+            },
+            "description": "GET /api/exams\n\nRetourne tous les examens créés par l'enseignant connecté.\n\n**Rôle requis** : TEACHER\n**Étudiants** : Retourne 403 — utiliser /api/student/exams\n\nRéponse 200 :\n{\n  \"success\": true,\n  \"data\": [ { _id, id, title, status, duration, startTime, endTime, isPublished, createdAt } ]\n}"
+          },
+          "response": [
+            {
+              "name": "200 — Liste des examens",
+              "originalRequest": {
+                "method": "GET",
+                "url": { "raw": "{{baseUrl}}/api/exams" }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"507f1f77bcf86cd799439200\",\n      \"id\": \"507f1f77bcf86cd799439200\",\n      \"title\": \"Contrôle Mécanique — Terminale C\",\n      \"description\": \"Évaluation formative sur les lois de Newton\",\n      \"startTime\": \"2025-01-20T08:00:00.000Z\",\n      \"endTime\": \"2025-01-20T10:00:00.000Z\",\n      \"duration\": 60,\n      \"closeMode\": \"STRICT\",\n      \"status\": \"PUBLISHED\",\n      \"isPublished\": true,\n      \"publishedAt\": \"2025-01-18T14:00:00.000Z\",\n      \"createdById\": \"507f1f77bcf86cd799439011\",\n      \"createdAt\": \"2025-01-15T10:00:00.000Z\",\n      \"updatedAt\": \"2025-01-18T14:00:00.000Z\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "401 — Non authentifié",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"message\": \"Unauthorized\" }"
+            },
+            {
+              "name": "403 — Étudiant (mauvais endpoint)",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Students should use /api/student/exams\" }"
+            }
+          ]
+        },
+        {
+          "name": "1.2 Créer un examen",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Sauvegarder l'ID de l'examen créé pour les requêtes suivantes",
+                  "if (pm.response.code === 201) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.exam && res.exam.id) {",
+                  "        pm.collectionVariables.set('examId', res.exam.id);",
+                  "        console.log('examId sauvegardé:', res.exam.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Contrôle Mécanique — Terminale C\",\n  \"description\": \"Évaluation formative sur les lois de Newton\",\n  \"startTime\": \"2025-06-20T08:00:00.000Z\",\n  \"endTime\": \"2025-06-20T10:00:00.000Z\",\n  \"duration\": 60,\n  \"closeMode\": \"STRICT\",\n  \"questions\": [\n    {\n      \"text\": \"Quelle est la première loi de Newton ?\",\n      \"imageUrl\": \"\",\n      \"points\": 2,\n      \"options\": [\n        { \"text\": \"Un corps au repos tend à rester au repos\", \"isCorrect\": true },\n        { \"text\": \"F = ma\", \"isCorrect\": false },\n        { \"text\": \"Action = Réaction\", \"isCorrect\": false },\n        { \"text\": \"L'énergie se conserve\", \"isCorrect\": false }\n      ]\n    },\n    {\n      \"text\": \"Quelle est la formule de la deuxième loi de Newton ?\",\n      \"points\": 3,\n      \"options\": [\n        { \"text\": \"F = ma\", \"isCorrect\": true },\n        { \"text\": \"E = mc²\", \"isCorrect\": false },\n        { \"text\": \"P = mv\", \"isCorrect\": false },\n        { \"text\": \"W = Fd\", \"isCorrect\": false }\n      ]\n    },\n    {\n      \"text\": \"Quel est le principe de la troisième loi de Newton ?\",\n      \"points\": 2,\n      \"options\": [\n        { \"text\": \"À toute action correspond une réaction égale et opposée\", \"isCorrect\": true },\n        { \"text\": \"L'accélération est proportionnelle à la force\", \"isCorrect\": false },\n        { \"text\": \"Un corps reste en mouvement rectiligne uniforme\", \"isCorrect\": false },\n        { \"text\": \"La vitesse est constante\", \"isCorrect\": false }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/exams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams"]
+            },
+            "description": "POST /api/exams\n\nCrée un examen avec toutes ses questions et options en cascade.\n\n**Rôle requis** : TEACHER\n\n⚠️ Le format de réponse est { message, exam } — pas { success, data }.\n\nAprès la création, l'ID est sauvegardé dans la variable 'examId'."
+          },
+          "response": [
+            {
+              "name": "201 — Examen créé",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Exam created\",\n  \"exam\": {\n    \"id\": \"507f1f77bcf86cd799439200\",\n    \"title\": \"Contrôle Mécanique — Terminale C\",\n    \"description\": \"Évaluation formative sur les lois de Newton\",\n    \"startTime\": \"2025-06-20T08:00:00.000Z\",\n    \"endTime\": \"2025-06-20T10:00:00.000Z\",\n    \"duration\": 60,\n    \"closeMode\": \"STRICT\",\n    \"createdById\": \"507f1f77bcf86cd799439011\"\n  }\n}"
+            },
+            {
+              "name": "400 — Données invalides",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"message\": \"Invalid input data\" }"
+            },
+            {
+              "name": "401 — Non enseignant",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"message\": \"Unauthorized\" }"
+            }
+          ]
+        },
+        {
+          "name": "1.3 Modifier un examen (PUT complet)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Contrôle Mécanique — Terminale C (Révisé)\",\n  \"description\": \"Version mise à jour avec questions supplémentaires\",\n  \"startTime\": \"2025-06-20T09:00:00.000Z\",\n  \"endTime\": \"2025-06-20T11:00:00.000Z\",\n  \"duration\": 90,\n  \"closeMode\": \"PERMISSIVE\",\n  \"questions\": [\n    {\n      \"text\": \"Quelle est la première loi de Newton ?\",\n      \"points\": 2,\n      \"options\": [\n        { \"text\": \"Un corps au repos tend à rester au repos\", \"isCorrect\": true },\n        { \"text\": \"F = ma\", \"isCorrect\": false },\n        { \"text\": \"Action = Réaction\", \"isCorrect\": false },\n        { \"text\": \"L'énergie se conserve\", \"isCorrect\": false }\n      ]\n    },\n    {\n      \"text\": \"Quelle est la formule de la deuxième loi de Newton ?\",\n      \"points\": 3,\n      \"options\": [\n        { \"text\": \"F = ma\", \"isCorrect\": true },\n        { \"text\": \"E = mc²\", \"isCorrect\": false },\n        { \"text\": \"P = mv\", \"isCorrect\": false },\n        { \"text\": \"W = Fd\", \"isCorrect\": false }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}"]
+            },
+            "description": "PUT /api/exams/:id\n\n⚠️ TOUTES les données sont requises (titre + dates + TOUTES les questions).\n\n**Cas spécial** : Si des étudiants ont déjà passé l'examen,\nla réponse contient `warning: true` et les questions ne sont PAS mises à jour.\n\n→ Afficher un message d'alerte à l'utilisateur dans ce cas."
+          },
+          "response": [
+            {
+              "name": "200 — Mis à jour completement",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Exam updated successfully\",\n  \"exam\": {\n    \"_id\": \"507f1f77bcf86cd799439200\",\n    \"title\": \"Contrôle Mécanique — Terminale C (Révisé)\",\n    \"duration\": 90,\n    \"closeMode\": \"PERMISSIVE\"\n  }\n}"
+            },
+            {
+              "name": "200 — Mise à jour partielle (tentatives existantes)",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Exam updated. Questions were not modified because students have already taken this exam.\",\n  \"exam\": { \"_id\": \"507f1f77bcf86cd799439200\", \"title\": \"Contrôle Mécanique — Terminale C (Révisé)\" },\n  \"warning\": true\n}"
+            },
+            {
+              "name": "404 — Introuvable ou non propriétaire",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"message\": \"Not found or unauthorized\" }"
+            }
+          ]
+        },
+        {
+          "name": "1.4 Supprimer un examen",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}"]
+            },
+            "description": "DELETE /api/exams/:id\n\n⚠️ SUPPRESSION EN CASCADE et IRRÉVERSIBLE :\n- Réponses (Response)\n- Tentatives (Attempt)\n- Questions (Question)\n- Options (Option)\n- Codes tardifs (LateCode)\n- L'examen lui-même\n\n**Rôle requis** : TEACHER (owner uniquement)"
+          },
+          "response": [
+            {
+              "name": "200 — Supprimé",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"message\": \"Exam deleted successfully\" }"
+            },
+            {
+              "name": "404 — Introuvable ou non propriétaire",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"message\": \"Not found or unauthorized\" }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Workflow — Statuts",
+      "item": [
+        {
+          "name": "2.1 Changer le statut (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PUBLISHED\"\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "status"]
+            },
+            "description": "PATCH /api/exams/:id/status\n\nEndpoint principal de gestion du cycle de vie.\n\nStatuts valides :\n- DRAFT → statut brouillon\n- PENDING_VALIDATION → soumet à validation\n- VALIDATED → valide l'examen\n- PUBLISHED → publie (notifie les étudiants automatiquement)\n- CLOSED → ferme l'accès\n- ARCHIVED → archive\n\n⚠️ Lors du passage à PUBLISHED, les étudiants des classes liées reçoivent une notification automatique.\n\nModifier le body pour tester différentes transitions."
+          },
+          "response": [
+            {
+              "name": "200 — Statut mis à jour",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"507f1f77bcf86cd799439200\",\n    \"title\": \"Contrôle Mécanique — Terminale C\",\n    \"status\": \"PUBLISHED\",\n    \"isPublished\": true,\n    \"publishedAt\": \"2025-01-18T14:00:00.000Z\"\n  },\n  \"message\": \"Exam status updated to PUBLISHED\"\n}"
+            },
+            {
+              "name": "400 — Statut invalide",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Invalid status\" }"
+            },
+            {
+              "name": "403 — Non propriétaire",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Unauthorized to modify this exam\" }"
+            }
+          ]
+        },
+        {
+          "name": "2.1a → DRAFT",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"status\": \"DRAFT\" }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "status"]
+            },
+            "description": "Repasse l'examen en brouillon."
+          },
+          "response": []
+        },
+        {
+          "name": "2.1b → PENDING_VALIDATION",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"status\": \"PENDING_VALIDATION\" }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "status"]
+            },
+            "description": "Soumet l'examen à la validation pédagogique."
+          },
+          "response": []
+        },
+        {
+          "name": "2.1c → PUBLISHED (direct)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"status\": \"PUBLISHED\" }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "status"]
+            },
+            "description": "Publie directement l'examen (workflow simplifié, sans validation obligatoire). Notifie les étudiants."
+          },
+          "response": []
+        },
+        {
+          "name": "2.2 Valider un examen (POST)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "validate"]
+            },
+            "description": "POST /api/exams/:id/validate\n\nFait passer l'examen de PENDING_VALIDATION → VALIDATED.\n\n**Rôle requis** : TEACHER ou INSPECTOR\n**Aucun body requis.**\n\nUtilisé dans le workflow pédagogique complet."
+          },
+          "response": [
+            {
+              "name": "200 — Examen validé",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"507f1f77bcf86cd799439200\",\n    \"title\": \"Contrôle Mécanique — Terminale C\",\n    \"status\": \"VALIDATED\",\n    \"validatedBy\": \"507f1f77bcf86cd799439022\",\n    \"validatedAt\": \"2025-01-17T09:00:00.000Z\"\n  },\n  \"message\": \"Exam validated successfully\"\n}"
+            },
+            {
+              "name": "403 — Rôle non autorisé",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Forbidden: Only teachers and inspectors can validate exams\" }"
+            }
+          ]
+        },
+        {
+          "name": "2.3 Publier un examen (POST strict)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/publish",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "publish"]
+            },
+            "description": "POST /api/exams/:id/publish\n\nFait passer l'examen de VALIDATED → PUBLISHED.\n\n**Alternative stricte** à PATCH /status — passe par ExamWorkflowService\nqui vérifie que les transitions sont valides.\n\n**Aucun body requis.**"
+          },
+          "response": [
+            {
+              "name": "200 — Examen publié",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"507f1f77bcf86cd799439200\",\n    \"status\": \"PUBLISHED\",\n    \"isPublished\": true,\n    \"publishedAt\": \"2025-01-18T14:00:00.000Z\"\n  },\n  \"message\": \"Exam published successfully\"\n}"
+            },
+            {
+              "name": "403 — Mauvais statut courant",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Cannot publish exam: current status is DRAFT\" }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Résultats & Monitoring",
+      "item": [
+        {
+          "name": "3.1 Résultats d'un examen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/results",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "results"]
+            },
+            "description": "GET /api/exams/:id/results\n\nRetourne statistiques + liste détaillée de toutes les tentatives.\n\n**Rôle requis** : TEACHER (owner uniquement)\n\nContenus de la réponse :\n- exam : metadata (titre, durée, score de passage)\n- stats : moyennes, taux de réussite, distribution\n- distribution : répartition des scores par tranches (0-20, 21-40, ...)\n- attempts[] : liste des tentatives avec infos anti-triche\n\n⚠️ Les messages d'erreur sont en français pour cet endpoint."
+          },
+          "response": [
+            {
+              "name": "200 — Résultats complets",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"exam\": {\n      \"id\": \"507f1f77bcf86cd799439200\",\n      \"title\": \"Contrôle Mécanique — Terminale C\",\n      \"duration\": 60,\n      \"passingScore\": 50\n    },\n    \"stats\": {\n      \"totalAttempts\": 28,\n      \"completedAttempts\": 25,\n      \"inProgressAttempts\": 3,\n      \"averageScore\": 67,\n      \"highestScore\": 95,\n      \"lowestScore\": 20,\n      \"passRate\": 72,\n      \"averageTimeSpent\": 45\n    },\n    \"distribution\": [\n      { \"range\": \"0-20\", \"count\": 2 },\n      { \"range\": \"21-40\", \"count\": 3 },\n      { \"range\": \"41-60\", \"count\": 5 },\n      { \"range\": \"61-80\", \"count\": 10 },\n      { \"range\": \"81-100\", \"count\": 5 }\n    ],\n    \"attempts\": [\n      {\n        \"id\": \"507f1f77bcf86cd799439300\",\n        \"studentId\": \"507f1f77bcf86cd799439050\",\n        \"studentName\": \"Marie Dupont\",\n        \"studentEmail\": \"marie.dupont@example.com\",\n        \"studentCode\": \"STD2024001\",\n        \"status\": \"COMPLETED\",\n        \"score\": 14,\n        \"maxScore\": 20,\n        \"percentage\": 70,\n        \"passed\": true,\n        \"timeSpent\": 52,\n        \"timeSpentFormatted\": \"52m\",\n        \"startedAt\": \"2025-01-20T08:05:00.000Z\",\n        \"submittedAt\": \"2025-01-20T08:57:00.000Z\",\n        \"tabSwitchCount\": 0,\n        \"suspiciousActivity\": false\n      }\n    ]\n  }\n}"
+            },
+            {
+              "name": "403 — Non propriétaire",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Accès non autorisé\" }"
+            },
+            {
+              "name": "404 — Examen introuvable",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Examen non trouvé\" }"
+            }
+          ]
+        },
+        {
+          "name": "3.2 Codes d'accès tardifs d'un examen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/late-codes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "late-codes"]
+            },
+            "description": "GET /api/exams/:id/late-codes\n\nRécupère les codes d'accès tardifs pour cet examen.\n\n**Rôle requis** : TEACHER (owner)\n\nPour CRÉER des codes tardifs, voir Module 13 — Late Codes.\n\nChaque code contient :\n- code : le code d'accès tardif (ex: 'LATE-XK7F9')\n- assignedUserId : étudiant assigné (populé)\n- createdBy : créateur (populé)\n- expiresAt : date d'expiration\n- used : si le code a été utilisé\n\n⚠️ Messages d'erreur en français."
+          },
+          "response": [
+            {
+              "name": "200 — Liste des codes tardifs",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"507f1f77bcf86cd799439400\",\n      \"examId\": \"507f1f77bcf86cd799439200\",\n      \"code\": \"LATE-XK7F9\",\n      \"assignedUserId\": {\n        \"_id\": \"507f1f77bcf86cd799439050\",\n        \"name\": \"Marie Dupont\",\n        \"email\": \"marie.dupont@example.com\"\n      },\n      \"createdBy\": {\n        \"_id\": \"507f1f77bcf86cd799439011\",\n        \"name\": \"Prof. Martin\"\n      },\n      \"expiresAt\": \"2025-01-20T11:00:00.000Z\",\n      \"used\": false,\n      \"createdAt\": \"2025-01-20T09:30:00.000Z\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "403 — Non propriétaire",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Accès non autorisé\" }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Flux complets (référence)",
+      "item": [
+        {
+          "name": "Flux A — Créer et publier directement",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"[Flux A] Quiz rapide de Physique\",\n  \"description\": \"Test de connaissances — 15 minutes\",\n  \"startTime\": \"2025-06-25T10:00:00.000Z\",\n  \"endTime\": \"2025-06-25T11:00:00.000Z\",\n  \"duration\": 15,\n  \"closeMode\": \"STRICT\",\n  \"questions\": [\n    {\n      \"text\": \"Quelle est l'unité de la force en SI ?\",\n      \"points\": 1,\n      \"options\": [\n        { \"text\": \"Newton (N)\", \"isCorrect\": true },\n        { \"text\": \"Joule (J)\", \"isCorrect\": false },\n        { \"text\": \"Pascal (Pa)\", \"isCorrect\": false },\n        { \"text\": \"Watt (W)\", \"isCorrect\": false }\n      ]\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/exams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams"]
+            },
+            "description": "ÉTAPE 1/2 du Flux A : Créer l'examen\n\nSuivre avec :\nÉTAPE 2/2 : PATCH /api/exams/{{examId}}/status { status: 'PUBLISHED' }"
+          },
+          "response": []
+        },
+        {
+          "name": "Flux A — Publier l'examen créé",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"status\": \"PUBLISHED\" }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/exams/{{examId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "exams", "{{examId}}", "status"]
+            },
+            "description": "ÉTAPE 2/2 du Flux A : Publier directement.\nL'examId est extrait automatiquement de la variable de collection."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

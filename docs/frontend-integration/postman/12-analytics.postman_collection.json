@@ -1,0 +1,141 @@
+{
+  "info": {
+    "_postman_id": "12-analytics-quizlock-frontend-integration",
+    "name": "QuizLock API — 12. Analytics",
+    "description": "Module 12 — Analytics & Insights\n\nContient le endpoint central d'analyse /api/analytics pour les profs et l'endpoint standard pour les étudiants.\n\n**Auth** : Cookie next-auth.session-token\n**Base URL** : {{baseUrl}}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "studentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "classId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "schoolId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Modèle Etudiant",
+      "item": [
+        {
+          "name": "GET Student Analytics Global",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/analytics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "student",
+                "analytics"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Modèle Advanced (Profs/Admins/Inspecteurs)",
+      "item": [
+        {
+          "name": "GET Teacher Engagement",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics?type=engagement",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "engagement"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Progression Eleve",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics?type=progression&studentId={{studentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "progression"
+                },
+                {
+                  "key": "studentId",
+                  "value": "{{studentId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Compare Classes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics?type=compare-classes&schoolId={{schoolId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "compare-classes"
+                },
+                {
+                  "key": "schoolId",
+                  "value": "{{schoolId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

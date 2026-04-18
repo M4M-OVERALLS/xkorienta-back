@@ -24,7 +24,11 @@ export class SchoolRepository {
 
     async findActiveSchools(search?: string, type?: string) {
         await connectDB();
-        const query: Record<string, unknown> = { isActive: true };
+        // Only expose VALIDATED schools publicly — PENDING/REJECTED/SUSPENDED must never appear in search
+        const query: Record<string, unknown> = {
+            status: SchoolStatus.VALIDATED,
+            isActive: true
+        };
 
         if (type) {
             query.type = type;
@@ -55,19 +59,56 @@ export class SchoolRepository {
         return School.find({ admins: adminId }).select('_id name');
     }
 
-    async updateValidationStatus(id: string, isValidated: boolean, adminId: string, status?: SchoolStatus) {
+    async updateValidationStatus(
+        id: string,
+        status: SchoolStatus,
+        adminId: string,
+        rejectionNotes?: string
+    ): Promise<ISchool | null> {
         await connectDB();
         const updateData: Record<string, unknown> = {
-            isValidated,
-            validatedBy: adminId,
-            validatedAt: new Date()
+            status,
+            verifiedBy: adminId,
+            verifiedAt: new Date()
         };
 
-        if (status) {
-            updateData.status = status;
+        if (rejectionNotes !== undefined) {
+            updateData.rejectionNotes = rejectionNotes;
         }
 
         return School.findByIdAndUpdate(id, updateData, { new: true });
+    }
+
+    /**
+     * List schools by status for the admin panel (paginated)
+     */
+    async findByStatus(
+        status: SchoolStatus,
+        page = 1,
+        limit = 20,
+        search?: string
+    ): Promise<{ schools: ISchool[]; total: number }> {
+        await connectDB();
+        const query: Record<string, unknown> = { status };
+
+        if (search) {
+            query.name = { $regex: search, $options: 'i' };
+        }
+
+        const skip = (page - 1) * limit;
+        const [schools, total] = await Promise.all([
+            School.find(query)
+                .populate('owner', 'name email')
+                .populate('verifiedBy', 'name email')
+                .select('name type address status owner verifiedBy verifiedAt rejectionNotes createdAt')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            School.countDocuments(query)
+        ]);
+
+        return { schools: schools as unknown as ISchool[], total };
     }
 
     /**
@@ -121,7 +162,8 @@ export class SchoolRepository {
      */
     async findSchoolsForStudents() {
         await connectDB();
-        const schools = await School.find({})
+        // Students only see verified schools — never expose PENDING/REJECTED/SUSPENDED
+        const schools = await School.find({ status: SchoolStatus.VALIDATED, isActive: true })
             .select([
                 'name',
                 'type',

@@ -98,12 +98,17 @@ export class RegistrationService {
         let createdSchool: any = null;
 
         if (isCreatingSchool && newSchoolData) {
+            // Build address string from available text fields
+            // NOTE: city and country in the School schema are ObjectId refs — do NOT pass raw strings
+            const addressParts = [newSchoolData.address, newSchoolData.city, newSchoolData.country]
+                .filter(Boolean)
+                .join(', ');
+
             createdSchool = await School.create({
                 name: newSchoolData.name,
                 type: newSchoolData.type || "OTHER",
-                address: newSchoolData.address,
-                city: newSchoolData.city,
-                country: newSchoolData.country,
+                address: addressParts || undefined,
+                // city and country are ObjectId refs — skip during self-registration (PENDING school, completed by admin later)
                 status: SchoolStatus.PENDING,
                 isActive: true,
                 owner: user._id,

@@ -1,0 +1,94 @@
+{
+  "info": {
+    "_postman_id": "13-late-codes-quizlock-frontend-integration",
+    "name": "QuizLock API — 13. Late Codes",
+    "description": "Module 13 — Late Codes (Codes de retard)\n\nPermet de générer des codes de bypass pour qu'un élève puisse passer un examen une fois la deadline dépassée.\n\n1. Teacher : Générer\n2. Student : Valider\n\n**Auth** : Cookie next-auth.session-token\n**Base URL** : {{baseUrl}}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "examId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "studentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "lateCode",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Générer code retard (Teacher)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    var res = pm.response.json();",
+              "    if (res.lateCode && res.lateCode.code) {",
+              "        pm.collectionVariables.set('lateCode', res.lateCode.code);",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/late-codes/generate",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "late-codes", "generate"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"examId\": \"{{examId}}\",\n  \"usagesRemaining\": 1,\n  \"assignedUserId\": \"{{studentId}}\",\n  \"reason\": \"Orage / coupure d'électricité\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "POST /api/late-codes/generate\n\nCrée ce code unique de 8 caractères."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Valider code retard (Student)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/late-codes/validate",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "late-codes", "validate"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"examId\": \"{{examId}}\",\n  \"code\": \"{{lateCode}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "POST /api/late-codes/validate\n\nÀ appeler par l'étudiant dans le lobby d'un examen expiré afin de le débloquer."
+      },
+      "response": []
+    }
+  ]
+}

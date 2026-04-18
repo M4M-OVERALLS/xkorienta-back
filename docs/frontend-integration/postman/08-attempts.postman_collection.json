@@ -1,0 +1,683 @@
+{
+  "info": {
+    "_postman_id": "08-attempts-quizlock-frontend-integration",
+    "name": "QuizLock API — 08. Attempts (Prise d'examen)",
+    "description": "Module 08 — Attempts (Prise d'examen côté Étudiant)\n\nCouvre tout le cycle de vie d'une prise d'examen :\n1. Accès aux examens disponibles\n2. Lobby / vérifications pré-examen\n3. Démarrage et prise de l'examen\n4. Sauvegarde des réponses au fil de l'eau\n5. Soumission et évaluation\n6. Reprise après crash\n7. Résultats et historique\n8. Anti-triche\n\n**Auth** : Cookie next-auth.session-token (login STUDENT requis)\n**Base URL** : {{baseUrl}} (défaut: http://localhost:3000)\n\n⚠️ La plupart des endpoints /api/student/* retournent les messages d'erreur en FRANÇAIS.\nLes endpoints /api/attempts/* retournent les messages en ANGLAIS.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "URL de base de l'API"
+    },
+    {
+      "key": "examId",
+      "value": "",
+      "type": "string",
+      "description": "ID MongoDB d'un examen publié — à remplir manuellement"
+    },
+    {
+      "key": "attemptId",
+      "value": "",
+      "type": "string",
+      "description": "ID de la tentative — rempli automatiquement lors du start"
+    },
+    {
+      "key": "resumeToken",
+      "value": "",
+      "type": "string",
+      "description": "Token de reprise — rempli automatiquement lors du start"
+    },
+    {
+      "key": "questionId",
+      "value": "",
+      "type": "string",
+      "description": "ID d'une question de l'examen — à remplir après /take"
+    },
+    {
+      "key": "optionId",
+      "value": "",
+      "type": "string",
+      "description": "ID d'une option de réponse — à remplir après /take"
+    },
+    {
+      "key": "attemptIdForReview",
+      "value": "",
+      "type": "string",
+      "description": "ID d'une tentative terminée pour la révision"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Accès aux Examens (Étudiant)",
+      "item": [
+        {
+          "name": "1.1 Lister les examens disponibles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/exams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "exams"]
+            },
+            "description": "GET /api/student/exams\n\nRetourne tous les examens publiés accessibles à l'étudiant connecté.\n\n**Rôle requis** : STUDENT\n\nRéponse : { success, data: [ { _id, title, status, startTime, endTime, duration, config } ] }"
+          },
+          "response": [
+            {
+              "name": "200 — Liste des examens disponibles",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"507f1f77bcf86cd799439200\",\n      \"title\": \"Contrôle Mécanique — Terminale C\",\n      \"description\": \"Évaluation formative sur les lois de Newton\",\n      \"startTime\": \"2025-01-20T08:00:00.000Z\",\n      \"endTime\": \"2025-01-20T10:00:00.000Z\",\n      \"duration\": 60,\n      \"closeMode\": \"STRICT\",\n      \"status\": \"PUBLISHED\",\n      \"isPublished\": true,\n      \"config\": {\n        \"maxAttempts\": 1,\n        \"shuffleQuestions\": true,\n        \"enableImmediateFeedback\": false,\n        \"passingScore\": 50\n      }\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "1.2 Lobby d'un examen (pré-démarrage)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/exams/{{examId}}/lobby",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "exams", "{{examId}}", "lobby"]
+            },
+            "description": "GET /api/student/exams/:id/lobby\n\nAppeler AVANT de démarrer un examen.\nRetourne les infos de l'examen SANS les questions + tentatives précédentes.\n\nUsages :\n- Afficher les règles de l'examen (durée, max tentatives, etc.)\n- attempts.length >= config.maxAttempts → désactiver 'Démarrer'\n- attempt avec status='STARTED' → afficher bouton 'Reprendre'\n\n⚠️ Données retournées à la RACINE de l'objet (pas dans 'data'):\n{ success, exam, attempts }"
+          },
+          "response": [
+            {
+              "name": "200 — Lobby OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"exam\": {\n    \"id\": \"507f1f77bcf86cd799439200\",\n    \"title\": \"Contrôle Mécanique — Terminale C\",\n    \"description\": \"Évaluation formative\",\n    \"startTime\": \"2025-01-20T08:00:00.000Z\",\n    \"endTime\": \"2025-01-20T10:00:00.000Z\",\n    \"duration\": 60,\n    \"closeMode\": \"STRICT\",\n    \"config\": { \"maxAttempts\": 1, \"passingScore\": 50, \"shuffleQuestions\": true },\n    \"_count\": { \"questions\": 15 }\n  },\n  \"attempts\": []\n}"
+            },
+            {
+              "name": "200 — Étudiant a déjà une tentative en cours",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"exam\": { \"id\": \"...\", \"title\": \"...\", \"_count\": { \"questions\": 15 } },\n  \"attempts\": [\n    {\n      \"id\": \"507f1f77bcf86cd799439300\",\n      \"status\": \"STARTED\",\n      \"score\": null,\n      \"startedAt\": \"2025-01-20T08:05:00.000Z\",\n      \"expiresAt\": \"2025-01-20T10:00:00.000Z\",\n      \"resumeToken\": \"a8f3c9e2d1b4f8a7c6...\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "1.3 Charger les questions de l'examen (/take)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/exams/{{examId}}/take",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "exams", "{{examId}}", "take"]
+            },
+            "description": "GET /api/student/exams/:id/take\n\nCharge les questions pour la prise d'examen.\n⚠️ Le champ 'isCorrect' est MASQUÉ dans les options (sécurité).\n\nRetourne aussi la tentative en cours si elle existe (attempt != null).\n\nSi exam.config.antiCheat.aiReformulation = true :\n→ Les textes des questions et options sont reformulés de façon UNIQUE\n  par étudiant via HuggingFace AI (pour éviter la communication)\n\nRetourne { success, exam, attempt } (pas dans 'data')"
+          },
+          "response": [
+            {
+              "name": "200 — Questions chargées (pas de tentative en cours)",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"exam\": {\n    \"id\": \"507f1f77bcf86cd799439200\",\n    \"title\": \"Contrôle Mécanique — Terminale C\",\n    \"duration\": 60,\n    \"config\": { \"maxAttempts\": 1, \"shuffleQuestions\": true },\n    \"questions\": [\n      {\n        \"id\": \"507f1f77bcf86cd799439500\",\n        \"text\": \"Quelle est la première loi de Newton ?\",\n        \"type\": \"QCM\",\n        \"points\": 2,\n        \"options\": [\n          { \"id\": \"507f1f77bcf86cd799439601\", \"text\": \"Un corps au repos tend à rester au repos\" },\n          { \"id\": \"507f1f77bcf86cd799439602\", \"text\": \"F = ma\" },\n          { \"id\": \"507f1f77bcf86cd799439603\", \"text\": \"Action = Réaction\" },\n          { \"id\": \"507f1f77bcf86cd799439604\", \"text\": \"L'énergie se conserve\" }\n        ]\n      }\n    ]\n  },\n  \"attempt\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Prise d'Examen",
+      "item": [
+        {
+          "name": "2.1 Démarrer une tentative",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Sauvegarder attemptId et resumeToken pour les requêtes suivantes",
+                  "if (pm.response.code === 201) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data) {",
+                  "        pm.collectionVariables.set('attemptId', res.data.attemptId);",
+                  "        pm.collectionVariables.set('resumeToken', res.data.resumeToken);",
+                  "        console.log('attemptId:', res.data.attemptId);",
+                  "        console.log('resumeToken:', res.data.resumeToken);",
+                  "        console.log('⚠️ Stocker resumeToken en localStorage pour la reprise !');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"examId\": \"{{examId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "start"]
+            },
+            "description": "POST /api/attempts/start\n\nDémarre une nouvelle tentative d'examen.\n\nPré-conditions vérifiées :\n- Examen PUBLISHED\n- now >= startTime et now <= endTime\n- attempts < config.maxAttempts\n- Délai timeBetweenAttempts respecté\n\n⚔️ Le script de test sauvegarde automatiquement :\n- attemptId → variable de collection\n- resumeToken → variable de collection\n\n⚠️ Stocker le resumeToken en localStorage côté frontend pour la reprise !"
+          },
+          "response": [
+            {
+              "name": "201 — Tentative démarrée",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"attemptId\": \"507f1f77bcf86cd799439300\",\n    \"resumeToken\": \"a8f3c9e2d1b4f8a7c6e5d4b3a2f1e8d7c6b5a4f3e2d1c8b7a6f5e4d3c2b1a9f8\",\n    \"config\": {\n      \"maxAttempts\": 1,\n      \"shuffleQuestions\": true,\n      \"timeBetweenAttempts\": 0,\n      \"antiCheat\": { \"enabled\": true, \"maxTabSwitches\": 3 }\n    },\n    \"startedAt\": \"2025-01-20T08:05:00.000Z\",\n    \"duration\": 60\n  },\n  \"message\": \"Attempt started successfully\"\n}"
+            },
+            {
+              "name": "403 — Examen non publié",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Exam is not published\" }"
+            },
+            {
+              "name": "403 — Examen pas encore commencé",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Exam has not started yet\" }"
+            },
+            {
+              "name": "403 — Examen terminé",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Exam has ended\" }"
+            },
+            {
+              "name": "403 — Nombre max de tentatives atteint",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Maximum attempts (1) reached\" }"
+            }
+          ]
+        },
+        {
+          "name": "2.2 Enregistrer une réponse QCM",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attemptId\": \"{{attemptId}}\",\n  \"questionId\": \"{{questionId}}\",\n  \"selectedOptionId\": \"{{optionId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "answer"]
+            },
+            "description": "POST /api/attempts/answer\n\nSauvegarde la réponse à une question QCM au fil de l'eau.\nAppeler APRÈS CHAQUE sélection de l'étudiant.\n\nSi la question a déjà une réponse → elle est MISE À JOUR (upsert).\n\n⚠️ La réponse est 200 { message: 'Saved' } — format différent des autres endpoints\n(pas de clé 'success')"
+          },
+          "response": [
+            {
+              "name": "200 — Réponse sauvegardée",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"message\": \"Saved\" }"
+            },
+            {
+              "name": "400 — Tentative déjà terminée",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"message\": \"Attempt already completed\" }"
+            },
+            {
+              "name": "403 — Tentative invalide (non propriétaire)",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"message\": \"Invalid attempt\" }"
+            }
+          ]
+        },
+        {
+          "name": "2.2b Enregistrer une réponse Vrai/Faux",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attemptId\": \"{{attemptId}}\",\n  \"questionId\": \"{{questionId}}\",\n  \"selectedOptionId\": \"true\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "answer"]
+            },
+            "description": "Pour les questions TRUE_FALSE :\nselectedOptionId = 'true' ou 'false' (chaîne, pas un ObjectId)"
+          },
+          "response": []
+        },
+        {
+          "name": "2.2c Enregistrer une réponse question ouverte",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attemptId\": \"{{attemptId}}\",\n  \"questionId\": \"{{questionId}}\",\n  \"textResponse\": \"La force est liée à la masse et à l'accélération par la formule F = ma\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "answer"]
+            },
+            "description": "Pour les questions OPEN_QUESTION :\nutiliser 'textResponse' à la place de 'selectedOptionId'"
+          },
+          "response": []
+        },
+        {
+          "name": "2.3 Soumettre la tentative (nouvelle méthode recommandée)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"responses\": [\n    {\n      \"questionId\": \"507f1f77bcf86cd799439500\",\n      \"selectedOptionId\": \"507f1f77bcf86cd799439601\",\n      \"timeSpent\": 45\n    },\n    {\n      \"questionId\": \"507f1f77bcf86cd799439501\",\n      \"selectedOptionId\": \"507f1f77bcf86cd799439611\",\n      \"timeSpent\": 30\n    },\n    {\n      \"questionId\": \"507f1f77bcf86cd799439502\",\n      \"textAnswer\": \"La force est égale à la masse fois l'accélération (F = ma)\",\n      \"timeSpent\": 120\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/{{attemptId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "{{attemptId}}", "submit"]
+            },
+            "description": "POST /api/attempts/:id/submit\n\nMéthode recommandée — Soumet TOUTES les réponses en une fois et évalue.\nAction IRRÉVERSIBLE : la tentative passe à status: 'COMPLETED'.\n\nEffets de bord :\n- Met à jour les stats de l'examen\n- Met à jour le profil apprenant\n- Publie ATTEMPT_SUBMITTED, ATTEMPT_GRADED, EXAM_COMPLETED\n- Peut déclencher la gamification (badges, XP)\n\nAprès soumission → Rediriger vers GET /api/student/exams/:id/result"
+          },
+          "response": [
+            {
+              "name": "200 — Tentative soumise et évaluée",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"attempt\": {\n      \"_id\": \"507f1f77bcf86cd799439300\",\n      \"status\": \"COMPLETED\",\n      \"score\": 14,\n      \"maxScore\": 20,\n      \"percentage\": 70,\n      \"passed\": true,\n      \"timeSpent\": 3120,\n      \"submittedAt\": \"2025-01-20T08:57:00.000Z\"\n    },\n    \"evaluation\": {\n      \"score\": 14,\n      \"maxScore\": 20,\n      \"percentage\": 70,\n      \"passed\": true\n    },\n    \"totalResponses\": 15\n  },\n  \"message\": \"Attempt submitted and evaluated successfully\"\n}"
+            },
+            {
+              "name": "400 — responses manquant",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"responses array is required\" }"
+            },
+            {
+              "name": "403 — Tentative déjà terminée",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Attempt is not in progress\" }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Reprise et Interruption",
+      "item": [
+        {
+          "name": "3.1 Reprendre une tentative interrompue",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resumeToken\": \"{{resumeToken}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/{{attemptId}}/resume",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "{{attemptId}}", "resume"]
+            },
+            "description": "POST /api/attempts/:id/resume\n\nReprend une tentative STARTED après crash ou rechargement.\nRequiert le resumeToken stocké en localStorage.\n\nLa réponse inclut data.responses[] avec les réponses déjà enregistrées\n→ Utiliser pour pré-cocher les questions dans l'interface.\n\nScénario typique :\n1. Récupérer { attemptId, resumeToken } depuis localStorage\n2. Appeler cet endpoint\n3. Pré-remplir l'UI avec les réponses déjà soumises"
+          },
+          "response": [
+            {
+              "name": "200 — Tentative reprise",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"attempt\": {\n      \"_id\": \"507f1f77bcf86cd799439300\",\n      \"status\": \"STARTED\",\n      \"startedAt\": \"2025-01-20T08:05:00.000Z\",\n      \"expiresAt\": \"2025-01-20T10:00:00.000Z\",\n      \"resumeToken\": \"a8f3c9e2d1b4f8a7...\"\n    },\n    \"responses\": [\n      {\n        \"_id\": \"507f1f77bcf86cd799439700\",\n        \"attemptId\": \"507f1f77bcf86cd799439300\",\n        \"questionId\": \"507f1f77bcf86cd799439500\",\n        \"selectedOptionId\": \"507f1f77bcf86cd799439601\",\n        \"isCorrect\": true\n      }\n    ]\n  },\n  \"message\": \"Attempt resumed successfully\"\n}"
+            },
+            {
+              "name": "403 — Token invalide",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Invalid resume token\" }"
+            },
+            {
+              "name": "403 — Tentative déjà terminée",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Attempt is not in progress\" }"
+            }
+          ]
+        },
+        {
+          "name": "3.2 Valider un token de reprise (QR Code / Email)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"a8f3c9e2d1b4f8a7c6e5d4b3a2f1e8d7c6b5a4f3e2d1c8b7a6f5e4d3c2b1a9f8\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/resume",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resume"]
+            },
+            "description": "POST /api/resume\n\nValide un token de reprise et retourne une URL de redirection.\nUtilisé quand l'étudiant arrive via un QR Code ou un lien email.\n\nAuth non obligatoire, mais si l'utilisateur est connecté, vérifie\nque c'est bien le bon utilisateur.\n\nRéponse : { redirectUrl: '/student/exam/:id/take' }"
+          },
+          "response": [
+            {
+              "name": "200 — URL de redirection",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"redirectUrl\": \"/student/exam/507f1f77bcf86cd799439200/take\" }"
+            },
+            {
+              "name": "403 — Mauvais utilisateur connecté",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"message\": \"Logged in as wrong user. Please logout first.\" }"
+            },
+            {
+              "name": "404 — Token invalide",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"message\": \"Invalid token\" }"
+            }
+          ]
+        },
+        {
+          "name": "3.3 Obtenir une tentative par ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/{{attemptId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "{{attemptId}}"]
+            },
+            "description": "GET /api/attempts/:id\n\nRetourne les détails d'une tentative sans les questions complètes.\nUtilisé pour vérifier l'état d'une tentative."
+          },
+          "response": [
+            {
+              "name": "200 — Détails de la tentative",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"507f1f77bcf86cd799439300\",\n    \"examId\": \"507f1f77bcf86cd799439200\",\n    \"status\": \"COMPLETED\",\n    \"score\": 14,\n    \"maxScore\": 20,\n    \"percentage\": 70,\n    \"passed\": true,\n    \"timeSpent\": 3120,\n    \"startedAt\": \"2025-01-20T08:05:00.000Z\",\n    \"submittedAt\": \"2025-01-20T08:57:00.000Z\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Résultats et Historique",
+      "item": [
+        {
+          "name": "4.1 Résultats d'un examen (étudiant)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/exams/{{examId}}/result",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "exams", "{{examId}}", "result"]
+            },
+            "description": "GET /api/student/exams/:id/result\n\nRésultats de la tentative de l'étudiant connecté pour cet examen.\n\nGestion des résultats bloqués (période retardataires) :\n- resultsBlocked: true → Afficher message 'Résultats disponibles dans X minutes'\n- inLatePeriod: true → Des retardataires passent encore l'examen\n- timeUntilResults → Minutes restantes\n\nRetourne les données à la RACINE (pas dans 'data') :\n{ success, exam, attempt, maxScore, percentage, resultsBlocked, inLatePeriod, timeUntilResults }"
+          },
+          "response": [
+            {
+              "name": "200 — Résultats disponibles",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"exam\": {\n    \"id\": \"507f1f77bcf86cd799439200\",\n    \"title\": \"Contrôle Mécanique — Terminale C\",\n    \"duration\": 60,\n    \"questions\": [\n      { \"id\": \"507f1f77bcf86cd799439500\", \"text\": \"Quelle est la première loi de Newton ?\", \"points\": 2 }\n    ]\n  },\n  \"attempt\": {\n    \"id\": \"507f1f77bcf86cd799439300\",\n    \"status\": \"COMPLETED\",\n    \"score\": 14,\n    \"submittedAt\": \"2025-01-20T08:57:00.000Z\"\n  },\n  \"maxScore\": 20,\n  \"percentage\": 70,\n  \"resultsBlocked\": false,\n  \"inLatePeriod\": false,\n  \"timeUntilResults\": 0\n}"
+            },
+            {
+              "name": "200 — Résultats bloqués (période retardataires)",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"exam\": { \"id\": \"...\", \"title\": \"...\" },\n  \"attempt\": { \"id\": \"...\", \"status\": \"COMPLETED\", \"score\": null },\n  \"maxScore\": 20,\n  \"percentage\": 0,\n  \"resultsBlocked\": true,\n  \"inLatePeriod\": true,\n  \"timeUntilResults\": 23\n}"
+            },
+            {
+              "name": "404 — Pas de tentative trouvée",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Tentative non trouvée\" }"
+            }
+          ]
+        },
+        {
+          "name": "4.2 Historique des tentatives de l'étudiant",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/attempts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "attempts"]
+            },
+            "description": "GET /api/student/attempts\n\nRetourne toutes les tentatives terminées de l'étudiant.\nUtilisé pour la page /student/history.\n\nRetourne { success, data: [...] }"
+          },
+          "response": [
+            {
+              "name": "200 — Historique des tentatives",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"id\": \"507f1f77bcf86cd799439300\",\n      \"examId\": \"507f1f77bcf86cd799439200\",\n      \"exam\": {\n        \"title\": \"Contrôle Mécanique — Terminale C\",\n        \"duration\": 60\n      },\n      \"status\": \"COMPLETED\",\n      \"score\": 14,\n      \"maxScore\": 20,\n      \"percentage\": 70,\n      \"passed\": true,\n      \"timeSpent\": 3120,\n      \"startedAt\": \"2025-01-20T08:05:00.000Z\",\n      \"submittedAt\": \"2025-01-20T08:57:00.000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "4.3 Révision détaillée d'une tentative",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/attempts/{{attemptIdForReview}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "attempts", "{{attemptIdForReview}}"]
+            },
+            "description": "GET /api/student/attempts/:attemptId\n\nContenu détaillé de la tentative pour révision :\n- Questions complètes avec isCorrect révélé dans les options\n- Réponses de l'étudiant avec isCorrect\n- Explication de chaque question si disponible\n\n⚠️ Peut être BLOQUÉ si l'examen utilise delayResultsUntilLateEnd\nDans ce cas : { success: false, blocked: true, inLatePeriod, timeUntilResults, message }\n\nRetourne { success, exam, attempt } (pas dans 'data')"
+          },
+          "response": [
+            {
+              "name": "200 — Révision disponible",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"exam\": {\n    \"id\": \"507f1f77bcf86cd799439200\",\n    \"title\": \"Contrôle Mécanique — Terminale C\",\n    \"questions\": [\n      {\n        \"id\": \"507f1f77bcf86cd799439500\",\n        \"text\": \"Quelle est la première loi de Newton ?\",\n        \"type\": \"QCM\",\n        \"points\": 2,\n        \"explanation\": \"La première loi de Newton dit qu'un corps reste en état...\",\n        \"options\": [\n          { \"id\": \"507f1f77bcf86cd799439601\", \"text\": \"Un corps au repos...\", \"isCorrect\": true },\n          { \"id\": \"507f1f77bcf86cd799439602\", \"text\": \"F = ma\", \"isCorrect\": false }\n        ]\n      }\n    ]\n  },\n  \"attempt\": {\n    \"id\": \"507f1f77bcf86cd799439300\",\n    \"status\": \"COMPLETED\",\n    \"score\": 14,\n    \"responses\": [\n      {\n        \"questionId\": \"507f1f77bcf86cd799439500\",\n        \"selectedOptionId\": \"507f1f77bcf86cd799439601\",\n        \"isCorrect\": true\n      }\n    ]\n  }\n}"
+            },
+            {
+              "name": "403 — Résultats bloqués (période retardataires)",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"blocked\": true,\n  \"inLatePeriod\": true,\n  \"timeUntilResults\": 23,\n  \"message\": \"Les résultats seront disponibles après la fin de la période retardataires.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Anti-triche",
+      "item": [
+        {
+          "name": "5.1 Signaler un changement d'onglet (tab_switch)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"tab_switch\",\n  \"data\": {\n    \"timestamp\": \"2025-01-20T08:30:00.000Z\",\n    \"duration\": 5\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/{{attemptId}}/anti-cheat-event",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "{{attemptId}}", "anti-cheat-event"]
+            },
+            "description": "POST /api/attempts/:id/anti-cheat-event\n\nSignale un comportement suspect.\nAppeler depuis les event listeners du navigateur.\n\n⚠️ ATTENTION : Si le seuil maxTabSwitches est dépassé,\nla tentative est AUTOMATIQUEMENT ABANDONNÉE et une 403 est retournée.\n→ Afficher un message d'erreur et rediriger vers le dashboard."
+          },
+          "response": [
+            {
+              "name": "200 — Événement enregistré",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"success\": true,\n    \"event\": {\n      \"type\": \"tab_switch\",\n      \"timestamp\": \"2025-01-20T08:30:00.000Z\",\n      \"metadata\": { \"duration\": 5 }\n    }\n  },\n  \"message\": \"Anti-cheat event recorded\"\n}"
+            },
+            {
+              "name": "403 — Seuil dépassé, tentative abandonnée !",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Maximum tab switches exceeded. Attempt has been abandoned.\" }"
+            }
+          ]
+        },
+        {
+          "name": "5.2 Signaler un copier-coller",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"copy_paste\",\n  \"data\": { \"action\": \"copy\" }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/{{attemptId}}/anti-cheat-event",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "{{attemptId}}", "anti-cheat-event"]
+            },
+            "description": "Signale un événement de copier-coller.\nDéclenché par : document.addEventListener('copy', ...) ou 'paste'"
+          },
+          "response": []
+        },
+        {
+          "name": "5.3 Signaler une sortie du mode plein écran",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"fullscreen_exit\",\n  \"data\": {}\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/{{attemptId}}/anti-cheat-event",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "{{attemptId}}", "anti-cheat-event"]
+            },
+            "description": "Signale une sortie du mode plein écran.\nDéclenché par : document.addEventListener('fullscreenchange', ...)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Flux Complets (Référence)",
+      "item": [
+        {
+          "name": "Flux Standard — Étape 1/5 : Lobby",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/exams/{{examId}}/lobby",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "exams", "{{examId}}", "lobby"]
+            },
+            "description": "FLUX STANDARD — ÉTAPE 1/5\nVérifier les informations avant de démarrer."
+          },
+          "response": []
+        },
+        {
+          "name": "Flux Standard — Étape 2/5 : Charger questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/exams/{{examId}}/take",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "exams", "{{examId}}", "take"]
+            },
+            "description": "FLUX STANDARD — ÉTAPE 2/5\nCharger les questions (sans les bonnes réponses)."
+          },
+          "response": []
+        },
+        {
+          "name": "Flux Standard — Étape 3/5 : Démarrer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data) {",
+                  "        pm.collectionVariables.set('attemptId', res.data.attemptId);",
+                  "        pm.collectionVariables.set('resumeToken', res.data.resumeToken);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"examId\": \"{{examId}}\" }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "start"]
+            },
+            "description": "FLUX STANDARD — ÉTAPE 3/5\nDémarrer la tentative."
+          },
+          "response": []
+        },
+        {
+          "name": "Flux Standard — Étape 4/5 : Soumettre",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"responses\": [\n    { \"questionId\": \"{{questionId}}\", \"selectedOptionId\": \"{{optionId}}\", \"timeSpent\": 45 }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attempts/{{attemptId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attempts", "{{attemptId}}", "submit"]
+            },
+            "description": "FLUX STANDARD — ÉTAPE 4/5\nSoumettre toutes les réponses."
+          },
+          "response": []
+        },
+        {
+          "name": "Flux Standard — Étape 5/5 : Résultats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/exams/{{examId}}/result",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "exams", "{{examId}}", "result"]
+            },
+            "description": "FLUX STANDARD — ÉTAPE 5/5\nAfficher les résultats."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
