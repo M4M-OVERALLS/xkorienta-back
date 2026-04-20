@@ -308,7 +308,7 @@ export enum ReportingAccess {
 
 /**
  * Class Teacher Collaboration System
- * 
+ *
  * Allows multiple teachers to collaborate on a class, each with their own
  * subject specialty and configurable permissions.
  */
@@ -361,3 +361,41 @@ export enum ClassTeacherInvitationStatus {
     EXPIRED = 'EXPIRED'
 }
 
+// ==========================================
+// BIBLIOTHÈQUE
+// ==========================================
+
+export enum BookFormat {
+    PDF = 'PDF',
+    EPUB = 'EPUB'
+}
+
+export enum BookScope {
+    GLOBAL = 'GLOBAL',
+    SCHOOL = 'SCHOOL'
+}
+
+export enum BookStatus {
+    DRAFT = 'DRAFT',
+    PENDING = 'PENDING',
+    APPROVED = 'APPROVED',
+    REJECTED = 'REJECTED'
+}
+
+export enum BookPurchaseStatus {
+    PENDING = 'PENDING',
+    COMPLETED = 'COMPLETED',
+    FAILED = 'FAILED',
+    REFUNDED = 'REFUNDED'
+}
+
+export enum StorageProvider {
+    LOCAL = 'local',
+    S3 = 's3',
+    CLOUDFLARE_R2 = 'cloudflare_r2'
+}
+
+export enum PaymentProvider {
+    NOTCHPAY = 'notchpay',
+    STRIPE = 'stripe'
+}

@@ -48,7 +48,9 @@ export class RegistrationService {
         }
 
         // 3. Role Validation
-        if (!role || ![UserRole.STUDENT, UserRole.TEACHER, UserRole.SCHOOL_ADMIN].includes(role)) {
+        // NOTE: TECH_SUPPORT is allowed via API (server-side only).
+        // The client does not need to expose this option.
+        if (!role || ![UserRole.STUDENT, UserRole.TEACHER, UserRole.SCHOOL_ADMIN, UserRole.TECH_SUPPORT].includes(role)) {
             throw new Error("Invalid role");
         }
 
