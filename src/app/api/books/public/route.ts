@@ -21,6 +21,7 @@ export async function GET(req: Request) {
             search: searchParams.get('search') ?? undefined,
             page: Number(searchParams.get('page') ?? 1),
             limit: Math.min(Number(searchParams.get('limit') ?? 24), 50),
+            catalogPreview: true,
         })
 
         return NextResponse.json({ success: true, data: result })

@@ -13,6 +13,8 @@ export interface BookFilters {
     search?: string
     page?: number
     limit?: number
+    /** Liste catalogue : moins de champs (pas de description / fileKey) — plus léger sur le réseau et MongoDB */
+    catalogPreview?: boolean
 }
 
 export interface PaginatedBooks {
@@ -59,15 +61,19 @@ export class BookRepository {
             query.$text = { $search: filters.search }
         }
 
-        const [books, total] = await Promise.all([
-            Book.find(query)
-                .populate('submittedBy', 'name image')
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(limit)
-                .lean(),
-            Book.countDocuments(query),
-        ])
+        const listQuery = Book.find(query)
+            .populate('submittedBy', 'name image')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+
+        if (filters.catalogPreview) {
+            listQuery.select(
+                '_id title format price currency downloadCount purchaseCount submittedBy createdAt'
+            )
+        }
+
+        const [books, total] = await Promise.all([listQuery.lean(), Book.countDocuments(query)])
 
         return {
             books: books as IBook[],
