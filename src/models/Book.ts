@@ -115,6 +115,8 @@ const BookSchema = new Schema<IBook>(
 )
 
 BookSchema.index({ status: 1, scope: 1 })
+/** Catalogue public : filtre status+scope + tri createdAt */
+BookSchema.index({ status: 1, scope: 1, createdAt: -1 })
 BookSchema.index({ submittedBy: 1 })
 BookSchema.index({ schoolId: 1, status: 1 })
 BookSchema.index({ price: 1, status: 1 })

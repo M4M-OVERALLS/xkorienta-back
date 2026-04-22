@@ -396,6 +396,7 @@ skinparam class {
     BorderColor #A80036
     ArrowColor #A80036
 }
+skinparam stereotypeCPosition top
 
 ' ====================
 ' ENUMS
@@ -492,6 +493,25 @@ class StatusHistoryEntry <<value object>> {
     +status: TransactionStatus
     +at: Date
     +reason: string
+}
+
+class GuestPurchase {
+    +_id: ObjectId
+    +bookId: ObjectId
+    +email: string
+    +paymentReference: string
+    +paymentProvider: string
+    +status: 'PENDING' | 'COMPLETED' | 'FAILED'
+    +downloadToken: string
+    +downloadTokenExpiry: Date
+    +downloadCount: number
+    +maxDownloads: number
+    +finalAmount: number
+    +currency: Currency
+    +expiresAt: Date
+    --
+    +isTokenValid(): boolean
+    +canDownload(): boolean
 }
 
 class Plan {
@@ -605,11 +625,60 @@ class StripeStrategy implements IPaymentStrategy {
 }
 
 class PaymentStrategyFactory <<factory>> {
-    {static} +create(provider): IPaymentStrategy
+    {static} +create(provider: PaymentProvider): IPaymentStrategy
 }
 
 ' ====================
-' RELATIONS
+' SERVICES (orchestration)
+' ====================
+class PaymentService <<service>> {
+    {static} +initiatePayment(params): Promise<PaymentResult>
+    {static} +handleWebhook(provider, payload, signature): void
+    {static} +verifyPayment(reference): TransactionStatus
+    {static} +getTransactionByReference(ref): Transaction
+    {static} +getUserTransactions(userId): Transaction[]
+    {static} +expireStaleTransactions(): number
+    {static} -getProductDetails(type, productId, currency): ProductDetails
+    {static} -handlePaymentCompleted(transaction): void
+    {static} -mapProviderStatus(status): TransactionStatus
+    {static} -generateReference(type, productId): string
+}
+
+class CurrencyService <<service>> {
+    {static} +convert(amount, from, to): ConversionResult
+    {static} +getRate(from, to): number
+    {static} +refreshRates(base): void
+    {static} +getSupportedCurrencies(): string[]
+    {static} -fetchLiveRate(apiKey, from, to): number
+    {static} -getFallbackRate(from, to): number
+}
+
+class BookPurchaseService <<service>> {
+    {static} +initiatePurchase(input): PurchaseResult
+    {static} +handleWebhook(payload, signature): void
+    {static} +hasAccess(userId, bookId): boolean
+    {static} +getPurchasedBooks(userId): BookPurchase[]
+}
+
+class GuestBookPurchaseService <<service>> {
+    {static} +initiateGuestPurchase(bookId, email, callbackUrl): GuestPurchaseResult
+    {static} +handleGuestPurchaseCompleted(purchase): void
+    {static} +validateDownloadToken(token): {bookId, id}
+    {static} -sendDownloadEmail(email, title, token, amount, currency): boolean
+}
+
+class SubscriptionService <<service>> {
+    {static} +activateSubscription(reference): void
+}
+
+class PaymentNotificationService <<service>> {
+    {static} +notifyPaymentStatus(transaction): void
+    {static} +notifySubscriptionActivated(userId, sub, plan): void
+    {static} +notifySubscriptionExpiring(userId, plan, days, date): void
+}
+
+' ====================
+' ENTITY RELATIONS
 ' ====================
 User "1" -- "0..*" Transaction : passe >
 User "1" -- "0..1" Subscription : possède >
@@ -620,8 +689,12 @@ Transaction "*" --> "1" TransactionType : a un type
 Transaction "*" --> "1" TransactionStatus : a un statut
 Transaction "*" --> "1" Currency : devise originale
 Transaction "*" --> "1" Currency : devise de paiement
-Transaction "*" --> "1" PaymentProvider : via
+Transaction "*" --> "1" PaymentProvider : utilise
 Transaction "1" *-- "0..*" StatusHistoryEntry : contient
+
+GuestPurchase "0..*" -- "1" Book : achète >
+GuestPurchase "*" --> "1" Currency : payé en
+GuestPurchase "*" --> "1" PaymentProvider : via
 
 Subscription "0..*" -- "1" Plan : souscrit à >
 Subscription "*" --> "1" SubscriptionPlanStatus
@@ -639,9 +712,48 @@ ExchangeRate "*" --> "1" Currency : cible
 Book "*" --> "1" Currency : prix en
 Book "0..*" -- "1" User : soumis par
 
+' ====================
+' STRATEGY RELATIONS
+' ====================
 PaymentStrategyFactory ..> IPaymentStrategy : crée
 PaymentStrategyFactory ..> NotchPayStrategy : instancie
 PaymentStrategyFactory ..> StripeStrategy : instancie
+PaymentStrategyFactory ..> PaymentProvider : sélectionne via
+
+' ====================
+' SERVICE → STRATEGY (orchestration)
+' ====================
+PaymentService ..> PaymentStrategyFactory : utilise
+PaymentService ..> IPaymentStrategy : "initiatePayment()\nverifyPayment()\nhandleWebhook()"
+PaymentService ..> Transaction : crée / met à jour
+PaymentService ..> CurrencyService : convertit via
+PaymentService ..> PaymentNotificationService : notifie via
+
+BookPurchaseService ..> PaymentService : délègue paiement
+BookPurchaseService ..> GuestBookPurchaseService : guest checkout
+BookPurchaseService ..> IPaymentStrategy : "handleWebhook()\n(vérification signature)"
+
+GuestBookPurchaseService ..> PaymentStrategyFactory : utilise
+GuestBookPurchaseService ..> IPaymentStrategy : initiatePayment()
+GuestBookPurchaseService ..> GuestPurchase : crée / met à jour
+GuestBookPurchaseService ..> Book : vérifie prix
+
+CurrencyService ..> ExchangeRate : lit / cache
+
+SubscriptionService ..> Transaction : lit référence
+SubscriptionService ..> Subscription : active / renouvelle
+
+note bottom of PaymentService
+  Point d'entrée central pour tout paiement.
+  Lit Transaction.paymentProvider pour savoir
+  quelle IPaymentStrategy instancier via la Factory.
+end note
+
+note bottom of BookPurchaseService
+  Webhook unifié : /api/payments/webhook/notchpay
+  Traite Transaction + BookPurchase legacy
+  + GuestPurchase dans un seul appel.
+end note
 
 @enduml
 ```
