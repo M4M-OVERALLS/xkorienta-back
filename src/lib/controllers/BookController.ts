@@ -112,8 +112,21 @@ export class BookController {
         id: string,
         session: { user: { id: string; email: string; gamification?: { level?: number } } }
     ) {
-        const body = await req.json() as { callbackUrl?: string }
-        const callbackUrl = body.callbackUrl ?? `${process.env.NEXTAUTH_URL}/bibliotheque/${id}?purchased=1`
+        let body: { callbackUrl?: string; paymentCurrency?: string } = {}
+        const raw = await req.text()
+        if (raw.trim()) {
+            try {
+                body = JSON.parse(raw) as { callbackUrl?: string; paymentCurrency?: string }
+            } catch {
+                return NextResponse.json({ success: false, message: 'Invalid JSON body' }, { status: 400 })
+            }
+        }
+
+        const appBase =
+            (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '').replace(/\/$/, '') ||
+            ''
+        const callbackUrl =
+            body.callbackUrl ?? `${appBase}/bibliotheque/${id}?payment=return`
 
         const result = await BookPurchaseService.initiatePurchase({
             bookId: id,
@@ -121,6 +134,7 @@ export class BookController {
             userEmail: session.user.email,
             userLevel: session.user.gamification?.level ?? 1,
             callbackUrl,
+            paymentCurrency: body.paymentCurrency,
         })
 
         return NextResponse.json({ success: true, data: result }, { status: 201 })

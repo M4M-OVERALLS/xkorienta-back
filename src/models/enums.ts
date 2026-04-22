@@ -399,3 +399,41 @@ export enum PaymentProvider {
     NOTCHPAY = 'notchpay',
     STRIPE = 'stripe'
 }
+
+// ==========================================
+// PAYMENT SYSTEM
+// ==========================================
+
+export enum TransactionType {
+    BOOK_PURCHASE = 'BOOK_PURCHASE',
+    SUBSCRIPTION = 'SUBSCRIPTION',
+    COURSE = 'COURSE',
+    TOP_UP = 'TOP_UP'
+}
+
+export enum TransactionStatus {
+    PENDING = 'PENDING',
+    PROCESSING = 'PROCESSING',
+    COMPLETED = 'COMPLETED',
+    FAILED = 'FAILED',
+    REFUNDED = 'REFUNDED',
+    EXPIRED = 'EXPIRED'
+}
+
+export enum SubscriptionInterval {
+    MONTHLY = 'MONTHLY',
+    YEARLY = 'YEARLY'
+}
+
+export enum SubscriptionPlanStatus {
+    ACTIVE = 'ACTIVE',
+    CANCELLED = 'CANCELLED',
+    EXPIRED = 'EXPIRED',
+    PAST_DUE = 'PAST_DUE'
+}
+
+export enum Currency {
+    XAF = 'XAF',
+    EUR = 'EUR',
+    USD = 'USD'
+}

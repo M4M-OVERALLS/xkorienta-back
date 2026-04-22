@@ -1,13 +1,14 @@
-import { randomUUID } from 'crypto'
 import { IBookPurchase } from '@/models/BookPurchase'
-import { BookPurchaseStatus, BookStatus } from '@/models/enums'
+import { BookPurchaseStatus, BookStatus, TransactionType } from '@/models/enums'
 import { bookRepository } from '@/lib/repositories/BookRepository'
 import { bookPurchaseRepository } from '@/lib/repositories/BookPurchaseRepository'
 import { bookConfigRepository } from '@/lib/repositories/BookConfigRepository'
+import { transactionRepository } from '@/lib/repositories/TransactionRepository'
 import { BookConfigService } from './BookConfigService'
-import { BookService } from './BookService'
+import { PaymentService } from './PaymentService'
+import { GuestBookPurchaseService } from './GuestBookPurchaseService'
 import { PaymentStrategyFactory } from '@/lib/strategies/payment/PaymentStrategyFactory'
-import { PaymentInitResult } from '@/lib/strategies/payment/IPaymentStrategy'
+import { guestPurchaseRepository } from '@/lib/repositories/GuestPurchaseRepository'
 import mongoose from 'mongoose'
 
 export interface InitiatePurchaseInput {
@@ -16,6 +17,7 @@ export interface InitiatePurchaseInput {
     userEmail: string
     userLevel: number
     callbackUrl: string
+    paymentCurrency?: string
 }
 
 export interface PurchaseResult {
@@ -26,12 +28,15 @@ export interface PurchaseResult {
     discountPercent: number
     finalAmount: number
     currency: string
+    exchangeRate?: number
+    convertedAmount?: number
 }
 
 export class BookPurchaseService {
     /**
-     * Initiates a book purchase. Calculates discount based on user level,
-     * creates a PENDING purchase record, and returns a payment URL.
+     * Initiates a book purchase using the new PaymentService.
+     * Creates records in both BookPurchase (legacy) and Transaction (new) tables.
+     * Supports multi-currency with exchange rate conversion.
      */
     static async initiatePurchase(input: InitiatePurchaseInput): Promise<PurchaseResult> {
         const book = await bookRepository.findById(input.bookId)
@@ -39,43 +44,61 @@ export class BookPurchaseService {
         if (book.status !== BookStatus.APPROVED) throw new Error('Book is not available for purchase')
         if (book.price === 0) throw new Error('This book is free, no purchase needed')
 
-        // Prevent duplicate purchases
-        const existing = await bookPurchaseRepository.findByUserAndBook(input.userId, input.bookId)
-        if (existing && existing.status === BookPurchaseStatus.COMPLETED) {
+        // Prevent duplicate purchases - check both old and new tables
+        const existingLegacy = await bookPurchaseRepository.findByUserAndBook(input.userId, input.bookId)
+        if (existingLegacy && existingLegacy.status === BookPurchaseStatus.COMPLETED) {
+            throw new Error('You have already purchased this book')
+        }
+
+        const existingNew = await transactionRepository.findByUserAndProduct(
+            input.userId,
+            input.bookId,
+            TransactionType.BOOK_PURCHASE
+        )
+        if (existingNew) {
             throw new Error('You have already purchased this book')
         }
 
         const config = await bookConfigRepository.getOrCreate()
         const discountPercent = await BookConfigService.getDiscountForLevel(input.userLevel)
-        const { finalAmount, teacherAmount, platformCommission } =
-            BookConfigService.calculatePricing(book.price, discountPercent, config.commissionRate)
 
-        const reference = `BOOK-${input.bookId.slice(-6)}-${randomUUID().slice(0, 8).toUpperCase()}`
-
-        const paymentStrategy = PaymentStrategyFactory.create(config.paymentProvider)
-        let paymentResult: PaymentInitResult
-
-        try {
-            paymentResult = await paymentStrategy.initiatePayment({
-                amount: finalAmount,
-                currency: book.currency,
-                reference,
-                email: input.userEmail,
-                description: `Achat livre: ${book.title}`,
-                callbackUrl: input.callbackUrl,
-                metadata: {
-                    bookId: input.bookId,
-                    userId: input.userId,
-                },
-            })
-        } catch (err) {
-            throw new Error(`Payment initialization failed: ${(err as Error).message}`)
+        // Get teacher ID from book (handle both populated and non-populated)
+        let submittedBy: string | undefined
+        const submittedById = book.submittedBy as unknown
+        if (submittedById) {
+            if (typeof submittedById === 'object' && '_id' in (submittedById as object)) {
+                submittedBy = String((submittedById as { _id: unknown })._id)
+            } else {
+                submittedBy = String(submittedById)
+            }
         }
 
-        // If a previous pending purchase exists, update it; otherwise create
-        if (existing && existing.status === BookPurchaseStatus.PENDING) {
+        // Use PaymentService for payment initiation (handles currency conversion)
+        const paymentCurrency = input.paymentCurrency ?? book.currency
+        const paymentResult = await PaymentService.initiatePayment({
+            userId: input.userId,
+            userEmail: input.userEmail,
+            type: TransactionType.BOOK_PURCHASE,
+            productId: input.bookId,
+            productModel: 'Book',
+            paymentCurrency,
+            callbackUrl: input.callbackUrl,
+            discountPercent,
+            sellerId: submittedBy,
+            metadata: {
+                bookTitle: book.title,
+                originalCurrency: book.currency,
+            },
+        })
+
+        // Also create legacy BookPurchase record for backward compatibility
+        const { teacherAmount, platformCommission } =
+            BookConfigService.calculatePricing(book.price, discountPercent, config.commissionRate)
+
+        // Mark any previous pending purchases as failed
+        if (existingLegacy && existingLegacy.status === BookPurchaseStatus.PENDING) {
             await bookPurchaseRepository.updateStatusByReference(
-                existing.paymentReference,
+                existingLegacy.paymentReference,
                 BookPurchaseStatus.FAILED
             )
         }
@@ -85,10 +108,10 @@ export class BookPurchaseService {
             userId: new mongoose.Types.ObjectId(input.userId),
             originalPrice: book.price,
             discountPercent,
-            finalAmount,
-            currency: book.currency,
-            paymentReference: reference,
-            paymentProvider: config.paymentProvider,
+            finalAmount: paymentResult.finalAmount,
+            currency: paymentCurrency,
+            paymentReference: paymentResult.reference,
+            paymentProvider: paymentResult.provider,
             status: BookPurchaseStatus.PENDING,
             teacherAmount,
             platformCommission,
@@ -96,18 +119,21 @@ export class BookPurchaseService {
 
         return {
             paymentUrl: paymentResult.paymentUrl,
-            reference,
-            provider: config.paymentProvider,
-            originalPrice: book.price,
-            discountPercent,
-            finalAmount,
-            currency: book.currency,
+            reference: paymentResult.reference,
+            provider: paymentResult.provider,
+            originalPrice: paymentResult.originalAmount,
+            discountPercent: paymentResult.discountPercent,
+            finalAmount: paymentResult.finalAmount,
+            currency: paymentResult.paymentCurrency,
+            exchangeRate: paymentResult.exchangeRate,
+            convertedAmount: paymentResult.convertedAmount,
         }
     }
 
     /**
      * Handles a payment webhook from the provider.
-     * Updates the purchase status and increments the book's purchase count.
+     * Updates both BookPurchase (legacy) and Transaction (new) tables.
+     * Delegates to PaymentService for Transaction updates.
      */
     static async handleWebhook(rawPayload: unknown, signature: string): Promise<void> {
         const config = await bookConfigRepository.getOrCreate()
@@ -115,26 +141,41 @@ export class BookPurchaseService {
 
         const event = await paymentStrategy.handleWebhook(rawPayload, signature)
 
+        // Update legacy BookPurchase table
         const purchase = await bookPurchaseRepository.findByReference(event.reference)
-        if (!purchase) return // Unknown reference — ignore
+        if (purchase && purchase.status !== BookPurchaseStatus.COMPLETED) {
+            const newStatus =
+                event.status === 'completed' ? BookPurchaseStatus.COMPLETED :
+                event.status === 'failed'    ? BookPurchaseStatus.FAILED :
+                event.status === 'cancelled' ? BookPurchaseStatus.FAILED :
+                BookPurchaseStatus.PENDING
 
-        if (purchase.status === BookPurchaseStatus.COMPLETED) return // Already processed
+            await bookPurchaseRepository.updateStatusByReference(event.reference, newStatus)
+            // Incrément compteur + synchro legacy « completed » gérés dans PaymentService.handlePaymentCompleted
+        }
 
-        const newStatus =
-            event.status === 'completed' ? BookPurchaseStatus.COMPLETED :
-            event.status === 'failed'    ? BookPurchaseStatus.FAILED :
-            event.status === 'cancelled' ? BookPurchaseStatus.FAILED :
-            BookPurchaseStatus.PENDING
+        // Also update new Transaction table via PaymentService
+        await PaymentService.handleWebhook(config.paymentProvider, rawPayload, signature)
 
-        await bookPurchaseRepository.updateStatusByReference(event.reference, newStatus)
+        // Handle guest purchases (no userId — download link sent by email)
+        const guestPurchase = await guestPurchaseRepository.findByReference(event.reference)
+        if (guestPurchase && guestPurchase.status !== 'COMPLETED') {
+            const guestStatus: 'COMPLETED' | 'FAILED' | 'PENDING' =
+                event.status === 'completed' ? 'COMPLETED' :
+                event.status === 'failed' || event.status === 'cancelled' ? 'FAILED' :
+                'PENDING'
 
-        if (newStatus === BookPurchaseStatus.COMPLETED) {
-            await bookRepository.incrementPurchaseCount(purchase.bookId.toString())
+            await guestPurchaseRepository.updateStatusByReference(event.reference, guestStatus)
+
+            if (guestStatus === 'COMPLETED') {
+                await GuestBookPurchaseService.handleGuestPurchaseCompleted(guestPurchase)
+            }
         }
     }
 
     /**
      * Checks if a user has access to a book (free or purchased).
+     * Checks both legacy BookPurchase and new Transaction tables.
      */
     static async hasAccess(userId: string, bookId: string): Promise<boolean> {
         const book = await bookRepository.findById(bookId)
@@ -142,7 +183,17 @@ export class BookPurchaseService {
         if (book.status !== BookStatus.APPROVED) return false
         if (book.price === 0) return true
 
-        return bookPurchaseRepository.hasAccess(userId, bookId)
+        // Check legacy table first
+        const hasLegacyAccess = await bookPurchaseRepository.hasAccess(userId, bookId)
+        if (hasLegacyAccess) return true
+
+        // Check new Transaction table
+        const transaction = await transactionRepository.findByUserAndProduct(
+            userId,
+            bookId,
+            TransactionType.BOOK_PURCHASE
+        )
+        return !!transaction
     }
 
     /**
