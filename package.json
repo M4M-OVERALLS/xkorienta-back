@@ -8,7 +8,10 @@
     "start": "next start --port 3001",
     "lint": "eslint",
     "seed:mini-tests": "node scripts/seed-mini-tests.js",
-    "seed:web-diagnostic": "node scripts/seed-web-programming-diagnostic.js"
+    "seed:web-diagnostic": "node scripts/seed-web-programming-diagnostic.js",
+    "seed:plans": "node scripts/seed-plans.js",
+    "migrate:book-purchases": "node scripts/migrate-book-purchases.js",
+    "admin:create": "node scripts/create-platform-admin.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

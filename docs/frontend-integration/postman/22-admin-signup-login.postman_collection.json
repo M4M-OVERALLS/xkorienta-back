@@ -1,0 +1,276 @@
+{
+  "info": {
+    "_postman_id": "a47c2f6e-2e77-4a8d-9d36-1f5d1d8b7210",
+    "name": "22 - Admin Signup & Login (API only)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Flux complet pour creer un admin et se connecter uniquement via l'API (sans UI).\n\nDeux niveaux d'admin:\n\n1) SCHOOL_ADMIN = admin d'une ECOLE\n   - Cree via /api/register/v2 (requetes 01a / 01b).\n   - Peut valider/rejeter UNIQUEMENT les livres SCHOOL de son ecole.\n\n2) DG_M4M / TECH_SUPPORT = admin de la PLATEFORME (super-admin)\n   - Ne peut PAS etre cree via /api/register/v2 pour des raisons de securite.\n   - Se cree via le script: npm run admin:create -- --email ... --name ... --password ...\n   - Peut valider/rejeter N'IMPORTE QUEL livre (GLOBAL + toute ecole).\n   - Voir la requete '99 - NOTE creer un DG_M4M' pour la commande exacte.\n\nApres creation (quel que soit le role), le login se fait pareil:\n   CSRF -> POST /api/auth/callback/credentials -> cookie de session -> GET /api/auth/session."
+  },
+  "item": [
+    {
+      "name": "00 - Health check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "health"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "01a - Creer l'admin (auto-referencement d'ecole)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 ou 201', () => pm.expect([200, 201]).to.include(pm.response.code));",
+              "",
+              "try {",
+              "  const json = pm.response.json();",
+              "  if (json?.user?.id) pm.collectionVariables.set('userId', json.user.id);",
+              "  if (json?.createdSchool?.id) pm.collectionVariables.set('schoolId', json.createdSchool.id);",
+              "} catch (e) { /* ignore */ }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{adminName}}\",\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\",\n  \"role\": \"SCHOOL_ADMIN\",\n  \"isCreatingSchool\": true,\n  \"newSchoolData\": {\n    \"name\": \"{{newSchoolName}}\",\n    \"type\": \"{{newSchoolType}}\",\n    \"address\": \"{{newSchoolAddress}}\",\n    \"city\": \"{{newSchoolCity}}\",\n    \"country\": \"{{newSchoolCountry}}\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/register/v2",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "register", "v2"]
+        },
+        "description": "Creer un compte SCHOOL_ADMIN ET son ecole en meme temps.\nL'ecole est creee avec status PENDING, l'utilisateur est owner + admin."
+      },
+      "response": []
+    },
+    {
+      "name": "01b - Creer l'admin (ecole existante)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 ou 201', () => pm.expect([200, 201]).to.include(pm.response.code));",
+              "try {",
+              "  const json = pm.response.json();",
+              "  if (json?.user?.id) pm.collectionVariables.set('userId', json.user.id);",
+              "} catch (e) { /* ignore */ }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{adminName}}\",\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\",\n  \"role\": \"SCHOOL_ADMIN\",\n  \"schoolId\": \"{{schoolId}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/register/v2",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "register", "v2"]
+        },
+        "description": "Rattacher le nouvel admin a une ecole deja validee (schoolId fourni).\nL'ecole doit etre en status VALIDATED sinon l'API refuse."
+      },
+      "response": []
+    },
+    {
+      "name": "02 - NextAuth CSRF token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "try {",
+              "  const json = pm.response.json();",
+              "  if (json?.csrfToken) pm.collectionVariables.set('csrfToken', json.csrfToken);",
+              "} catch (e) { /* ignore */ }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/csrf",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "csrf"]
+        },
+        "description": "Recupere le csrfToken NextAuth + pose le cookie next-auth.csrf-token.\nObligatoire avant l'appel credentials."
+      },
+      "response": []
+    },
+    {
+      "name": "03 - Login (Credentials)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 (NextAuth JSON mode)', () => {",
+              "  pm.expect([200, 302]).to.include(pm.response.code);",
+              "});",
+              "",
+              "const setCookie = pm.response.headers.get('Set-Cookie');",
+              "if (setCookie) {",
+              "  const match = setCookie.match(/next-auth\\.session-token=([^;]+)/);",
+              "  if (match) pm.collectionVariables.set('sessionTokenCookie', match[1]);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "csrfToken",  "value": "{{csrfToken}}",     "type": "text" },
+            { "key": "identifier", "value": "{{adminEmail}}",    "type": "text" },
+            { "key": "password",   "value": "{{adminPassword}}", "type": "text" },
+            { "key": "callbackUrl","value": "{{baseUrl}}/",      "type": "text" },
+            { "key": "json",       "value": "true",              "type": "text" },
+            { "key": "redirect",   "value": "false",             "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/callback/credentials",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "callback", "credentials"]
+        },
+        "description": "Authentification par identifiant (email ou telephone) + mot de passe.\nLe cookie next-auth.session-token est pose automatiquement par Postman si 'Automatically follow redirects' est actif."
+      },
+      "response": []
+    },
+    {
+      "name": "04 - Verifier la session active",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "",
+              "try {",
+              "  const json = pm.response.json();",
+              "  pm.test('Role est SCHOOL_ADMIN', () => {",
+              "    pm.expect(json?.user?.role).to.eql('SCHOOL_ADMIN');",
+              "  });",
+              "  if (json?.user?.id) pm.collectionVariables.set('userId', json.user.id);",
+              "} catch (e) { /* ignore */ }"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/session",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "session"]
+        },
+        "description": "Retourne la session courante si l'utilisateur est authentifie, ou {} sinon."
+      },
+      "response": []
+    },
+    {
+      "name": "05 - Test protege (admin) - file de validation des livres",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/books/admin/pending?page=1&limit=20",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "books", "admin", "pending"],
+          "query": [
+            { "key": "page",  "value": "1"  },
+            { "key": "limit", "value": "20" }
+          ]
+        },
+        "description": "Exemple d'endpoint admin: un SCHOOL_ADMIN voit les livres SCHOOL en attente de validation.\nDoit repondre 200 si le cookie de session est bien envoye automatiquement par Postman."
+      },
+      "response": []
+    },
+    {
+      "name": "06 - Logout",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "csrfToken",   "value": "{{csrfToken}}", "type": "text" },
+            { "key": "callbackUrl", "value": "{{baseUrl}}/",  "type": "text" },
+            { "key": "json",        "value": "true",          "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/signout",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "signout"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "99 - NOTE creer un DG_M4M (admin plateforme)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "health"]
+        },
+        "description": "Le role DG_M4M (ou TECH_SUPPORT) = admin de la PLATEFORME. Il peut valider N'IMPORTE QUEL livre (GLOBAL ou SCHOOL, toutes ecoles). Il n'est volontairement PAS exposé par /api/register/v2.\n\nCreation via script (recommande):\n\n   cd quizlock-api\n   npm run admin:create -- \\\n     --email admin.plateforme@xkorienta.cm \\\n     --name \"Admin Plateforme\" \\\n     --password \"MonMotDePasseSolide!2024\" \\\n     --role DG_M4M\n\n   # Option --role TECH_SUPPORT disponible aussi.\n   # Si l'email existe deja, le script PROMEUT l'utilisateur sans toucher au mot de passe.\n\nCreation manuelle en base (fallback):\n\n   db.users.updateOne(\n     { email: 'admin.plateforme@xkorienta.cm' },\n     { $set: { role: 'DG_M4M', isActive: true } }\n   )\n\nUne fois cree, connecte-toi avec le flux 02 -> 03 -> 04 ci-dessus en utilisant l'email et le mot de passe choisis. Tu auras alors acces a:\n   - GET  /api/books/admin/pending  (TOUS les livres en attente)\n   - POST /api/books/:id/approve    (n'importe quel livre)\n   - POST /api/books/:id/reject     (n'importe quel livre)\n   - POST /api/admin/books/config   (configuration plateforme)"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl",           "value": "http://localhost:3001", "type": "string" },
+    { "key": "adminName",         "value": "Admin Principal",        "type": "string" },
+    { "key": "adminEmail",        "value": "admin@ecole-demo.test",  "type": "string" },
+    { "key": "adminPassword",     "value": "Admin1234!",             "type": "string" },
+    { "key": "newSchoolName",     "value": "Ecole Demo",             "type": "string" },
+    { "key": "newSchoolType",     "value": "SECONDARY",              "type": "string" },
+    { "key": "newSchoolAddress",  "value": "12 rue de la Demo",      "type": "string" },
+    { "key": "newSchoolCity",     "value": "Douala",                 "type": "string" },
+    { "key": "newSchoolCountry",  "value": "Cameroun",               "type": "string" },
+    { "key": "schoolId",          "value": "",                       "type": "string" },
+    { "key": "userId",            "value": "",                       "type": "string" },
+    { "key": "csrfToken",         "value": "",                       "type": "string" },
+    { "key": "sessionTokenCookie","value": "",                       "type": "string" }
+  ]
+}

@@ -1,0 +1,177 @@
+{
+  "info": {
+    "_postman_id": "6f11f50c-7e36-4f4f-a77d-bdf2d03ed9b0",
+    "name": "21 - Bibliotheque (Admin Validation)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Collection Postman pour la validation/rejet des livres par admin (SCHOOL_ADMIN, DG_M4M, TECH_SUPPORT)."
+  },
+  "item": [
+    {
+      "name": "01 - File de validation (admin/pending)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/books/admin/pending?page={{page}}&limit={{limit}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "books",
+            "admin",
+            "pending"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "{{page}}"
+            },
+            {
+              "key": "limit",
+              "value": "{{limit}}"
+            }
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200/401/403', function () {",
+              "  pm.expect([200, 401, 403]).to.include(pm.response.code);",
+              "});",
+              "",
+              "try {",
+              "  const json = pm.response.json();",
+              "  const firstBookId = json?.data?.books?.[0]?._id || json?.data?.[0]?._id;",
+              "  if (firstBookId) pm.collectionVariables.set('bookId', firstBookId);",
+              "} catch (e) {",
+              "  // Ignore JSON parse errors",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Approuver un livre",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/books/{{bookId}}/approve",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "books",
+            "{{bookId}}",
+            "approve"
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200/201/401/403/404/409', function () {",
+              "  pm.expect([200, 201, 401, 403, 404, 409]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Rejeter un livre",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"comment\": \"Le contenu ne respecte pas les standards pedagogiques.\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/books/{{bookId}}/reject",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "books",
+            "{{bookId}}",
+            "reject"
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200/201/400/401/403/404/409', function () {",
+              "  pm.expect([200, 201, 400, 401, 403, 404, 409]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bookId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "page",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "limit",
+      "value": "20",
+      "type": "string"
+    }
+  ]
+}
