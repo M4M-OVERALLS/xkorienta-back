@@ -134,7 +134,12 @@ export class PaymentController {
      */
     static async handleNotchPayWebhook(req: Request) {
         const rawBody = await req.text()
-        const signature = req.headers.get('x-notchpay-signature') ?? ''
+        // NotchPay doc header: x-notch-signature.
+        // Keep x-notchpay-signature as backward-compatible fallback.
+        const signature =
+            req.headers.get('x-notch-signature') ??
+            req.headers.get('x-notchpay-signature') ??
+            ''
 
         /**
          * BookPurchaseService.handleWebhook :
