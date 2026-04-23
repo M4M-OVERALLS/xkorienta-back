@@ -6,12 +6,21 @@ import { GuestBookPurchaseService } from '@/lib/services/GuestBookPurchaseServic
 type Params = { params: Promise<{ reference: string }> }
 
 /**
- * GET /api/books/purchase/guest/status/:reference
+ * GET /api/books/purchase/guest/status/:reference[?providerRef=...]
  * Public status lookup for guest checkout return flow.
+ *
+ * - `:reference` is our internal merchant reference (stored in DB).
+ * - `providerRef` (optional query) is the provider's internal reference
+ *   (e.g. NotchPay's `trx.test_...`) forwarded by the return URL.
+ *   Required for provider verification fallback because NotchPay
+ *   indexes its lookup API on its own reference, not the merchant one.
  */
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(req: Request, { params }: Params) {
     try {
         const { reference } = await params
+        const url = new URL(req.url)
+        const providerRef = url.searchParams.get('providerRef')?.trim() || null
+
         const purchase = await guestPurchaseRepository.findByReference(reference)
 
         if (!purchase) {
@@ -23,13 +32,14 @@ export async function GET(_req: Request, { params }: Params) {
 
         let status = purchase.status
 
-        // Fallback de sécurité:
-        // si le webhook ne passe pas (signature/proxy/url), on vérifie
-        // explicitement l'état chez le provider pour débloquer le flux invité.
+        // Fallback: if webhook has not landed yet, ask the provider directly.
+        // We use providerRef if given (reliable), otherwise our merchant ref
+        // as a best-effort attempt (may 404 on NotchPay).
         if (status === 'PENDING') {
+            const refForLookup = providerRef ?? reference
             try {
                 const strategy = PaymentStrategyFactory.create(purchase.paymentProvider)
-                const verification = await strategy.verifyPayment(reference)
+                const verification = await strategy.verifyPayment(refForLookup)
 
                 if (verification.status === 'completed') {
                     await guestPurchaseRepository.updateStatusByReference(reference, 'COMPLETED')
@@ -41,7 +51,7 @@ export async function GET(_req: Request, { params }: Params) {
                 }
             } catch (error) {
                 console.error(
-                    `[GuestPurchaseStatus] Verification fallback failed for ${reference}:`,
+                    `[GuestPurchaseStatus] Verification fallback failed for ${reference} (providerRef=${providerRef ?? 'none'}):`,
                     (error as Error).message
                 )
             }
@@ -61,4 +71,3 @@ export async function GET(_req: Request, { params }: Params) {
         )
     }
 }
-
