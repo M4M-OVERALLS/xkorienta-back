@@ -14,6 +14,11 @@ const APP_BASE = (
     'http://localhost:3000'
 ).replace(/\/$/, '')
 
+const API_BASE = (
+    process.env.NEXT_PUBLIC_API_URL ||
+    APP_BASE
+).replace(/\/$/, '')
+
 export interface GuestPurchaseResult {
     paymentUrl: string
     reference: string
@@ -140,7 +145,12 @@ export class GuestBookPurchaseService {
         amount: number,
         currency: string
     ): Promise<boolean> {
-        const downloadUrl = `${APP_BASE}/api/books/guest-download?token=${token}`
+        // Some deployments expose backend under a path prefix
+        // (e.g. /xkorienta/backend). Build the download URL from API base.
+        const guestDownloadPath = API_BASE.endsWith('/api')
+            ? '/books/guest-download'
+            : '/api/books/guest-download'
+        const downloadUrl = `${API_BASE}${guestDownloadPath}?token=${token}`
         const formattedAmount = new Intl.NumberFormat('fr-FR').format(amount)
         const today = new Date().toLocaleDateString('fr-FR')
 
