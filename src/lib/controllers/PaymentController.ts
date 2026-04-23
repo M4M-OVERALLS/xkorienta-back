@@ -98,8 +98,12 @@ export class PaymentController {
      * POST /api/payments/verify/:reference
      * Verify payment status with provider.
      */
-    static async verifyPayment(reference: string, session: AuthSession) {
-        const status = await PaymentService.verifyPayment(reference)
+    static async verifyPayment(
+        reference: string,
+        session: AuthSession,
+        providerRef?: string | null
+    ) {
+        const status = await PaymentService.verifyPayment(reference, providerRef)
 
         return NextResponse.json({
             success: true,

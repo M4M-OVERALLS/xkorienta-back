@@ -365,15 +365,24 @@ export class PaymentService {
 
     /**
      * Verify a payment with the provider.
+     * @param reference  Our internal merchant reference (stored on Transaction).
+     * @param providerRef Optional provider-side reference (e.g. NotchPay
+     *                    `trx.test_...`). Used as the lookup key at the
+     *                    provider when provided, because some providers
+     *                    (NotchPay) do not expose merchant-reference lookup.
      */
-    static async verifyPayment(reference: string): Promise<TransactionStatus> {
+    static async verifyPayment(
+        reference: string,
+        providerRef?: string | null
+    ): Promise<TransactionStatus> {
         const transaction = await transactionRepository.findByReference(reference)
         if (!transaction) {
             throw new Error('Transaction not found')
         }
 
         const paymentStrategy = PaymentStrategyFactory.create(transaction.paymentProvider)
-        const result = await paymentStrategy.verifyPayment(reference)
+        const lookupRef = providerRef?.trim() || reference
+        const result = await paymentStrategy.verifyPayment(lookupRef)
         const newStatus = this.mapProviderStatus(result.status)
 
         // Update if status changed
