@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { bookRepository } from '@/lib/repositories/BookRepository'
+import { BookService } from '@/lib/services/BookService'
 import { BookStatus, BookScope } from '@/models/enums'
 
 /**
  * GET /api/books/public
  * Public endpoint — no authentication required.
  * Returns approved books only (free and paid), paginated.
- * Used by the public library page on the landing site.
+ * Used by the public médiathèque page on the landing site.
  */
 export async function GET(req: Request) {
     try {
@@ -24,7 +25,18 @@ export async function GET(req: Request) {
             catalogPreview: true,
         })
 
-        return NextResponse.json({ success: true, data: result })
+        return NextResponse.json({
+            success: true,
+            data: {
+                ...result,
+                books: result.books.map((b) => ({
+                    ...(b as unknown as Record<string, unknown>),
+                    coverImageUrl: BookService.buildCoverUrl(
+                        (b as unknown as Record<string, unknown>).coverImageKey as string | undefined
+                    ),
+                })),
+            },
+        })
     } catch (err) {
         return NextResponse.json(
             { success: false, message: (err as Error).message },

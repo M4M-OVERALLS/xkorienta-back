@@ -6,23 +6,32 @@
  * Framework: Jest + Supertest
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
-import request from 'supertest';
-import mongoose from 'mongoose';
-import User from '@/models/User';
-import UnverifiedSchool from '@/models/UnverifiedSchool';
-import LearnerProfile from '@/models/LearnerProfile';
+import LearnerProfile from "@/models/LearnerProfile";
+import UnverifiedSchool from "@/models/UnverifiedSchool";
+import User from "@/models/User";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "@jest/globals";
+import mongoose from "mongoose";
+import request from "supertest";
 
 // Note: Ces tests nécessitent l'installation de:
 // npm install --save-dev jest @jest/globals supertest @types/jest @types/supertest ts-jest mongodb-memory-server
 
-const API_URL = process.env.TEST_API_URL || 'http://localhost:3001';
+const API_URL = process.env.TEST_API_URL || "http://localhost:3001";
 
-describe('POST /api/auth/register - Inscription avec École Non Vérifiée', () => {
-
+describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () => {
   beforeAll(async () => {
     // Setup: Connexion à la base de test
-    await mongoose.connect(process.env.TEST_DATABASE_URL || 'mongodb://localhost:27017/quizlock-test');
+    await mongoose.connect(
+      process.env.TEST_DATABASE_URL ||
+        "mongodb://localhost:27017/Xkorienta-test",
+    );
   });
 
   afterAll(async () => {
@@ -40,113 +49,130 @@ describe('POST /api/auth/register - Inscription avec École Non Vérifiée', () 
   /**
    * UC-01: Inscription avec auto-déclaration d'école (nominal)
    */
-  describe('UC-01: Inscription avec école non répertoriée', () => {
-
-    it('should create user with unverified school when declaredSchoolData is provided', async () => {
+  describe("UC-01: Inscription avec école non répertoriée", () => {
+    it("should create user with unverified school when declaredSchoolData is provided", async () => {
       // Arrange
       const registrationData = {
-        name: 'Jean Kamga',
-        email: 'jean.kamga@example.com',
-        password: 'SecurePass123!',
-        role: 'STUDENT',
+        name: "Jean Kamga",
+        email: "jean.kamga@example.com",
+        password: "SecurePass123!",
+        role: "STUDENT",
         declaredSchoolData: {
-          name: 'Lycée Bilingue de Yaoundé',
-          city: 'Yaoundé',
-          country: 'Cameroun',
-          type: 'Lycée'
+          name: "Lycée Bilingue de Yaoundé",
+          city: "Yaoundé",
+          country: "Cameroun",
+          type: "Lycée",
         },
-        levelId: new mongoose.Types.ObjectId().toString()
+        levelId: new mongoose.Types.ObjectId().toString(),
       };
 
       // Act
       const response = await request(API_URL)
-        .post('/api/auth/register')
+        .post("/api/auth/register")
         .send(registrationData)
         .expect(201);
 
       // Assert
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body.user).toHaveProperty('hasUnverifiedSchool', true);
-      expect(response.body.user).toHaveProperty('awaitingSchoolValidation', true);
+      expect(response.body).toHaveProperty("success", true);
+      expect(response.body.user).toHaveProperty("hasUnverifiedSchool", true);
+      expect(response.body.user).toHaveProperty(
+        "awaitingSchoolValidation",
+        true,
+      );
 
       // Vérifier que l'UnverifiedSchool a été créée
       const unverifiedSchool = await UnverifiedSchool.findOne({
-        declaredName: 'Lycée Bilingue de Yaoundé'
+        declaredName: "Lycée Bilingue de Yaoundé",
       });
       expect(unverifiedSchool).not.toBeNull();
-      expect(unverifiedSchool?.declaredCity).toBe('Yaoundé');
+      expect(unverifiedSchool?.declaredCity).toBe("Yaoundé");
       expect(unverifiedSchool?.declaredCount).toBe(1);
-      expect(unverifiedSchool?.status).toBe('PENDING');
+      expect(unverifiedSchool?.status).toBe("PENDING");
 
       // Vérifier que l'User a été lié
-      const user = await User.findOne({ email: 'jean.kamga@example.com' })
-        .populate('unverifiedSchool');
+      const user = await User.findOne({
+        email: "jean.kamga@example.com",
+      }).populate("unverifiedSchool");
       expect(user).not.toBeNull();
       expect(user?.unverifiedSchool).toBeDefined();
-      expect((user?.unverifiedSchool as any)?.declaredName).toBe('Lycée Bilingue de Yaoundé');
+      expect((user?.unverifiedSchool as any)?.declaredName).toBe(
+        "Lycée Bilingue de Yaoundé",
+      );
 
       // Vérifier le LearnerProfile
       const learnerProfile = await LearnerProfile.findOne({ user: user?._id });
       expect(learnerProfile?.awaitingSchoolValidation).toBe(true);
     });
 
-    it('should increment declaredCount when same school is declared by multiple users', async () => {
+    it("should increment declaredCount when same school is declared by multiple users", async () => {
       // Arrange
       const schoolData = {
-        name: 'Collège Vogt',
-        city: 'Yaoundé',
-        country: 'Cameroun'
+        name: "Collège Vogt",
+        city: "Yaoundé",
+        country: "Cameroun",
       };
 
       const user1Data = {
-        name: 'User One',
-        email: 'user1@example.com',
-        password: 'Pass123!',
-        role: 'STUDENT',
-        declaredSchoolData: schoolData
+        name: "User One",
+        email: "user1@example.com",
+        password: "Pass123!",
+        role: "STUDENT",
+        declaredSchoolData: schoolData,
       };
 
       const user2Data = {
-        name: 'User Two',
-        email: 'user2@example.com',
-        password: 'Pass123!',
-        role: 'STUDENT',
-        declaredSchoolData: schoolData
+        name: "User Two",
+        email: "user2@example.com",
+        password: "Pass123!",
+        role: "STUDENT",
+        declaredSchoolData: schoolData,
       };
 
       // Act
-      await request(API_URL).post('/api/auth/register').send(user1Data).expect(201);
-      await request(API_URL).post('/api/auth/register').send(user2Data).expect(201);
+      await request(API_URL)
+        .post("/api/auth/register")
+        .send(user1Data)
+        .expect(201);
+      await request(API_URL)
+        .post("/api/auth/register")
+        .send(user2Data)
+        .expect(201);
 
       // Assert
       const unverifiedSchool = await UnverifiedSchool.findOne({
-        declaredName: 'Collège Vogt'
+        declaredName: "Collège Vogt",
       });
       expect(unverifiedSchool?.declaredCount).toBe(2);
       expect(unverifiedSchool?.declaredBy).toHaveLength(2);
     });
 
-    it('should normalize school name to avoid duplicates with different casing', async () => {
+    it("should normalize school name to avoid duplicates with different casing", async () => {
       // Arrange
       const user1Data = {
-        name: 'User One',
-        email: 'user1@example.com',
-        password: 'Pass123!',
-        role: 'STUDENT',
-        declaredSchoolData: { name: 'lycée bilingue de yaoundé' }
+        name: "User One",
+        email: "user1@example.com",
+        password: "Pass123!",
+        role: "STUDENT",
+        declaredSchoolData: { name: "lycée bilingue de yaoundé" },
       };
 
       const user2Data = {
-        name: 'User Two',
-        email: 'user2@example.com',
-        password: 'Pass123!',
-        role: 'STUDENT',
-        declaredSchoolData: { name: 'LYCÉE BILINGUE DE YAOUNDÉ' }
+        name: "User Two",
+        email: "user2@example.com",
+        password: "Pass123!",
+        role: "STUDENT",
+        declaredSchoolData: { name: "LYCÉE BILINGUE DE YAOUNDÉ" },
       };
 
       // Act
-      await request(API_URL).post('/api/auth/register').send(user1Data).expect(201);
-      await request(API_URL).post('/api/auth/register').send(user2Data).expect(201);
+      await request(API_URL)
+        .post("/api/auth/register")
+        .send(user1Data)
+        .expect(201);
+      await request(API_URL)
+        .post("/api/auth/register")
+        .send(user2Data)
+        .expect(201);
 
       // Assert
       const unverifiedSchools = await UnverifiedSchool.find({});
@@ -158,28 +184,27 @@ describe('POST /api/auth/register - Inscription avec École Non Vérifiée', () 
   /**
    * UC-02: Inscription sans école (alternatif)
    */
-  describe('UC-02: Inscription sans école', () => {
-
-    it('should allow registration with skipSchool flag', async () => {
+  describe("UC-02: Inscription sans école", () => {
+    it("should allow registration with skipSchool flag", async () => {
       // Arrange
       const registrationData = {
-        name: 'Marie Nkoto',
-        email: 'marie.nkoto@example.com',
-        password: 'SecurePass123!',
-        role: 'STUDENT',
-        skipSchool: true
+        name: "Marie Nkoto",
+        email: "marie.nkoto@example.com",
+        password: "SecurePass123!",
+        role: "STUDENT",
+        skipSchool: true,
       };
 
       // Act
       const response = await request(API_URL)
-        .post('/api/auth/register')
+        .post("/api/auth/register")
         .send(registrationData)
         .expect(201);
 
       // Assert
-      expect(response.body.user).toHaveProperty('hasUnverifiedSchool', false);
+      expect(response.body.user).toHaveProperty("hasUnverifiedSchool", false);
 
-      const user = await User.findOne({ email: 'marie.nkoto@example.com' });
+      const user = await User.findOne({ email: "marie.nkoto@example.com" });
       expect(user?.schools).toHaveLength(0);
       expect(user?.unverifiedSchool).toBeUndefined();
     });
@@ -188,71 +213,72 @@ describe('POST /api/auth/register - Inscription avec École Non Vérifiée', () 
   /**
    * UC-ERR-01: Validation des données d'école
    */
-  describe('UC-ERR-01: Validation des données', () => {
-
-    it('should reject when school name is too long (>200 chars)', async () => {
+  describe("UC-ERR-01: Validation des données", () => {
+    it("should reject when school name is too long (>200 chars)", async () => {
       // Arrange
       const registrationData = {
-        name: 'Test User',
-        email: 'test@example.com',
-        password: 'Pass123!',
-        role: 'STUDENT',
+        name: "Test User",
+        email: "test@example.com",
+        password: "Pass123!",
+        role: "STUDENT",
         declaredSchoolData: {
-          name: 'A'.repeat(201) // 201 caractères
-        }
+          name: "A".repeat(201), // 201 caractères
+        },
       };
 
       // Act & Assert
       const response = await request(API_URL)
-        .post('/api/auth/register')
+        .post("/api/auth/register")
         .send(registrationData)
         .expect(400);
 
-      expect(response.body.error).toContain('Le nom de l\'école ne peut pas dépasser 200 caractères');
+      expect(response.body.error).toContain(
+        "Le nom de l'école ne peut pas dépasser 200 caractères",
+      );
     });
 
-    it('should reject when school name contains HTML/scripts', async () => {
+    it("should reject when school name contains HTML/scripts", async () => {
       // Arrange
       const registrationData = {
-        name: 'Test User',
-        email: 'test@example.com',
-        password: 'Pass123!',
-        role: 'STUDENT',
+        name: "Test User",
+        email: "test@example.com",
+        password: "Pass123!",
+        role: "STUDENT",
         declaredSchoolData: {
-          name: '<script>alert("XSS")</script>Lycée Test'
-        }
+          name: '<script>alert("XSS")</script>Lycée Test',
+        },
       };
 
       // Act & Assert
       const response = await request(API_URL)
-        .post('/api/auth/register')
+        .post("/api/auth/register")
         .send(registrationData)
         .expect(400);
 
-      expect(response.body.error).toContain('Caractères invalides détectés');
+      expect(response.body.error).toContain("Caractères invalides détectés");
     });
 
-    it('should sanitize and accept school name with special characters', async () => {
+    it("should sanitize and accept school name with special characters", async () => {
       // Arrange
       const registrationData = {
-        name: 'Test User',
-        email: 'test@example.com',
-        password: 'Pass123!',
-        role: 'STUDENT',
+        name: "Test User",
+        email: "test@example.com",
+        password: "Pass123!",
+        role: "STUDENT",
         declaredSchoolData: {
-          name: 'Lycée d\'Excellence & Innovation - Yaoundé'
-        }
+          name: "Lycée d'Excellence & Innovation - Yaoundé",
+        },
       };
 
       // Act
       const response = await request(API_URL)
-        .post('/api/auth/register')
+        .post("/api/auth/register")
         .send(registrationData)
         .expect(201);
 
       // Assert
       const unverifiedSchool = await UnverifiedSchool.findOne({
-        declaredName: { $regex: /Excellence.*Innovation/i }
+        declaredName: { $regex: /Excellence.*Innovation/i },
       });
       expect(unverifiedSchool).not.toBeNull();
     });
@@ -261,84 +287,89 @@ describe('POST /api/auth/register - Inscription avec École Non Vérifiée', () 
   /**
    * UC-ERR-02: Gestion des conflits
    */
-  describe('UC-ERR-02: Gestion des conflits', () => {
-
-    it('should return 409 when email already exists', async () => {
+  describe("UC-ERR-02: Gestion des conflits", () => {
+    it("should return 409 when email already exists", async () => {
       // Arrange
       const userData = {
-        name: 'Existing User',
-        email: 'existing@example.com',
-        password: 'Pass123!',
-        role: 'STUDENT',
-        declaredSchoolData: { name: 'Test School' }
+        name: "Existing User",
+        email: "existing@example.com",
+        password: "Pass123!",
+        role: "STUDENT",
+        declaredSchoolData: { name: "Test School" },
       };
 
-      await request(API_URL).post('/api/auth/register').send(userData).expect(201);
+      await request(API_URL)
+        .post("/api/auth/register")
+        .send(userData)
+        .expect(201);
 
       // Act & Assert
       const response = await request(API_URL)
-        .post('/api/auth/register')
+        .post("/api/auth/register")
         .send(userData)
         .expect(409);
 
-      expect(response.body.error).toContain('Un compte existe déjà avec cet email');
+      expect(response.body.error).toContain(
+        "Un compte existe déjà avec cet email",
+      );
     });
 
-    it('should allow same phone number if previous user used email', async () => {
+    it("should allow same phone number if previous user used email", async () => {
       // Arrange
       const user1 = {
-        name: 'User One',
-        email: 'user1@example.com',
-        phone: '237690123456',
-        password: 'Pass123!',
-        role: 'STUDENT',
-        skipSchool: true
+        name: "User One",
+        email: "user1@example.com",
+        phone: "237690123456",
+        password: "Pass123!",
+        role: "STUDENT",
+        skipSchool: true,
       };
 
       const user2 = {
-        name: 'User Two',
-        phone: '237690123456',
-        password: 'Pass123!',
-        role: 'STUDENT',
-        skipSchool: true
+        name: "User Two",
+        phone: "237690123456",
+        password: "Pass123!",
+        role: "STUDENT",
+        skipSchool: true,
       };
 
       // Act
-      await request(API_URL).post('/api/auth/register').send(user1).expect(201);
+      await request(API_URL).post("/api/auth/register").send(user1).expect(201);
 
       // Assert
       const response = await request(API_URL)
-        .post('/api/auth/register')
+        .post("/api/auth/register")
         .send(user2)
         .expect(409);
 
-      expect(response.body.error).toContain('Ce numéro de téléphone est déjà utilisé');
+      expect(response.body.error).toContain(
+        "Ce numéro de téléphone est déjà utilisé",
+      );
     });
   });
 
   /**
    * Tests de performance
    */
-  describe('Performance: Inscription avec école non vérifiée', () => {
-
-    it('should complete registration in under 2 seconds', async () => {
+  describe("Performance: Inscription avec école non vérifiée", () => {
+    it("should complete registration in under 2 seconds", async () => {
       // Arrange
       const registrationData = {
-        name: 'Perf Test',
-        email: 'perf@example.com',
-        password: 'Pass123!',
-        role: 'STUDENT',
+        name: "Perf Test",
+        email: "perf@example.com",
+        password: "Pass123!",
+        role: "STUDENT",
         declaredSchoolData: {
-          name: 'Test School',
-          city: 'Yaoundé'
-        }
+          name: "Test School",
+          city: "Yaoundé",
+        },
       };
 
       const startTime = Date.now();
 
       // Act
       await request(API_URL)
-        .post('/api/auth/register')
+        .post("/api/auth/register")
         .send(registrationData)
         .expect(201);
 
@@ -352,23 +383,22 @@ describe('POST /api/auth/register - Inscription avec École Non Vérifiée', () 
   /**
    * Tests de sécurité
    */
-  describe('Sécurité: Protection contre les attaques', () => {
-
-    it('should prevent SQL injection in school name', async () => {
+  describe("Sécurité: Protection contre les attaques", () => {
+    it("should prevent SQL injection in school name", async () => {
       // Arrange
       const registrationData = {
-        name: 'Test User',
-        email: 'sql@example.com',
-        password: 'Pass123!',
-        role: 'STUDENT',
+        name: "Test User",
+        email: "sql@example.com",
+        password: "Pass123!",
+        role: "STUDENT",
         declaredSchoolData: {
-          name: "'; DROP TABLE users; --"
-        }
+          name: "'; DROP TABLE users; --",
+        },
       };
 
       // Act
       const response = await request(API_URL)
-        .post('/api/auth/register')
+        .post("/api/auth/register")
         .send(registrationData)
         .expect(400);
 
@@ -380,21 +410,21 @@ describe('POST /api/auth/register - Inscription avec École Non Vérifiée', () 
       expect(usersCount).toBeGreaterThanOrEqual(0);
     });
 
-    it('should prevent NoSQL injection in school lookup', async () => {
+    it("should prevent NoSQL injection in school lookup", async () => {
       // Arrange
       const registrationData = {
-        name: 'Test User',
-        email: 'nosql@example.com',
-        password: 'Pass123!',
-        role: 'STUDENT',
+        name: "Test User",
+        email: "nosql@example.com",
+        password: "Pass123!",
+        role: "STUDENT",
         declaredSchoolData: {
-          name: { $ne: null } as any
-        }
+          name: { $ne: null } as any,
+        },
       };
 
       // Act & Assert
       await request(API_URL)
-        .post('/api/auth/register')
+        .post("/api/auth/register")
         .send(registrationData)
         .expect(400);
     });

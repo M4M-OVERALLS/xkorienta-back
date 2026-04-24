@@ -437,3 +437,40 @@ export enum Currency {
     EUR = 'EUR',
     USD = 'USD'
 }
+
+// ==========================================
+// INVOICES
+// ==========================================
+
+/**
+ * Type de facture selon l'acteur destinataire.
+ * PURCHASE_RECEIPT  → reçu pour l'acheteur (élève ou enseignant qui achète)
+ * EARNINGS_STATEMENT → relevé de gains pour le vendeur (enseignant dont le livre est acheté)
+ */
+export enum InvoiceType {
+    PURCHASE_RECEIPT = 'PURCHASE_RECEIPT',
+    EARNINGS_STATEMENT = 'EARNINGS_STATEMENT'
+}
+
+export enum InvoiceStatus {
+    ISSUED = 'ISSUED',   // Générée
+    SENT = 'SENT',       // Envoyée par email
+    VOIDED = 'VOIDED'    // Annulée (ex: remboursement)
+}
+
+// ==========================================
+// WALLET & PAYOUTS
+// ==========================================
+
+export enum PayoutStatus {
+    PENDING = 'PENDING',       // Demande soumise
+    PROCESSING = 'PROCESSING', // En cours de traitement
+    COMPLETED = 'COMPLETED',   // Virement effectué
+    FAILED = 'FAILED'          // Échec du virement
+}
+
+export enum MobileMoneyProvider {
+    ORANGE = 'orange',
+    MTN = 'mtn',
+    OTHER = 'other'
+}

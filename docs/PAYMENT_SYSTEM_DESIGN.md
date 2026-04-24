@@ -1425,3 +1425,136 @@ const defaultPlans = [
 ---
 
 **Document généré automatiquement - QuizLock © 2026**
+
+---
+
+## 11. Versements Vendeurs, Commissions et Factures
+
+> **Ajout — Avril 2026**
+
+### 11.1 Flux d'argent complet
+
+```
+Élève paie 5 000 XAF
+        │
+        ▼
+NotchPay collecte → Compte QuizLock (5 000 XAF)
+        │
+        ├──► Commission plateforme : 250 XAF (5%) → revenus QuizLock
+        │
+        └──► Gains professeur    : 4 750 XAF → crédités sur son Wallet virtuel
+                                                    │
+                                        ┌───────────┴────────────┐
+                                        ▼                        ▼
+                                 Visible temps réel       Demande de virement
+                                 GET /api/seller/wallet   POST /api/seller/payout
+                                                                  │
+                                                                  ▼
+                                                     NotchPay Transfer API
+                                                     → Orange/MTN Money prof
+```
+
+**Modèle choisi : Wallet virtuel**
+L'argent est d'abord accumulé dans un wallet interne (MongoDB), puis le professeur
+demande un virement quand il le souhaite. Avantages : moins de frais de transfert,
+visibilité immédiate des gains, regroupement possible de plusieurs ventes.
+
+### 11.2 Nouveaux modèles de données
+
+#### Invoice
+```typescript
+interface IInvoice {
+    invoiceNumber: string      // INV-2026-000001 (séquentiel)
+    type: InvoiceType          // PURCHASE_RECEIPT | EARNINGS_STATEMENT
+    recipientId: ObjectId      // Destinataire (acheteur ou vendeur)
+    transactionId: ObjectId
+    paymentReference: string
+    productType: TransactionType
+    productDescription: string
+    subtotal: number
+    discountAmount: number
+    discountPercent: number
+    total: number
+    currency: string
+    platformCommission?: number  // EARNINGS_STATEMENT uniquement
+    sellerAmount?: number        // EARNINGS_STATEMENT uniquement
+    buyerName: string
+    buyerEmail?: string
+    sellerName?: string
+    status: InvoiceStatus        // ISSUED | SENT | VOIDED
+    issuedAt: Date
+    sentAt?: Date
+}
+```
+
+#### Wallet
+```typescript
+interface IWallet {
+    userId: ObjectId       // Le vendeur
+    currency: Currency
+    balance: number        // Solde disponible pour virement
+    totalEarned: number    // Cumul de gains depuis la création
+    totalWithdrawn: number // Cumul des virements effectués
+    lastUpdatedAt: Date
+}
+```
+
+#### Payout
+```typescript
+interface IPayout {
+    userId: ObjectId
+    walletId: ObjectId
+    amount: number
+    currency: Currency
+    recipientPhone: string
+    recipientName: string
+    recipientProvider: MobileMoneyProvider  // orange | mtn | other
+    status: PayoutStatus   // PENDING | PROCESSING | COMPLETED | FAILED
+    payoutReference: string
+    providerTransferId?: string
+    processedAt?: Date
+    failureReason?: string
+}
+```
+
+### 11.3 Qui reçoit quelle facture
+
+| Acteur | Type | Déclencheur | Canal |
+|--------|------|-------------|-------|
+| **Élève** (acheteur) | `PURCHASE_RECEIPT` | Paiement COMPLETED | Email + historique `/api/invoices` |
+| **Enseignant** (acheteur d'un autre livre) | `PURCHASE_RECEIPT` | Paiement COMPLETED | Email + historique `/api/invoices` |
+| **Enseignant** (vendeur) | `EARNINGS_STATEMENT` | Paiement de son livre COMPLETED | Email + gains `/api/seller/earnings` |
+| **Admin** | Tous types | À la demande | `/api/admin/invoices` |
+
+### 11.4 Nouveaux endpoints
+
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| GET | `/api/invoices` | Mes factures (acheteur) | User |
+| GET | `/api/invoices/:num` | Détails d'une facture | Destinataire ou Admin |
+| GET | `/api/invoices/:num/html` | Facture HTML (impression/PDF) | Destinataire ou Admin |
+| GET | `/api/seller/wallet` | Solde wallet vendeur | User |
+| GET | `/api/seller/earnings` | Relevés de gains | User |
+| GET | `/api/seller/payout` | Historique virements | User |
+| POST | `/api/seller/payout` | Demander un virement | User |
+| GET | `/api/admin/invoices` | Toutes les factures | Admin |
+
+### 11.5 Variables d'environnement ajoutées
+
+```bash
+# Déjà présente — nécessaire pour les virements (transfer API)
+NOTCHPAY_SECRET_KEY="sk_live_xxxxx"
+```
+
+### 11.6 Prérequis pour le professeur
+
+Le professeur doit renseigner ses informations Mobile Money dans son profil :
+```typescript
+user.paymentInfo = {
+    mobileMoneyPhone: '+237690000000',
+    mobileMoneyProvider: 'orange',  // ou 'mtn'
+    mobileMoneyName: 'Jean Dupont'
+}
+```
+Endpoint à créer : `PUT /api/profile/payment-info`
+

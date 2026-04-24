@@ -1,49 +1,49 @@
-import nodemailer from 'nodemailer';
+import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-    host: process.env.MAIL_HOST || 'mail.Xkorienta.com',
-    port: parseInt(process.env.MAIL_PORT || '587'),
-    secure: false,
-    auth: {
-        user: process.env.MAIL_USER || 'contact@Xkorienta.com',
-        pass: process.env.MAIL_PASSWORD,
-    },
-    tls: {
-        rejectUnauthorized: false
-    }
+  host: process.env.MAIL_HOST || "mail.Xkorienta.com",
+  port: parseInt(process.env.MAIL_PORT || "587"),
+  secure: false,
+  auth: {
+    user: process.env.MAIL_USER || "contact@Xkorienta.com",
+    pass: process.env.MAIL_PASSWORD,
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
 });
 
 interface MailOptions {
-    to: string;
-    subject: string;
-    html: string;
+  to: string;
+  subject: string;
+  html: string;
 }
 
 // Brand Colors
 const COLORS = {
-    primary: '#10B981', // Green (Secondary in app)
-    secondary: '#7C3AED', // Purple
-    text: '#1F2937',
-    gray: '#6B7280',
-    background: '#F3F4F6',
-    white: '#FFFFFF',
-    error: '#EF4444',
-    warning: '#F59E0B'
+  primary: "#10B981", // Green (Secondary in app)
+  secondary: "#7C3AED", // Purple
+  text: "#1F2937",
+  gray: "#6B7280",
+  background: "#F3F4F6",
+  white: "#FFFFFF",
+  error: "#EF4444",
+  warning: "#F59E0B",
 };
 
 const STYLES = {
-    body: `font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: ${COLORS.background}; margin: 0; padding: 0; -webkit-font-smoothing: antialiased;`,
-    container: `max-width: 600px; margin: 40px auto; background-color: ${COLORS.white}; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); overflow: hidden;`,
-    header: `background: linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.secondary} 100%); padding: 40px 30px; text-align: center;`,
-    headerTitle: `color: ${COLORS.white}; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;`,
-    headerSubtitle: `color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 15px;`,
-    content: `padding: 40px 30px; color: ${COLORS.text}; font-size: 16px; line-height: 1.6;`,
-    button: `display: inline-block; padding: 14px 32px; background-color: ${COLORS.primary}; background: linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.secondary} 100%); color: ${COLORS.white}; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 16px; margin: 24px 0; text-align: center; transition: transform 0.2s; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);`,
-    infoBox: `background-color: #F0FDFA; border: 1px solid #CCFBF1; border-radius: 16px; padding: 20px; margin: 24px 0;`,
-    infoBoxTitle: `color: ${COLORS.primary}; font-weight: 600; margin-bottom: 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;`,
-    infoBoxText: `margin: 0; color: ${COLORS.text}; font-size: 15px;`,
-    footer: `background-color: #F8FAFC; padding: 30px; text-align: center; border-top: 1px solid #E2E8F0;`,
-    footerText: `color: ${COLORS.gray}; font-size: 13px; margin: 4px 0; line-height: 1.5;`
+  body: `font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: ${COLORS.background}; margin: 0; padding: 0; -webkit-font-smoothing: antialiased;`,
+  container: `max-width: 600px; margin: 40px auto; background-color: ${COLORS.white}; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); overflow: hidden;`,
+  header: `background: linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.secondary} 100%); padding: 40px 30px; text-align: center;`,
+  headerTitle: `color: ${COLORS.white}; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;`,
+  headerSubtitle: `color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 15px;`,
+  content: `padding: 40px 30px; color: ${COLORS.text}; font-size: 16px; line-height: 1.6;`,
+  button: `display: inline-block; padding: 14px 32px; background-color: ${COLORS.primary}; background: linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.secondary} 100%); color: ${COLORS.white}; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 16px; margin: 24px 0; text-align: center; transition: transform 0.2s; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);`,
+  infoBox: `background-color: #F0FDFA; border: 1px solid #CCFBF1; border-radius: 16px; padding: 20px; margin: 24px 0;`,
+  infoBoxTitle: `color: ${COLORS.primary}; font-weight: 600; margin-bottom: 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;`,
+  infoBoxText: `margin: 0; color: ${COLORS.text}; font-size: 15px;`,
+  footer: `background-color: #F8FAFC; padding: 30px; text-align: center; border-top: 1px solid #E2E8F0;`,
+  footerText: `color: ${COLORS.gray}; font-size: 13px; margin: 4px 0; line-height: 1.5;`,
 };
 
 const emailWrapper = (title: string, subtitle: string, content: string) => `
@@ -63,7 +63,7 @@ const emailWrapper = (title: string, subtitle: string, content: string) => `
                 <img src="https://img.icons8.com/fluency/96/graduation-cap.png" alt="Logo" width="48" height="48" style="filter: brightness(0) invert(1);">
             </div>
             <h1 style="${STYLES.headerTitle}">${title}</h1>
-            ${subtitle ? `<p style="${STYLES.headerSubtitle}">${subtitle}</p>` : ''}
+            ${subtitle ? `<p style="${STYLES.headerSubtitle}">${subtitle}</p>` : ""}
         </div>
         
         <div style="${STYLES.content}">
@@ -83,27 +83,31 @@ const emailWrapper = (title: string, subtitle: string, content: string) => `
 `;
 
 export const sendEmail = async ({ to, subject, html }: MailOptions) => {
-    try {
-        const info = await transporter.sendMail({
-            from: `"${process.env.MAIL_FROM_NAME || 'Xkorienta'}" <${process.env.MAIL_SOURCE || 'contact@Xkorienta.com'}>`,
-            to,
-            subject,
-            html,
-        });
+  try {
+    const info = await transporter.sendMail({
+      from: `"${process.env.MAIL_FROM_NAME || "Xkorienta"}" <${process.env.MAIL_SOURCE || "contact@Xkorienta.com"}>`,
+      to,
+      subject,
+      html,
+    });
 
-        console.log("Message sent: %s", info.messageId);
-        return { success: true, messageId: info.messageId };
-    } catch (error) {
-        console.error("Error sending email: ", error);
-        return { success: false, error };
-    }
+    console.log("Message sent: %s", info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error("Error sending email: ", error);
+    return { success: false, error };
+  }
 };
 
 // Email de bienvenue après inscription
-export const sendWelcomeEmail = async (email: string, userName: string, className: string) => {
-    const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
+export const sendWelcomeEmail = async (
+  email: string,
+  userName: string,
+  className: string,
+) => {
+  const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/login`;
 
-    const content = `
+  const content = `
         <p>Bonjour <strong>${userName}</strong>, 👋</p>
         <p>Bienvenue dans la communauté ! Votre compte a été créé avec succès et vous avez rejoint la classe <strong>${className}</strong>.</p>
         
@@ -123,13 +127,25 @@ export const sendWelcomeEmail = async (email: string, userName: string, classNam
         <a href="${loginUrl}" style="color: ${COLORS.primary};">${loginUrl}</a></p>
     `;
 
-    const html = emailWrapper("Bienvenue sur Xkorienta !", "Votre inscription est confirmée", content);
-    return sendEmail({ to: email, subject: `Bienvenue dans la classe ${className} !`, html });
+  const html = emailWrapper(
+    "Bienvenue sur Xkorienta !",
+    "Votre inscription est confirmée",
+    content,
+  );
+  return sendEmail({
+    to: email,
+    subject: `Bienvenue dans la classe ${className} !`,
+    html,
+  });
 };
 
 // Email d'invitation à rejoindre une classe
-export const sendInvitationEmail = async (email: string, link: string, className: string) => {
-    const content = `
+export const sendInvitationEmail = async (
+  email: string,
+  link: string,
+  className: string,
+) => {
+  const content = `
         <p>Bonjour,</p>
         <p>Vous avez été invité à rejoindre la classe <strong>${className}</strong> sur notre plateforme d'apprentissage.</p>
         
@@ -147,15 +163,28 @@ export const sendInvitationEmail = async (email: string, link: string, className
         <p style="text-align: center; color: ${COLORS.gray}; font-size: 14px;">Lien direct : <a href="${link}" style="color: ${COLORS.primary}; word-break: break-all;">${link}</a></p>
     `;
 
-    const html = emailWrapper("Invitation reçue", `Rejoignez la classe ${className}`, content);
-    return sendEmail({ to: email, subject: `Invitation : Rejoindre ${className}`, html });
+  const html = emailWrapper(
+    "Invitation reçue",
+    `Rejoignez la classe ${className}`,
+    content,
+  );
+  return sendEmail({
+    to: email,
+    subject: `Invitation : Rejoindre ${className}`,
+    html,
+  });
 };
 
 // Email d'activation (Ajout manuel)
-export const sendAccountActivationEmail = async (email: string, link: string, className: string, tempPassword?: string) => {
-    let passwordSection = '';
-    if (tempPassword) {
-        passwordSection = `
+export const sendAccountActivationEmail = async (
+  email: string,
+  link: string,
+  className: string,
+  tempPassword?: string,
+) => {
+  let passwordSection = "";
+  if (tempPassword) {
+    passwordSection = `
             <div style="${STYLES.infoBox}; background-color: #FFFBEB; border-color: #FCD34D;">
                 <div style="${STYLES.infoBoxTitle}; color: #D97706;">🔑 Mot de passe temporaire</div>
                 <div style="font-family: monospace; font-size: 24px; letter-spacing: 2px; color: #D97706; background: white; padding: 12px; border-radius: 8px; text-align: center; margin-top: 8px;">
@@ -166,9 +195,9 @@ export const sendAccountActivationEmail = async (email: string, link: string, cl
                 </p>
             </div>
         `;
-    }
+  }
 
-    const content = `
+  const content = `
         <p>Bonjour,</p>
         <p>Un compte étudiant a été créé pour vous afin de rejoindre la classe <strong>${className}</strong>.</p>
         
@@ -183,21 +212,29 @@ export const sendAccountActivationEmail = async (email: string, link: string, cl
         <p style="font-size: 14px; color: ${COLORS.gray}; text-align: center;">Ou utilisez ce lien : <a href="${link}" style="color: ${COLORS.primary};">${link}</a></p>
     `;
 
-    const html = emailWrapper("Activez votre compte", `Bienvenue dans la classe ${className}`, content);
-    return sendEmail({ to: email, subject: `Action requise : Activez votre compte Xkorienta`, html });
+  const html = emailWrapper(
+    "Activez votre compte",
+    `Bienvenue dans la classe ${className}`,
+    content,
+  );
+  return sendEmail({
+    to: email,
+    subject: `Action requise : Activez votre compte Xkorienta`,
+    html,
+  });
 };
 
 // Notification Enseignant
 export const sendTeacherNotification = async (
-    teacherEmail: string,
-    teacherName: string,
-    studentName: string,
-    studentEmail: string,
-    className: string
+  teacherEmail: string,
+  teacherName: string,
+  studentName: string,
+  studentEmail: string,
+  className: string,
 ) => {
-    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/teacher/classes`;
+  const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/teacher/classes`;
 
-    const content = `
+  const content = `
         <p>Bonjour <strong>${teacherName}</strong>,</p>
         <p>Excellente nouvelle ! La classe <strong>${className}</strong> s'agrandit.</p>
         
@@ -214,7 +251,7 @@ export const sendTeacherNotification = async (
                 </tr>
                 <tr>
                     <td style="padding: 4px 0; color: ${COLORS.gray};">Date :</td>
-                    <td style="padding: 4px 0;">${new Date().toLocaleDateString('fr-FR')}</td>
+                    <td style="padding: 4px 0;">${new Date().toLocaleDateString("fr-FR")}</td>
                 </tr>
             </table>
         </div>
@@ -224,32 +261,46 @@ export const sendTeacherNotification = async (
         </div>
     `;
 
-    const html = emailWrapper("Nouvelle inscription", `${studentName} a rejoint ${className}`, content);
-    return sendEmail({ to: teacherEmail, subject: `Nouvel Apprenant : ${studentName}`, html });
+  const html = emailWrapper(
+    "Nouvelle inscription",
+    `${studentName} a rejoint ${className}`,
+    content,
+  );
+  return sendEmail({
+    to: teacherEmail,
+    subject: `Nouvel Apprenant : ${studentName}`,
+    html,
+  });
 };
 
 // Rapport d'import
 export const sendImportReportEmail = async (
-    teacherEmail: string,
-    teacherName: string,
-    className: string,
-    stats: { total: number; enrolled: number; invited: number; errors: number },
-    errors: { email: string; message: string }[]
+  teacherEmail: string,
+  teacherName: string,
+  className: string,
+  stats: { total: number; enrolled: number; invited: number; errors: number },
+  errors: { email: string; message: string }[],
 ) => {
-    let errorSection = '';
-    if (errors.length > 0) {
-        errorSection = `
+  let errorSection = "";
+  if (errors.length > 0) {
+    errorSection = `
             <div style="${STYLES.infoBox}; background-color: #FEF2F2; border-color: #FECACA;">
                 <div style="${STYLES.infoBoxTitle}; color: ${COLORS.error};">⚠️ Erreurs rencontrées (${errors.length})</div>
                 <ul style="margin: 10px 0; padding-left: 20px; color: #991B1B;">
-                    ${errors.slice(0, 5).map(e => `<li><strong>${e.email}</strong> : ${e.message}</li>`).join('')}
+                    ${errors
+                      .slice(0, 5)
+                      .map(
+                        (e) =>
+                          `<li><strong>${e.email}</strong> : ${e.message}</li>`,
+                      )
+                      .join("")}
                 </ul>
-                ${errors.length > 5 ? `<p style="font-size: 13px; color: #991B1B; margin-top: 8px;">...et ${errors.length - 5} autres.</p>` : ''}
+                ${errors.length > 5 ? `<p style="font-size: 13px; color: #991B1B; margin-top: 8px;">...et ${errors.length - 5} autres.</p>` : ""}
             </div>
         `;
-    }
+  }
 
-    const content = `
+  const content = `
         <p>Bonjour <strong>${teacherName}</strong>,</p>
         <p>Le traitement de votre fichier d'import pour la classe <strong>${className}</strong> est terminé.</p>
         
@@ -264,26 +315,44 @@ export const sendImportReportEmail = async (
             </div>
         </div>
 
-        ${stats.errors > 0 ? `
+        ${
+          stats.errors > 0
+            ? `
             <div style="text-align: center; margin-bottom: 20px;">
                 <span style="display: inline-block; padding: 6px 12px; background: #FEE2E2; color: ${COLORS.error}; border-radius: 20px; font-size: 14px; font-weight: 600;">
                     ${stats.errors} erreur(s)
                 </span>
             </div>
-        ` : ''}
+        `
+            : ""
+        }
         
         ${errorSection}
         
         <p>Les e-mails d'invitation ont été envoyés automatiquement aux nouveaux Apprenants.</p>
     `;
 
-    const html = emailWrapper("Rapport d'import", `Résumé pour ${className}`, content);
-    return sendEmail({ to: teacherEmail, subject: `Import terminé pour ${className}`, html });
+  const html = emailWrapper(
+    "Rapport d'import",
+    `Résumé pour ${className}`,
+    content,
+  );
+  return sendEmail({
+    to: teacherEmail,
+    subject: `Import terminé pour ${className}`,
+    html,
+  });
 };
 
 // Email pour un utilisateur existant ajouté à une classe
-export const sendAddedToClassEmail = async (email: string, userName: string, className: string, teacherName: string, loginLink: string) => {
-    const content = `
+export const sendAddedToClassEmail = async (
+  email: string,
+  userName: string,
+  className: string,
+  teacherName: string,
+  loginLink: string,
+) => {
+  const content = `
         <p>Bonjour <strong>${userName}</strong>,</p>
         <p>Vous avez été ajouté(e) à la classe <strong>${className}</strong> par ${teacherName}.</p>
         
@@ -303,13 +372,25 @@ export const sendAddedToClassEmail = async (email: string, userName: string, cla
         </p>
     `;
 
-    const html = emailWrapper("Ajout à une classe", `Vous êtes maintenant dans ${className}`, content);
-    return sendEmail({ to: email, subject: `Vous avez été ajouté à ${className}`, html });
+  const html = emailWrapper(
+    "Ajout à une classe",
+    `Vous êtes maintenant dans ${className}`,
+    content,
+  );
+  return sendEmail({
+    to: email,
+    subject: `Vous avez été ajouté à ${className}`,
+    html,
+  });
 };
 
 // Code de vérification OTP
-export const sendVerificationEmail = async (email: string, code: string, userName: string) => {
-    const content = `
+export const sendVerificationEmail = async (
+  email: string,
+  code: string,
+  userName: string,
+) => {
+  const content = `
         <p>Bonjour <strong>${userName}</strong>,</p>
         <p>Pour sécuriser votre compte, veuillez utiliser le code de vérification suivant :</p>
         
@@ -325,8 +406,12 @@ export const sendVerificationEmail = async (email: string, code: string, userNam
         </div>
     `;
 
-    const html = emailWrapper("Code de vérification", "Confirmez votre identité", content);
-    return sendEmail({ to: email, subject: `Votre code : ${code}`, html });
+  const html = emailWrapper(
+    "Code de vérification",
+    "Confirmez votre identité",
+    content,
+  );
+  return sendEmail({ to: email, subject: `Votre code : ${code}`, html });
 };
 
 // ============================================================================
@@ -337,18 +422,19 @@ export const sendVerificationEmail = async (email: string, code: string, userNam
  * Email envoyé quand un enseignant existant est ajouté à une classe
  */
 export const sendTeacherAddedEmail = async (
-    email: string,
-    teacherName: string,
-    className: string,
-    addedByName: string,
-    subjectNames: string[],
-    loginUrl: string
+  email: string,
+  teacherName: string,
+  className: string,
+  addedByName: string,
+  subjectNames: string[],
+  loginUrl: string,
 ) => {
-    const subjectsList = subjectNames.length > 0
-        ? `<p style="${STYLES.infoBoxText}"><strong>📚 Matière(s) :</strong> ${subjectNames.join(', ')}</p>`
-        : '';
+  const subjectsList =
+    subjectNames.length > 0
+      ? `<p style="${STYLES.infoBoxText}"><strong>📚 Matière(s) :</strong> ${subjectNames.join(", ")}</p>`
+      : "";
 
-    const content = `
+  const content = `
         <p>Bonjour <strong>${teacherName}</strong>,</p>
         <p>Vous avez été ajouté(e) comme enseignant(e) collaborateur(trice) dans la classe <strong>${className}</strong> par ${addedByName}.</p>
         
@@ -369,8 +455,16 @@ export const sendTeacherAddedEmail = async (
         </p>
     `;
 
-    const html = emailWrapper("Ajout comme enseignant", `Vous enseignez dans ${className}`, content);
-    return sendEmail({ to: email, subject: `Vous êtes enseignant dans ${className}`, html });
+  const html = emailWrapper(
+    "Ajout comme enseignant",
+    `Vous enseignez dans ${className}`,
+    content,
+  );
+  return sendEmail({
+    to: email,
+    subject: `Vous êtes enseignant dans ${className}`,
+    html,
+  });
 };
 
 /**
@@ -378,20 +472,21 @@ export const sendTeacherAddedEmail = async (
  * (compte créé avec mot de passe temporaire)
  */
 export const sendTeacherActivationEmail = async (
-    email: string,
-    teacherName: string,
-    className: string,
-    addedByName: string,
-    subjectNames: string[],
-    activationLink: string
+  email: string,
+  teacherName: string,
+  className: string,
+  addedByName: string,
+  subjectNames: string[],
+  activationLink: string,
 ) => {
-    const subjectsList = subjectNames.length > 0
-        ? `<p style="${STYLES.infoBoxText}"><strong>📚 Matière(s) :</strong> ${subjectNames.join(', ')}</p>`
-        : '';
+  const subjectsList =
+    subjectNames.length > 0
+      ? `<p style="${STYLES.infoBoxText}"><strong>📚 Matière(s) :</strong> ${subjectNames.join(", ")}</p>`
+      : "";
 
-    const content = `
+  const content = `
         <p>Bonjour <strong>${teacherName}</strong>,</p>
-        <p>${addedByName} vous a invité(e) à rejoindre <strong>${className}</strong> comme enseignant(e) collaborateur(trice) sur QuizLock.</p>
+        <p>${addedByName} vous a invité(e) à rejoindre <strong>${className}</strong> comme enseignant(e) collaborateur(trice) sur Xkorienta.</p>
         
         <div style="${STYLES.infoBox}; background-color: #F0FDFA; border-color: #CCFBF1;">
             <div style="${STYLES.infoBoxTitle}; color: #0D9488;">🎓 Votre classe</div>
@@ -415,20 +510,28 @@ export const sendTeacherActivationEmail = async (
         </p>
     `;
 
-    const html = emailWrapper("Activez votre compte enseignant", `Bienvenue dans ${className}`, content);
-    return sendEmail({ to: email, subject: `Invitation enseignant : ${className}`, html });
+  const html = emailWrapper(
+    "Activez votre compte enseignant",
+    `Bienvenue dans ${className}`,
+    content,
+  );
+  return sendEmail({
+    to: email,
+    subject: `Invitation enseignant : ${className}`,
+    html,
+  });
 };
 
 /**
  * Email de confirmation après activation du compte enseignant
  */
 export const sendTeacherWelcomeEmail = async (
-    email: string,
-    teacherName: string,
-    className: string,
-    dashboardUrl: string
+  email: string,
+  teacherName: string,
+  className: string,
+  dashboardUrl: string,
 ) => {
-    const content = `
+  const content = `
         <p>Bonjour <strong>${teacherName}</strong>,</p>
         <p>Votre compte enseignant a été activé avec succès ! 🎉</p>
         
@@ -450,13 +553,25 @@ export const sendTeacherWelcomeEmail = async (
         </div>
     `;
 
-    const html = emailWrapper("Bienvenue enseignant !", `Votre compte est actif`, content);
-    return sendEmail({ to: email, subject: `Votre compte enseignant est activé`, html });
+  const html = emailWrapper(
+    "Bienvenue enseignant !",
+    `Votre compte est actif`,
+    content,
+  );
+  return sendEmail({
+    to: email,
+    subject: `Votre compte enseignant est activé`,
+    html,
+  });
 };
 
 // Réinitialisation du mot de passe
-export const sendPasswordResetEmail = async (email: string, userName: string, resetUrl: string) => {
-    const content = `
+export const sendPasswordResetEmail = async (
+  email: string,
+  userName: string,
+  resetUrl: string,
+) => {
+  const content = `
         <p>Bonjour <strong>${userName}</strong>,</p>
         <p>Nous avons reçu une demande de réinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe :</p>
         
@@ -478,7 +593,14 @@ export const sendPasswordResetEmail = async (email: string, userName: string, re
         <a href="${resetUrl}" style="color: ${COLORS.primary}; word-break: break-all;">${resetUrl}</a></p>
     `;
 
-    const html = emailWrapper("Réinitialisation du mot de passe", "Créez un nouveau mot de passe", content);
-    return sendEmail({ to: email, subject: `Réinitialisation de votre mot de passe`, html });
+  const html = emailWrapper(
+    "Réinitialisation du mot de passe",
+    "Créez un nouveau mot de passe",
+    content,
+  );
+  return sendEmail({
+    to: email,
+    subject: `Réinitialisation de votre mot de passe`,
+    html,
+  });
 };
-

@@ -5,6 +5,8 @@ import {
     PaymentInitResult,
     PaymentVerifyResult,
     WebhookEvent,
+    TransferParams,
+    TransferResult,
 } from './IPaymentStrategy'
 
 const NOTCHPAY_BASE_URL = 'https://api.notchpay.co'
@@ -21,6 +23,12 @@ export class NotchPayStrategy implements IPaymentStrategy {
     private get publicKey(): string {
         const key = process.env.NOTCHPAY_PUBLIC_KEY
         if (!key) throw new Error('NOTCHPAY_PUBLIC_KEY environment variable is not defined')
+        return key
+    }
+
+    private get secretKey(): string {
+        const key = process.env.NOTCHPAY_SECRET_KEY
+        if (!key) throw new Error('NOTCHPAY_SECRET_KEY environment variable is not defined')
         return key
     }
 
@@ -147,12 +155,68 @@ export class NotchPayStrategy implements IPaymentStrategy {
         })
     }
 
+    /**
+     * Initie un virement Mobile Money vers un vendeur via l'API NotchPay Transfers.
+     * Docs: https://developer.notchpay.co/transfers
+     */
+    async transfer(params: TransferParams): Promise<TransferResult> {
+        const body = {
+            amount: params.amount,
+            currency: params.currency,
+            phone: params.phone,
+            channel: params.channel,
+            reference: params.reference,
+            description: params.description,
+            beneficiary: { name: params.recipientName, phone: params.phone },
+        }
+
+        const response = await fetch(`${NOTCHPAY_BASE_URL}/transfers`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: this.secretKey,
+            },
+            body: JSON.stringify(body),
+        })
+
+        const data = await response.json() as {
+            status?: string
+            message?: string
+            transfer?: {
+                id: string
+                reference: string
+                status: string
+            }
+        }
+
+        if (!response.ok || !data.transfer) {
+            throw new Error(
+                `NotchPay transfer failed: ${data.message ?? response.statusText}`
+            )
+        }
+
+        const t = data.transfer
+        return {
+            transferId: t.id,
+            reference: t.reference,
+            status: this.mapTransferStatus(t.status),
+        }
+    }
+
     private mapStatus(status: string): 'completed' | 'pending' | 'failed' | 'cancelled' {
         const s = status.toLowerCase()
         if (s === 'complete' || s === 'completed') return 'completed'
         if (s === 'failed' || s === 'error') return 'failed'
         if (s === 'cancelled' || s === 'canceled') return 'cancelled'
         return 'pending'
+    }
+
+    private mapTransferStatus(status: string): 'queued' | 'processing' | 'completed' | 'failed' {
+        const s = status.toLowerCase()
+        if (s === 'complete' || s === 'completed' || s === 'success') return 'completed'
+        if (s === 'failed' || s === 'error') return 'failed'
+        if (s === 'processing') return 'processing'
+        return 'queued'
     }
 }
 
