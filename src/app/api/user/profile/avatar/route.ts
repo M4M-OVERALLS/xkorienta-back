@@ -15,13 +15,23 @@ const ALLOWED_MIME_TO_EXT: Record<string, string> = {
     "image/webp": "webp",
 }
 
-/** Returns the absolute public URL for a given relative path stored in DB */
+/**
+ * Returns the absolute public URL for a given relative path stored in DB.
+ *
+ * Priority order for the base URL:
+ *   1. APP_BASE_URL — set this in .env to the full URL including basePath,
+ *      e.g. https://xkorienta.com/xkorienta/backend
+ *   2. NEXTAUTH_URL — used by NextAuth, may or may not include basePath.
+ *      Trailing slashes are stripped to avoid double-slash paths.
+ */
 function toAbsoluteUrl(relativePath: string): string {
-    const apiBase = process.env.NEXTAUTH_URL || "http://localhost:3001"
     // Already absolute (e.g. OAuth avatar from Google/GitHub)
     if (relativePath.startsWith("http://") || relativePath.startsWith("https://")) {
         return relativePath
     }
+    const rawBase = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXTAUTH_URL || "http://localhost:3001"
+    // Strip trailing slash so we never get double-slash paths
+    const apiBase = rawBase.replace(/\/+$/, "")
     return `${apiBase}${relativePath}`
 }
 

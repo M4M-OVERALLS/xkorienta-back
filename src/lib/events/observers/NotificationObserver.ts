@@ -539,7 +539,7 @@ export class NotificationObserver implements IObserver {
     await Notification.create({
       userId: event.userId,
       type: "info",
-      title: "Bienvenue sur Quizlock! 👋",
+      title: "Bienvenue sur Xkorienta! 👋",
       message:
         "Merci de vous être inscrit. Complétez votre profil pour commencer.",
       read: false,

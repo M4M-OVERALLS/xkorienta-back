@@ -62,6 +62,7 @@ export async function GET(req: Request, { params }: Params) {
             data: {
                 reference,
                 status,
+                email: purchase.email,
             },
         })
     } catch (err) {

@@ -5,6 +5,9 @@ import { bookRepository, BookFilters, PaginatedBooks } from '@/lib/repositories/
 import { bookConfigRepository } from '@/lib/repositories/BookConfigRepository'
 import { StorageStrategyFactory } from '@/lib/strategies/storage/StorageStrategyFactory'
 import mongoose from 'mongoose'
+import { mkdir, writeFile } from 'fs/promises'
+import path from 'path'
+import { randomUUID } from 'crypto'
 
 const ALLOWED_MIME_TYPES: Record<string, BookFormat> = {
     'application/pdf':      BookFormat.PDF,
@@ -16,6 +19,9 @@ export interface SubmitBookInput {
     description: string
     fileBuffer: Buffer
     fileOriginalName: string
+    /** Image de couverture optionnelle (JPEG, PNG, WebP) */
+    coverBuffer?: Buffer
+    coverOriginalName?: string
     price: number
     currency?: string
     scope: BookScope
@@ -95,11 +101,18 @@ export class BookService {
         const storage = StorageStrategyFactory.create(config.storageProvider)
         const fileKey = await storage.upload(input.fileBuffer, input.fileOriginalName, detected.mime)
 
+        // Sauvegarde optionnelle de l'image de couverture dans public/uploads/covers/
+        let coverImageKey: string | undefined
+        if (input.coverBuffer && input.coverOriginalName) {
+            coverImageKey = await BookService.saveCoverImage(input.coverBuffer, input.coverOriginalName)
+        }
+
         return bookRepository.create({
             title: input.title.trim(),
             description: input.description.trim(),
             format,
             fileKey,
+            coverImageKey,
             price: input.price,
             currency: (input.currency ?? 'XAF').toUpperCase(),
             scope: input.scope,
@@ -108,6 +121,31 @@ export class BookService {
             status: BookStatus.PENDING,
             copyrightAccepted: true,
         })
+    }
+
+    /**
+     * Sauvegarde l'image de couverture dans public/uploads/covers/ et retourne la clé.
+     * Les images de couverture sont publiques (simples miniatures).
+     */
+    private static async saveCoverImage(buffer: Buffer, originalName: string): Promise<string> {
+        const COVERS_DIR = path.join(process.cwd(), 'public', 'uploads', 'covers')
+        await mkdir(COVERS_DIR, { recursive: true })
+        const ext = path.extname(originalName).toLowerCase() || '.jpg'
+        const key = `${randomUUID()}${ext}`
+        await writeFile(path.join(COVERS_DIR, key), buffer)
+        return key
+    }
+
+    /** Construit l'URL publique d'une image de couverture. */
+    static buildCoverUrl(coverImageKey: string | undefined): string | undefined {
+        if (!coverImageKey) return undefined
+        const base = (
+            process.env.APP_BASE_URL ||
+            process.env.NEXT_PUBLIC_API_URL ||
+            process.env.NEXTAUTH_URL ||
+            'http://localhost:3001'
+        ).replace(/\/+$/, '')
+        return `${base}/uploads/covers/${coverImageKey}`
     }
 
     /** Returns the public book catalogue. Only APPROVED books visible to end users. */

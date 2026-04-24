@@ -35,6 +35,24 @@ export interface WebhookEvent {
     metadata?: Record<string, string>
 }
 
+export interface TransferParams {
+    amount: number
+    currency: string
+    /** Numéro Mobile Money du destinataire (ex: +237690000000) */
+    phone: string
+    /** Canal Mobile Money : 'cm.orange', 'cm.mtn', etc. */
+    channel: string
+    reference: string
+    description: string
+    recipientName: string
+}
+
+export interface TransferResult {
+    transferId: string
+    reference: string
+    status: 'queued' | 'processing' | 'completed' | 'failed'
+}
+
 export interface IPaymentStrategy {
     readonly providerName: string
 
@@ -53,4 +71,10 @@ export interface IPaymentStrategy {
      * Throws if the signature is invalid.
      */
     handleWebhook(payload: unknown, signature: string): Promise<WebhookEvent>
+
+    /**
+     * Initiate a transfer (payout) to a Mobile Money recipient.
+     * Used to pay sellers their earnings.
+     */
+    transfer(params: TransferParams): Promise<TransferResult>
 }

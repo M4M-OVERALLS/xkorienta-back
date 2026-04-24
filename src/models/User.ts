@@ -55,6 +55,16 @@ export interface IUser extends Document {
         lastActivityDate?: Date
     }
 
+    /**
+     * Informations de paiement Mobile Money pour les vendeurs (enseignants).
+     * Utilisé pour les virements des gains sur ventes de livres.
+     */
+    paymentInfo?: {
+        mobileMoneyPhone: string
+        mobileMoneyProvider: 'orange' | 'mtn' | 'other'
+        mobileMoneyName: string
+    }
+
     // Password Reset
     resetPasswordToken?: string
     resetPasswordExpires?: Date
@@ -114,6 +124,13 @@ const UserSchema = new Schema<IUser>(
             currentStreak: { type: Number, default: 0 },
             longestStreak: { type: Number, default: 0 },
             lastActivityDate: Date
+        },
+
+        // Payment info (for sellers / teachers)
+        paymentInfo: {
+            mobileMoneyPhone: { type: String },
+            mobileMoneyProvider: { type: String, enum: ['orange', 'mtn', 'other'] },
+            mobileMoneyName: { type: String },
         },
 
         // Password Reset

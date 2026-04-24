@@ -69,7 +69,7 @@ export class BookRepository {
 
         if (filters.catalogPreview) {
             listQuery.select(
-                '_id title format price currency downloadCount purchaseCount submittedBy createdAt'
+                '_id title format price currency downloadCount purchaseCount coverImageKey submittedBy createdAt'
             )
         }
 

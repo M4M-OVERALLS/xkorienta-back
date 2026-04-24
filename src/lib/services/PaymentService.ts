@@ -4,9 +4,12 @@ import { transactionRepository } from '@/lib/repositories/TransactionRepository'
 import { bookRepository } from '@/lib/repositories/BookRepository'
 import { bookPurchaseRepository } from '@/lib/repositories/BookPurchaseRepository'
 import { planRepository } from '@/lib/repositories/PlanRepository'
+import { UserRepository } from '@/lib/repositories/UserRepository'
 import { PaymentStrategyFactory } from '@/lib/strategies/payment/PaymentStrategyFactory'
 import { CurrencyService } from './CurrencyService'
 import { PaymentNotificationService } from './PaymentNotificationService'
+import { InvoiceService } from './InvoiceService'
+import { WalletService } from './WalletService'
 import { ITransaction } from '@/models/Transaction'
 import {
     TransactionType,
@@ -15,6 +18,7 @@ import {
     BookStatus,
     SubscriptionInterval,
     BookPurchaseStatus,
+    Currency,
 } from '@/models/enums'
 
 const DEFAULT_COMMISSION_RATE = parseFloat(process.env.PAYMENT_DEFAULT_COMMISSION_RATE ?? '5')
@@ -282,8 +286,34 @@ export class PaymentService {
 
     /**
      * Handle successful payment completion.
+     * Triggers: invoice generation (buyer + seller), wallet credit, product access grant.
      */
     private static async handlePaymentCompleted(transaction: ITransaction): Promise<void> {
+        // Extract buyer info from populated userId
+        const buyer = transaction.userId as unknown as { name?: string; email?: string; _id: unknown }
+        const buyerName = buyer?.name ?? 'Client'
+        const buyerEmail = buyer?.email
+
+        // Extract seller info from populated sellerId (if any)
+        const sellerPopulated = transaction.sellerId
+            ? (transaction.sellerId as unknown as { name?: string; email?: string; _id: unknown })
+            : null
+
+        let sellerName: string | undefined
+        let sellerEmail: string | undefined
+
+        if (sellerPopulated && !sellerPopulated.name) {
+            // Not populated — fetch manually
+            const userRepo = new UserRepository()
+            const seller = await userRepo.findById(transaction.sellerId!.toString())
+            sellerName = seller?.name
+            sellerEmail = seller?.email
+        } else if (sellerPopulated) {
+            sellerName = sellerPopulated.name
+            sellerEmail = sellerPopulated.email
+        }
+
+        // Product-specific actions
         switch (transaction.type) {
             case TransactionType.BOOK_PURCHASE:
                 await bookRepository.incrementPurchaseCount(transaction.productId.toString())
@@ -291,6 +321,14 @@ export class PaymentService {
                     transaction.paymentReference,
                     BookPurchaseStatus.COMPLETED
                 )
+                // Credit seller wallet
+                if (transaction.sellerId && transaction.sellerAmount > 0) {
+                    await WalletService.creditSeller(
+                        transaction.sellerId.toString(),
+                        transaction.sellerAmount,
+                        transaction.paymentCurrency as Currency
+                    )
+                }
                 break
 
             case TransactionType.SUBSCRIPTION:
@@ -299,6 +337,19 @@ export class PaymentService {
 
             default:
                 break
+        }
+
+        // Generate invoices for buyer and seller (non-blocking — don't throw on failure)
+        try {
+            await InvoiceService.generateForTransaction(
+                transaction,
+                buyerName,
+                buyerEmail,
+                sellerName,
+                sellerEmail
+            )
+        } catch (err) {
+            console.error('[PaymentService] Invoice generation failed:', err)
         }
     }
 

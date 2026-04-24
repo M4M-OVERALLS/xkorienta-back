@@ -4,11 +4,19 @@ import { BookPurchaseService } from '@/lib/services/BookPurchaseService'
 import { BookScope, UserRole } from '@/models/enums'
 
 export class BookController {
+    /** Construit l'URL absolue de l'image de couverture à partir de la clé. */
+    private static enrichWithCoverUrl(book: Record<string, unknown>): Record<string, unknown> {
+        return {
+            ...book,
+            coverImageUrl: BookService.buildCoverUrl(book.coverImageKey as string | undefined),
+        }
+    }
+
     /** GET /api/books */
     static async getCatalogue(req: Request, session: { user: { id: string; role: string; schools?: string[] } }) {
         const { searchParams } = new URL(req.url)
 
-        const books = await BookService.getCatalogue({
+        const result = await BookService.getCatalogue({
             scope: (searchParams.get('scope') as BookScope) ?? undefined,
             schoolId: searchParams.get('schoolId') ?? undefined,
             format: searchParams.get('format') ?? undefined,
@@ -19,19 +27,25 @@ export class BookController {
             limit: searchParams.get('limit') ? Number(searchParams.get('limit')) : 20,
         })
 
-        return NextResponse.json({ success: true, data: books })
+        return NextResponse.json({
+            success: true,
+            data: {
+                ...result,
+                books: result.books.map((b) => BookController.enrichWithCoverUrl(b as unknown as Record<string, unknown>)),
+            },
+        })
     }
 
     /** GET /api/books/[id] */
     static async getBook(id: string, session: { user: { id: string; role: string } }) {
         const book = await BookService.getBookById(id, session.user.id, session.user.role as UserRole)
-        return NextResponse.json({ success: true, data: book })
+        return NextResponse.json({ success: true, data: BookController.enrichWithCoverUrl(book as unknown as Record<string, unknown>) })
     }
 
     /** GET /api/books/[id] without auth — only APPROVED books */
     static async getPublicBook(id: string) {
         const book = await BookService.getPublicBookById(id)
-        return NextResponse.json({ success: true, data: book })
+        return NextResponse.json({ success: true, data: BookController.enrichWithCoverUrl(book as unknown as Record<string, unknown>) })
     }
 
     /** POST /api/books */
@@ -54,11 +68,29 @@ export class BookController {
 
         const fileBuffer = Buffer.from(await file.arrayBuffer())
 
+        // Couverture optionnelle (JPEG, PNG, WebP)
+        const coverFile = formData.get('cover') as File | null
+        let coverBuffer: Buffer | undefined
+        let coverOriginalName: string | undefined
+        if (coverFile && coverFile.size > 0) {
+            const coverMime = coverFile.type
+            if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(coverMime)) {
+                return NextResponse.json({ success: false, message: 'Cover must be a JPEG, PNG or WebP image' }, { status: 400 })
+            }
+            if (coverFile.size > 5 * 1024 * 1024) {
+                return NextResponse.json({ success: false, message: 'Cover image too large. Maximum 5 MB.' }, { status: 400 })
+            }
+            coverBuffer = Buffer.from(await coverFile.arrayBuffer())
+            coverOriginalName = coverFile.name
+        }
+
         const book = await BookService.submitBook({
             title,
             description,
             fileBuffer,
             fileOriginalName: file.name,
+            coverBuffer,
+            coverOriginalName,
             price,
             currency,
             scope,

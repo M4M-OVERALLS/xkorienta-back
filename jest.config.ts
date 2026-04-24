@@ -1,45 +1,45 @@
 /**
- * Configuration Jest pour quizlock-api
+ * Configuration Jest pour Xkorienta-api
  *
  * Agent 3 - Expert TDD
  */
 
-import type { Config } from 'jest';
-import nextJest from 'next/jest';
+import type { Config } from "jest";
+import nextJest from "next/jest";
 
 const createJestConfig = nextJest({
   // Provide the path to your Next.js app to load next.config.js and .env files in your test environment
-  dir: './',
+  dir: "./",
 });
 
 // Add any custom config to be passed to Jest
 const config: Config = {
-  coverageProvider: 'v8',
-  testEnvironment: 'node',
+  coverageProvider: "v8",
+  testEnvironment: "node",
 
   // Setup files
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
 
   // Module paths
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
+    "^@/(.*)$": "<rootDir>/src/$1",
   },
 
   // Test match patterns
   testMatch: [
-    '**/__tests__/**/*.test.ts',
-    '**/__tests__/**/*.test.tsx',
-    '**/*.test.ts',
-    '**/*.test.tsx',
+    "**/__tests__/**/*.test.ts",
+    "**/__tests__/**/*.test.tsx",
+    "**/*.test.ts",
+    "**/*.test.tsx",
   ],
 
   // Coverage configuration
   collectCoverageFrom: [
-    'src/**/*.{ts,tsx}',
-    '!src/**/*.d.ts',
-    '!src/**/*.stories.{ts,tsx}',
-    '!src/**/__tests__/**',
-    '!src/app/**', // Exclure les pages Next.js
+    "src/**/*.{ts,tsx}",
+    "!src/**/*.d.ts",
+    "!src/**/*.stories.{ts,tsx}",
+    "!src/**/__tests__/**",
+    "!src/app/**", // Exclure les pages Next.js
   ],
 
   coverageThreshold: {
@@ -52,29 +52,28 @@ const config: Config = {
   },
 
   // Ignore patterns
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/.next/',
-    '/dist/',
-  ],
+  testPathIgnorePatterns: ["/node_modules/", "/.next/", "/dist/"],
 
   // Transform configuration
   transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', {
-      tsconfig: {
-        jsx: 'react',
+    "^.+\\.(ts|tsx)$": [
+      "ts-jest",
+      {
+        tsconfig: {
+          jsx: "react",
+        },
       },
-    }],
+    ],
   },
 
   // Module file extensions
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],
 
   // Verbose output
   verbose: true,
 
   // Max workers for parallel execution
-  maxWorkers: '50%',
+  maxWorkers: "50%",
 
   // Timeout
   testTimeout: 10000, // 10 seconds
