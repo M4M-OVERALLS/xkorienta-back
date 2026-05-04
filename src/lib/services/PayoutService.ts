@@ -1,6 +1,6 @@
 import { payoutRepository } from "@/lib/repositories/PayoutRepository";
 import { walletRepository } from "@/lib/repositories/WalletRepository";
-import { PaymentStrategyFactory } from "@/lib/strategies/payment/PaymentStrategyFactory";
+import { paymentSDK } from "@/lib/payment";
 import { IPayout } from "@/models/Payout";
 import { Currency, MobileMoneyProvider, PayoutStatus } from "@/models/enums";
 import { randomUUID } from "crypto";
@@ -55,8 +55,8 @@ export class PayoutService {
     });
 
     try {
-      const strategy = PaymentStrategyFactory.create("notchpay");
-      const result = await strategy.transfer({
+      const provider = paymentSDK.providers.get("notchpay");
+      const result = await provider.transfer({
         amount: params.amount,
         currency: params.currency,
         phone: params.recipientPhone,

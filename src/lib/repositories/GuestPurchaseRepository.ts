@@ -49,6 +49,14 @@ export class GuestPurchaseRepository {
         await connectDB()
         await GuestPurchase.findByIdAndUpdate(id, { $inc: { downloadCount: 1 } })
     }
+
+    async updateCommission(
+        id: string,
+        data: { sellerId: mongoose.Types.ObjectId; sellerAmount: number; platformCommission: number }
+    ): Promise<void> {
+        await connectDB()
+        await GuestPurchase.findByIdAndUpdate(id, { $set: data })
+    }
 }
 
 export const guestPurchaseRepository = new GuestPurchaseRepository()

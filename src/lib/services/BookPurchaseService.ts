@@ -5,9 +5,8 @@ import { bookPurchaseRepository } from '@/lib/repositories/BookPurchaseRepositor
 import { bookConfigRepository } from '@/lib/repositories/BookConfigRepository'
 import { transactionRepository } from '@/lib/repositories/TransactionRepository'
 import { BookConfigService } from './BookConfigService'
-import { PaymentService } from './PaymentService'
 import { GuestBookPurchaseService } from './GuestBookPurchaseService'
-import { PaymentStrategyFactory } from '@/lib/strategies/payment/PaymentStrategyFactory'
+import { paymentSDK } from '@/lib/payment'
 import { guestPurchaseRepository } from '@/lib/repositories/GuestPurchaseRepository'
 import mongoose from 'mongoose'
 
@@ -34,7 +33,7 @@ export interface PurchaseResult {
 
 export class BookPurchaseService {
     /**
-     * Initiates a book purchase using the new PaymentService.
+     * Initiates a book purchase using the payment SDK.
      * Creates records in both BookPurchase (legacy) and Transaction (new) tables.
      * Supports multi-currency with exchange rate conversion.
      */
@@ -73,21 +72,23 @@ export class BookPurchaseService {
             }
         }
 
-        // Use PaymentService for payment initiation (handles currency conversion)
+        // Use payment SDK for payment initiation (handles currency conversion)
         const paymentCurrency = input.paymentCurrency ?? book.currency
-        const paymentResult = await PaymentService.initiatePayment({
+        const paymentResult = await paymentSDK.payments.initiatePayment({
             userId: input.userId,
             userEmail: input.userEmail,
             type: TransactionType.BOOK_PURCHASE,
             productId: input.bookId,
-            productModel: 'Book',
+            productType: 'Book',
+            amount: book.price,
+            originalCurrency: book.currency,
             paymentCurrency,
+            description: `Achat livre: ${book.title}`,
             callbackUrl: input.callbackUrl,
             discountPercent,
             sellerId: submittedBy,
             metadata: {
                 bookTitle: book.title,
-                originalCurrency: book.currency,
             },
         })
 
@@ -132,43 +133,43 @@ export class BookPurchaseService {
 
     /**
      * Handles a payment webhook from the provider.
-     * Updates both BookPurchase (legacy) and Transaction (new) tables.
-     * Delegates to PaymentService for Transaction updates.
+     * - Delegates Transaction update + event emission to the payment SDK.
+     * - The SDK's EventBus (payment.ts) handles legacy BookPurchase sync, wallet credit, invoices.
+     * - Handles guest purchases separately (outside SDK scope).
      */
     static async handleWebhook(rawPayload: unknown, signature: string): Promise<void> {
-        const config = await bookConfigRepository.getOrCreate()
-        const paymentStrategy = PaymentStrategyFactory.create(config.paymentProvider)
-
-        const event = await paymentStrategy.handleWebhook(rawPayload, signature)
-
-        // Update legacy BookPurchase table
-        const purchase = await bookPurchaseRepository.findByReference(event.reference)
-        if (purchase && purchase.status !== BookPurchaseStatus.COMPLETED) {
-            const newStatus =
-                event.status === 'completed' ? BookPurchaseStatus.COMPLETED :
-                event.status === 'failed'    ? BookPurchaseStatus.FAILED :
-                event.status === 'cancelled' ? BookPurchaseStatus.FAILED :
-                BookPurchaseStatus.PENDING
-
-            await bookPurchaseRepository.updateStatusByReference(event.reference, newStatus)
-            // Incrément compteur + synchro legacy « completed » gérés dans PaymentService.handlePaymentCompleted
+        // Parse payload to extract reference and status for guest purchase handling
+        let reference: string | undefined
+        let providerStatus: string | undefined
+        try {
+            const parsed = typeof rawPayload === 'string'
+                ? JSON.parse(rawPayload)
+                : rawPayload as Record<string, unknown>
+            const tx = parsed.transaction as Record<string, unknown> | undefined
+            reference = tx?.reference as string | undefined
+            providerStatus = tx?.status as string | undefined
+        } catch {
+            // Will fail gracefully below
         }
 
-        // Also update new Transaction table via PaymentService
-        await PaymentService.handleWebhook(config.paymentProvider, rawPayload, signature)
+        // SDK handles Transaction update + emits payment.* events (EventBus in payment.ts)
+        const payload = typeof rawPayload === 'string' ? JSON.parse(rawPayload) : rawPayload
+        await paymentSDK.payments.handleWebhook('notchpay', payload, signature)
 
         // Handle guest purchases (no userId — download link sent by email)
-        const guestPurchase = await guestPurchaseRepository.findByReference(event.reference)
-        if (guestPurchase && guestPurchase.status !== 'COMPLETED') {
-            const guestStatus: 'COMPLETED' | 'FAILED' | 'PENDING' =
-                event.status === 'completed' ? 'COMPLETED' :
-                event.status === 'failed' || event.status === 'cancelled' ? 'FAILED' :
-                'PENDING'
+        if (reference) {
+            const guestPurchase = await guestPurchaseRepository.findByReference(reference)
+            if (guestPurchase && guestPurchase.status !== 'COMPLETED') {
+                const isCompleted = providerStatus === 'complete' || providerStatus === 'completed'
+                const isFailed = providerStatus === 'failed' || providerStatus === 'cancelled'
+                const guestStatus: 'COMPLETED' | 'FAILED' | 'PENDING' =
+                    isCompleted ? 'COMPLETED' : isFailed ? 'FAILED' : 'PENDING'
 
-            await guestPurchaseRepository.updateStatusByReference(event.reference, guestStatus)
+                await guestPurchaseRepository.updateStatusByReference(reference, guestStatus)
 
-            if (guestStatus === 'COMPLETED') {
-                await GuestBookPurchaseService.handleGuestPurchaseCompleted(guestPurchase)
+                if (guestStatus === 'COMPLETED') {
+                    await GuestBookPurchaseService.handleGuestPurchaseCompleted(guestPurchase)
+                }
             }
         }
     }

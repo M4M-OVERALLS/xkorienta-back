@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import dynamic from "next/dynamic"
 import "swagger-ui-react/swagger-ui.css"
 
-const SwaggerUI = dynamic(() => import("swagger-ui-react"), { ssr: false })
+const SwaggerUI = dynamic(() => import("../../../node_modules/@types/swagger-ui-react"), { ssr: false })
 
 export default function SwaggerPage() {
     const [spec, setSpec] = useState<object | null>(null)

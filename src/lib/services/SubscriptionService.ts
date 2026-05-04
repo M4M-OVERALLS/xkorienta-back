@@ -2,7 +2,7 @@ import mongoose from 'mongoose'
 import { subscriptionRepository } from '@/lib/repositories/SubscriptionRepository'
 import { planRepository } from '@/lib/repositories/PlanRepository'
 import { transactionRepository } from '@/lib/repositories/TransactionRepository'
-import { PaymentService } from './PaymentService'
+import { paymentSDK } from '@/lib/payment'
 import { PaymentNotificationService } from './PaymentNotificationService'
 import { ISubscription } from '@/models/Subscription'
 import { IPlan } from '@/models/Plan'
@@ -107,15 +107,17 @@ export class SubscriptionService {
         }
 
         // Initiate payment
-        const paymentResult = await PaymentService.initiatePayment({
+        const paymentResult = await paymentSDK.payments.initiatePayment({
             userId: params.userId,
             userEmail: params.userEmail,
             type: TransactionType.SUBSCRIPTION,
             productId: plan._id.toString(),
-            productModel: 'Plan',
+            productType: 'Plan',
+            amount: price.amount,
+            originalCurrency: price.currency,
             paymentCurrency: params.currency,
+            description: `Abonnement ${plan.name} (${params.interval.toLowerCase()})`,
             callbackUrl: params.callbackUrl,
-            interval: params.interval,
             metadata: {
                 planCode: plan.code,
                 interval: params.interval,
@@ -254,16 +256,26 @@ export class SubscriptionService {
             }
         }
 
+        // Resolve price for this currency + interval
+        const renewalPrice = plan.prices.find(
+            (p) => p.currency === subscription.currency && p.interval === subscription.interval
+        ) ?? plan.prices.find((p) => p.interval === subscription.interval)
+        if (!renewalPrice) {
+            throw new Error(`No price found for ${subscription.currency} ${subscription.interval}`)
+        }
+
         // Initiate payment for renewal
-        const paymentResult = await PaymentService.initiatePayment({
+        const paymentResult = await paymentSDK.payments.initiatePayment({
             userId,
             userEmail,
             type: TransactionType.SUBSCRIPTION,
             productId: plan._id.toString(),
-            productModel: 'Plan',
+            productType: 'Plan',
+            amount: renewalPrice.amount,
+            originalCurrency: renewalPrice.currency,
             paymentCurrency: subscription.currency,
+            description: `Renouvellement ${plan.name} (${subscription.interval.toLowerCase()})`,
             callbackUrl,
-            interval: subscription.interval,
             metadata: {
                 planCode: plan.code,
                 interval: subscription.interval,
