@@ -12,9 +12,10 @@ const ADMIN_ROLES = ['DG_M4M', 'TECH_SUPPORT']
  */
 export async function GET(
     _req: Request,
-    { params }: { params: { invoiceNumber: string } }
+    { params }: { params: Promise<{ invoiceNumber: string }> }
 ) {
     try {
+        const { invoiceNumber } = await params
         const session = await getServerSession(authOptions)
         if (!session?.user?.id) {
             return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })
@@ -22,7 +23,7 @@ export async function GET(
 
         const isAdmin = ADMIN_ROLES.includes(session.user.role as string)
         const invoice = await InvoiceService.getByNumber(
-            params.invoiceNumber,
+            invoiceNumber,
             session.user.id as string,
             isAdmin
         )

@@ -37,3 +37,5 @@ export class UserRepository {
         return User.findByIdAndUpdate(userId, data, { new: true });
     }
 }
+
+export const userRepository = new UserRepository()
