@@ -15,7 +15,6 @@ export async function GET(
     { params }: { params: Promise<{ invoiceNumber: string }> }
 ) {
     try {
-        const { invoiceNumber } = await params
         const session = await getServerSession(authOptions)
         if (!session?.user?.id) {
             return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 })

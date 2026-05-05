@@ -54,7 +54,6 @@ export async function GET(
         }
 
         const isAdmin = ADMIN_ROLES.includes(session.user.role as string)
-        const { invoiceNumber } = await params
         const invoice = await InvoiceService.getByNumber(
             invoiceNumber,
             session.user.id as string,
