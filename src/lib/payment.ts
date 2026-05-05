@@ -5,11 +5,13 @@ import { NodemailerAdapter } from '@/lib/adapters/NodemailerAdapter'
 import { bookRepository } from '@/lib/repositories/BookRepository'
 import { bookPurchaseRepository } from '@/lib/repositories/BookPurchaseRepository'
 import { mediaPurchaseRepository } from '@/lib/repositories/MediaPurchaseRepository'
+import { userRepository } from '@/lib/repositories/UserRepository'
 import { WalletService } from '@/lib/services/WalletService'
+import { PayoutService } from '@/lib/services/PayoutService'
 import { SubscriptionService } from '@/lib/services/SubscriptionService'
 import { InvoiceService } from '@/lib/services/InvoiceService'
 import { transactionRepository } from '@/lib/repositories/TransactionRepository'
-import { BookPurchaseStatus, MediaPurchaseStatus, Currency } from '@/models/enums'
+import { BookPurchaseStatus, MediaPurchaseStatus, Currency, MobileMoneyProvider } from '@/models/enums'
 
 export const paymentSDK = new PaymentSDK({
     defaultProvider: 'notchpay',
@@ -41,10 +43,34 @@ paymentSDK.events.on('payment.completed', async (e) => {
     }
 })
 
-/** Credit the seller's wallet after a sale with a commission split. */
+/**
+ * Credit the seller after a sale.
+ * Option A — virement immédiat NotchPay si le vendeur a configuré son mobile money.
+ * Fallback — crédit wallet interne si paymentInfo manquant.
+ */
 paymentSDK.events.on('payment.completed', async (e) => {
-    if (e.sellerId) {
-        await WalletService.creditSeller(e.sellerId, e.sellerAmount, e.currency as Currency)
+    if (!e.sellerId || e.sellerAmount <= 0) return
+
+    try {
+        const seller = await userRepository.findById(e.sellerId)
+
+        if (seller?.paymentInfo?.mobileMoneyPhone) {
+            // Option A — virement immédiat NotchPay
+            await PayoutService.transferImmediately({
+                sellerId:          e.sellerId,
+                amount:            e.sellerAmount,
+                currency:          e.currency as Currency,
+                recipientPhone:    seller.paymentInfo.mobileMoneyPhone,
+                recipientName:     seller.paymentInfo.mobileMoneyName || seller.name,
+                recipientProvider: seller.paymentInfo.mobileMoneyProvider as MobileMoneyProvider,
+                saleReference:     e.reference,
+            })
+        } else {
+            // Fallback wallet — le vendeur n'a pas encore configuré son mobile money
+            await WalletService.creditSeller(e.sellerId, e.sellerAmount, e.currency as Currency)
+        }
+    } catch (err) {
+        console.error('[payment.completed] Seller credit error:', (err as Error).message)
     }
 })
 

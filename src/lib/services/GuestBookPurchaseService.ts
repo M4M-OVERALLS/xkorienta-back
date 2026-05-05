@@ -9,7 +9,9 @@ import { IGuestPurchase } from '@/models/GuestPurchase'
 import { sendEmail } from '@/lib/mail'
 import { BookConfigService } from '@/lib/services/BookConfigService'
 import { WalletService } from '@/lib/services/WalletService'
+import { PayoutService } from '@/lib/services/PayoutService'
 import { InvoiceService } from '@/lib/services/InvoiceService'
+import { MobileMoneyProvider } from '@/models/enums'
 
 const APP_BASE = (
     process.env.NEXT_PUBLIC_APP_URL ||
@@ -107,7 +109,7 @@ export class GuestBookPurchaseService {
 
         const book = await bookRepository.findById(guestPurchase.bookId.toString())
 
-        // ── Commission + wallet ──────────────────────────────────────────────
+        // ── Commission + virement ────────────────────────────────────────────
         let sellerAmount: number | undefined
         let platformCommission: number | undefined
         let sellerId: string | undefined
@@ -115,7 +117,17 @@ export class GuestBookPurchaseService {
         let sellerEmail: string | undefined
 
         try {
-            const seller = book?.submittedBy as { _id?: mongoose.Types.ObjectId; name?: string; email?: string } | undefined
+            const seller = book?.submittedBy as {
+                _id?: mongoose.Types.ObjectId
+                name?: string
+                email?: string
+                paymentInfo?: {
+                    mobileMoneyPhone: string
+                    mobileMoneyProvider: 'orange' | 'mtn' | 'other'
+                    mobileMoneyName: string
+                }
+            } | undefined
+
             if (seller?._id) {
                 const config = await bookConfigRepository.getOrCreate()
                 const pricing = BookConfigService.calculatePricing(
@@ -129,7 +141,21 @@ export class GuestBookPurchaseService {
                 sellerName = seller.name
                 sellerEmail = seller.email
 
-                await WalletService.creditSeller(sellerId, sellerAmount, guestPurchase.currency as Currency)
+                if (seller.paymentInfo?.mobileMoneyPhone) {
+                    // Option A — virement immédiat NotchPay
+                    await PayoutService.transferImmediately({
+                        sellerId,
+                        amount:            sellerAmount,
+                        currency:          guestPurchase.currency as Currency,
+                        recipientPhone:    seller.paymentInfo.mobileMoneyPhone,
+                        recipientName:     seller.paymentInfo.mobileMoneyName || sellerName || 'Enseignant',
+                        recipientProvider: seller.paymentInfo.mobileMoneyProvider as MobileMoneyProvider,
+                        saleReference:     guestPurchase.paymentReference,
+                    })
+                } else {
+                    // Fallback — le vendeur n'a pas configuré son mobile money
+                    await WalletService.creditSeller(sellerId, sellerAmount, guestPurchase.currency as Currency)
+                }
 
                 // Persist commission data on the guest purchase record
                 await guestPurchaseRepository.updateCommission(
@@ -155,6 +181,7 @@ export class GuestBookPurchaseService {
                 sellerEmail,
                 sellerAmount,
                 platformCommission,
+                downloadToken:      token, // pour le lien "Voir ma facture" dans l'email
             })
         } catch (err) {
             const e = err as Error

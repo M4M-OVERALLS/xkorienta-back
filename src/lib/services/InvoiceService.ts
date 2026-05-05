@@ -117,6 +117,8 @@ export class InvoiceService {
     sellerEmail?: string
     sellerAmount?: number
     platformCommission?: number
+    /** Token de téléchargement — permet d'inclure un lien vers la facture HTML dans l'email */
+    downloadToken?: string
   }): Promise<{ buyerInvoice: IInvoice; sellerInvoice?: IInvoice }> {
     const now = new Date()
     const guestPurchaseOid = new mongoose.Types.ObjectId(params.guestPurchaseId)
@@ -145,7 +147,7 @@ export class InvoiceService {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
 
-    await InvoiceService.sendInvoiceEmail(buyerInvoice, params.guestEmail, params.guestEmail)
+    await InvoiceService.sendInvoiceEmail(buyerInvoice, params.guestEmail, params.guestEmail, params.downloadToken)
 
     // --- Relevé de gains vendeur ---
     let sellerInvoice: IInvoice | undefined
@@ -216,6 +218,21 @@ export class InvoiceService {
     const invoice = await invoiceRepository.findByInvoiceNumber(invoiceNumber);
     if (!invoice) return null;
     if (!isAdmin && invoice.recipientId?.toString() !== requesterId) return null;
+    return invoice;
+  }
+
+  /**
+   * Récupère une facture invité par numéro, validée via le guestPurchaseId.
+   * Utilisé pour l'accès public avec le downloadToken (pas de session requise).
+   */
+  static async getByGuestToken(
+    invoiceNumber: string,
+    guestPurchaseId: string,
+  ): Promise<IInvoice | null> {
+    const invoice = await invoiceRepository.findByInvoiceNumber(invoiceNumber);
+    if (!invoice) return null;
+    if (!invoice.isGuestPurchase) return null;
+    if (invoice.guestPurchaseId?.toString() !== guestPurchaseId) return null;
     return invoice;
   }
 
@@ -296,7 +313,7 @@ export class InvoiceService {
 <body><div class="page">
     <div class="header">
         <div>
-            <div class="brand">Quiz<span>Lock</span></div>
+            <div class="brand">Xkorienta</div>
             <div style="font-size:12px;color:#6b7280;margin-top:4px;">Plateforme éducative numérique</div>
             <div style="margin-top:8px;"><span class="badge badge-receipt">Reçu d'achat</span></div>
         </div>
@@ -352,7 +369,7 @@ export class InvoiceService {
 <body><div class="page">
     <div class="header">
         <div>
-            <div class="brand">Quiz<span>Lock</span></div>
+            <div class="brand">Xkorienta</div>
             <div style="font-size:12px;color:#6b7280;margin-top:4px;">Plateforme éducative numérique</div>
             <div style="margin-top:8px;"><span class="badge badge-earnings">Relevé de gains</span></div>
         </div>
@@ -404,16 +421,37 @@ export class InvoiceService {
     invoice: IInvoice,
     email: string,
     name: string,
+    downloadToken?: string,
   ): Promise<void> {
     const isGuest = invoice.isGuestPurchase === true
     // For guests, the name IS the email — show a cleaner greeting
     const greeting = isGuest ? `Bonjour,` : `Bonjour ${name},`
 
+    const appBase = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? appBase).replace(/\/$/, '')
+
+    // Build invoice HTML link for guest (public, secured by download token)
+    const invoiceHtmlPath = apiBase.endsWith('/api')
+      ? `/invoices/${invoice.invoiceNumber}/html`
+      : `/api/invoices/${invoice.invoiceNumber}/html`
+    const invoiceLink = downloadToken
+      ? `${apiBase}${invoiceHtmlPath}?token=${downloadToken}`
+      : null
+
+    const viewInvoiceBtn = invoiceLink
+      ? `<div style="text-align:center;margin:16px 0;">
+           <a href="${invoiceLink}"
+              style="display:inline-block;padding:10px 28px;background:#114D5A;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">
+             📄 Voir / Imprimer ma facture
+           </a>
+         </div>`
+      : ''
+
     const footerNote = isGuest
       ? `<p style="color:#6b7280;font-size:13px;">
            Conservez cet email comme preuve d'achat. Votre lien de téléchargement vous a été envoyé séparément.
            <br>Vous pouvez aussi
-           <a href="${process.env.NEXT_PUBLIC_APP_URL ?? ''}/register" style="color:#114D5A;font-weight:600;">créer un compte gratuitement</a>
+           <a href="${appBase}/register" style="color:#114D5A;font-weight:600;">créer un compte gratuitement</a>
            pour accéder à plus de ressources et retrouver vos achats.
          </p>`
       : `<p style="color:#6b7280;font-size:13px;">Vous pouvez retrouver toutes vos factures dans votre espace personnel → <em>Mon compte → Mes factures</em>.</p>`
@@ -437,6 +475,7 @@ export class InvoiceService {
             <p><strong>Montant :</strong> <span style="font-size:18px;font-weight:700;color:#114D5A;">${new Intl.NumberFormat("fr-FR").format(invoice.total)} ${invoice.currency}</span></p>
             <p><strong>Date :</strong> ${this.formatDate(invoice.issuedAt)}</p>
         </div>
+        ${viewInvoiceBtn}
         ${footerNote}
         <p style="margin-top:16px;">Merci pour votre confiance !</p>
     </div>
