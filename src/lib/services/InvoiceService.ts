@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { sendEmail } from "@/lib/mail";
 import {
   invoiceRepository,
@@ -98,6 +99,98 @@ export class InvoiceService {
     return { buyerInvoice, sellerInvoice };
   }
 
+
+  /**
+   * Génère les factures pour un achat invité (sans compte utilisateur).
+   * - 1 reçu d'achat envoyé par email à l'acheteur invité
+   * - 1 relevé de gains pour le vendeur (si sellerId fourni)
+   */
+  static async generateForGuestPurchase(params: {
+    guestPurchaseId: string
+    paymentReference: string
+    guestEmail: string
+    finalAmount: number
+    currency: string
+    bookTitle: string
+    sellerId?: string
+    sellerName?: string
+    sellerEmail?: string
+    sellerAmount?: number
+    platformCommission?: number
+    /** Token de téléchargement — permet d'inclure un lien vers la facture HTML dans l'email */
+    downloadToken?: string
+  }): Promise<{ buyerInvoice: IInvoice; sellerInvoice?: IInvoice }> {
+    const now = new Date()
+    const guestPurchaseOid = new mongoose.Types.ObjectId(params.guestPurchaseId)
+
+    // --- Reçu acheteur invité ---
+    const buyerInvoiceNumber = await invoiceRepository.generateInvoiceNumber()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const buyerInvoice = await invoiceRepository.create({
+      invoiceNumber:      buyerInvoiceNumber,
+      type:               InvoiceType.PURCHASE_RECEIPT,
+      guestPurchaseId:    guestPurchaseOid,
+      isGuestPurchase:    true,
+      paymentReference:   params.paymentReference,
+      productType:        TransactionType.BOOK_PURCHASE,
+      productDescription: `Achat de livre numérique — ${params.bookTitle}`,
+      subtotal:           params.finalAmount,
+      discountAmount:     0,
+      discountPercent:    0,
+      total:              params.finalAmount,
+      currency:           params.currency,
+      buyerName:          params.guestEmail,
+      buyerEmail:         params.guestEmail,
+      sellerName:         params.sellerName,
+      status:             InvoiceStatus.ISSUED,
+      issuedAt:           now,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    await InvoiceService.sendInvoiceEmail(buyerInvoice, params.guestEmail, params.guestEmail, params.downloadToken)
+
+    // --- Relevé de gains vendeur ---
+    let sellerInvoice: IInvoice | undefined
+    if (params.sellerId && params.sellerAmount !== undefined && params.sellerAmount > 0) {
+      const sellerInvoiceNumber = await invoiceRepository.generateInvoiceNumber()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sellerInvoice = await invoiceRepository.create({
+        invoiceNumber:      sellerInvoiceNumber,
+        type:               InvoiceType.EARNINGS_STATEMENT,
+        recipientId:        new mongoose.Types.ObjectId(params.sellerId),
+        guestPurchaseId:    guestPurchaseOid,
+        isGuestPurchase:    true,
+        paymentReference:   params.paymentReference,
+        productType:        TransactionType.BOOK_PURCHASE,
+        productDescription: `Achat de livre numérique — ${params.bookTitle}`,
+        subtotal:           params.finalAmount,
+        discountAmount:     0,
+        discountPercent:    0,
+        total:              params.sellerAmount,
+        currency:           params.currency,
+        platformCommission: params.platformCommission ?? 0,
+        sellerAmount:       params.sellerAmount,
+        buyerName:          params.guestEmail,
+        buyerEmail:         params.guestEmail,
+        sellerName:         params.sellerName,
+        status:             InvoiceStatus.ISSUED,
+        issuedAt:           now,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any)
+
+      if (params.sellerEmail) {
+        await InvoiceService.sendEarningsEmail(
+          sellerInvoice,
+          params.sellerEmail,
+          params.sellerName ?? 'Enseignant',
+        )
+      }
+    }
+
+    return { buyerInvoice, sellerInvoice }
+  }
+
+
   /**
    * Historique des factures d'un utilisateur (paginé).
    * - Acheteur : voit ses reçus d'achat
@@ -124,7 +217,22 @@ export class InvoiceService {
   ): Promise<IInvoice | null> {
     const invoice = await invoiceRepository.findByInvoiceNumber(invoiceNumber);
     if (!invoice) return null;
-    if (!isAdmin && invoice.recipientId.toString() !== requesterId) return null;
+    if (!isAdmin && invoice.recipientId?.toString() !== requesterId) return null;
+    return invoice;
+  }
+
+  /**
+   * Récupère une facture invité par numéro, validée via le guestPurchaseId.
+   * Utilisé pour l'accès public avec le downloadToken (pas de session requise).
+   */
+  static async getByGuestToken(
+    invoiceNumber: string,
+    guestPurchaseId: string,
+  ): Promise<IInvoice | null> {
+    const invoice = await invoiceRepository.findByInvoiceNumber(invoiceNumber);
+    if (!invoice) return null;
+    if (!invoice.isGuestPurchase) return null;
+    if (invoice.guestPurchaseId?.toString() !== guestPurchaseId) return null;
     return invoice;
   }
 
@@ -205,7 +313,7 @@ export class InvoiceService {
 <body><div class="page">
     <div class="header">
         <div>
-            <div class="brand">Quiz<span>Lock</span></div>
+            <div class="brand">Xkorienta</div>
             <div style="font-size:12px;color:#6b7280;margin-top:4px;">Plateforme éducative numérique</div>
             <div style="margin-top:8px;"><span class="badge badge-receipt">Reçu d'achat</span></div>
         </div>
@@ -261,7 +369,7 @@ export class InvoiceService {
 <body><div class="page">
     <div class="header">
         <div>
-            <div class="brand">Quiz<span>Lock</span></div>
+            <div class="brand">Xkorienta</div>
             <div style="font-size:12px;color:#6b7280;margin-top:4px;">Plateforme éducative numérique</div>
             <div style="margin-top:8px;"><span class="badge badge-earnings">Relevé de gains</span></div>
         </div>
@@ -313,7 +421,41 @@ export class InvoiceService {
     invoice: IInvoice,
     email: string,
     name: string,
+    downloadToken?: string,
   ): Promise<void> {
+    const isGuest = invoice.isGuestPurchase === true
+    // For guests, the name IS the email — show a cleaner greeting
+    const greeting = isGuest ? `Bonjour,` : `Bonjour ${name},`
+
+    const appBase = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? appBase).replace(/\/$/, '')
+
+    // Build invoice HTML link for guest (public, secured by download token)
+    const invoiceHtmlPath = apiBase.endsWith('/api')
+      ? `/invoices/${invoice.invoiceNumber}/html`
+      : `/api/invoices/${invoice.invoiceNumber}/html`
+    const invoiceLink = downloadToken
+      ? `${apiBase}${invoiceHtmlPath}?token=${downloadToken}`
+      : null
+
+    const viewInvoiceBtn = invoiceLink
+      ? `<div style="text-align:center;margin:16px 0;">
+           <a href="${invoiceLink}"
+              style="display:inline-block;padding:10px 28px;background:#114D5A;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">
+             📄 Voir / Imprimer ma facture
+           </a>
+         </div>`
+      : ''
+
+    const footerNote = isGuest
+      ? `<p style="color:#6b7280;font-size:13px;">
+           Conservez cet email comme preuve d'achat. Votre lien de téléchargement vous a été envoyé séparément.
+           <br>Vous pouvez aussi
+           <a href="${appBase}/register" style="color:#114D5A;font-weight:600;">créer un compte gratuitement</a>
+           pour accéder à plus de ressources et retrouver vos achats.
+         </p>`
+      : `<p style="color:#6b7280;font-size:13px;">Vous pouvez retrouver toutes vos factures dans votre espace personnel → <em>Mon compte → Mes factures</em>.</p>`
+
     try {
       await sendEmail({
         to: email,
@@ -321,19 +463,20 @@ export class InvoiceService {
         html: `
 <!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;color:#1a1a2e;max-width:600px;margin:0 auto;padding:20px;">
-    <div style="background:#4361ee;color:white;padding:20px;border-radius:8px 8px 0 0;text-align:center;">
+    <div style="background:#114D5A;color:white;padding:20px;border-radius:8px 8px 0 0;text-align:center;">
         <h1 style="font-size:24px;margin:0;">✅ Paiement confirmé</h1>
     </div>
     <div style="background:#f9fafb;padding:24px;border-radius:0 0 8px 8px;">
-        <p>Bonjour ${name},</p>
-        <p style="margin-top:12px;">Votre paiement a bien été reçu. Retrouvez votre reçu ci-dessous :</p>
+        <p>${greeting}</p>
+        <p style="margin-top:12px;">Votre paiement a bien été reçu. Voici votre reçu :</p>
         <div style="background:white;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin:16px 0;">
             <p><strong>N° Facture :</strong> ${invoice.invoiceNumber}</p>
             <p><strong>Description :</strong> ${invoice.productDescription}</p>
-            <p><strong>Montant :</strong> <span style="font-size:18px;font-weight:700;color:#4361ee;">${new Intl.NumberFormat("fr-FR").format(invoice.total)} ${invoice.currency}</span></p>
+            <p><strong>Montant :</strong> <span style="font-size:18px;font-weight:700;color:#114D5A;">${new Intl.NumberFormat("fr-FR").format(invoice.total)} ${invoice.currency}</span></p>
             <p><strong>Date :</strong> ${this.formatDate(invoice.issuedAt)}</p>
         </div>
-        <p style="color:#6b7280;font-size:13px;">Vous pouvez retrouver toutes vos factures dans votre espace personnel → <em>Mon compte → Mes factures</em>.</p>
+        ${viewInvoiceBtn}
+        ${footerNote}
         <p style="margin-top:16px;">Merci pour votre confiance !</p>
     </div>
     <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:16px;">Xkorienta — Votre plateforme d'apprentissage</p>

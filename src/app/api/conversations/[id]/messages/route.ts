@@ -75,7 +75,6 @@ export async function GET(
       hasMore: messages.length === limit,
     });
   } catch (error: unknown) {
-    console.error("[Get Messages] Error:", error);
     return NextResponse.json(
       {
         success: false,
@@ -194,10 +193,8 @@ export async function POST(
             _id: message._id.toString(),
           },
         );
-        console.log("[Pusher] Message published");
       }
-    } catch (pusherError) {
-      console.error("[Pusher Publish] Error:", pusherError);
+    } catch {
       // Don't fail the request if Pusher fails
     }
 
@@ -210,7 +207,6 @@ export async function POST(
       { status: 201 },
     );
   } catch (error: unknown) {
-    console.error("[Send Message] Error:", error);
     return NextResponse.json(
       {
         success: false,

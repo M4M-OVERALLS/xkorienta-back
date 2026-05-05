@@ -189,14 +189,11 @@ async function connectDB() {
     throw new Error("MONGODB_URI not defined in environment");
   }
   await mongoose.connect(uri);
-  console.log("✓ Connected to MongoDB");
 }
 
 async function seedPlans() {
   const db = mongoose.connection.db;
   const plansCollection = db.collection("plans");
-
-  console.log("\n📋 Seeding subscription plans...\n");
 
   for (const planData of DEFAULT_PLANS) {
     const existing = await plansCollection.findOne({ code: planData.code });
@@ -212,7 +209,6 @@ async function seedPlans() {
           },
         },
       );
-      console.log(`   ↻ Updated: ${planData.code} (${planData.name})`);
     } else {
       // Create new plan
       await plansCollection.insertOne({
@@ -220,33 +216,23 @@ async function seedPlans() {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      console.log(`   ✓ Created: ${planData.code} (${planData.name})`);
     }
   }
 
   // Display summary
   const totalPlans = await plansCollection.countDocuments();
   const activePlans = await plansCollection.countDocuments({ isActive: true });
-
-  console.log(`\n✓ Seeding complete:`);
-  console.log(`   Total plans: ${totalPlans}`);
-  console.log(`   Active plans: ${activePlans}`);
 }
 
 async function main() {
-  console.log("═══════════════════════════════════════════");
-  console.log(" Xkorienta - Subscription Plans Seed");
-  console.log("═══════════════════════════════════════════");
 
   try {
     await connectDB();
     await seedPlans();
   } catch (err) {
-    console.error("\n✗ Seeding failed:", err.message);
     process.exit(1);
   } finally {
     await mongoose.disconnect();
-    console.log("\n✓ Disconnected from MongoDB");
   }
 }
 

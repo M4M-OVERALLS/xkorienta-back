@@ -72,14 +72,10 @@ async function run() {
   const args = parseArgs();
   const errors = validate(args);
   if (errors.length) {
-    console.error("❌ Arguments invalides :");
-    errors.forEach((e) => console.error("   - " + e));
+    errors.forEach((e) =>
     process.exit(1);
   }
-
-  console.log("🔌 Connexion à MongoDB...");
   await mongoose.connect(DATABASE_URL);
-  console.log("✅ Connecté");
 
   const User = mongoose.model(
     "User",
@@ -90,18 +86,10 @@ async function run() {
   const existing = await User.findOne({ email: args.email.toLowerCase() });
 
   if (existing) {
-    console.log(
-      `⚠️  Un utilisateur existe déjà avec ${args.email} (role actuel = ${existing.role || "none"})`,
-    );
-    console.log(`   → Promotion vers ${args.role}...`);
     existing.role = args.role;
     existing.isActive = true;
     if (args.phone) existing.phone = args.phone;
     await existing.save();
-    console.log(`✅ Utilisateur promu en ${args.role}`);
-    console.log(`   id     = ${existing._id}`);
-    console.log(`   email  = ${existing.email}`);
-    console.log(`   role   = ${existing.role}`);
     await mongoose.connection.close();
     process.exit(0);
   }
@@ -123,23 +111,10 @@ async function run() {
     metadata: {},
   });
 
-  console.log(`✅ Admin plateforme créé (${args.role}) :`);
-  console.log(`   id     = ${created._id}`);
-  console.log(`   name   = ${created.name}`);
-  console.log(`   email  = ${created.email}`);
-  console.log(`   role   = ${created.role}`);
-  console.log(
-    "\n🔐 Tu peux maintenant te connecter via /api/auth/callback/credentials",
-  );
-  console.log(
-    "   avec identifier = " + created.email + " et le mot de passe choisi.",
-  );
-
   await mongoose.connection.close();
   process.exit(0);
 }
 
 run().catch((err) => {
-  console.error("❌ Erreur :", err);
   process.exit(1);
 });

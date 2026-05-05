@@ -1,50 +1,40 @@
 import { NextResponse } from 'next/server'
-import { CurrencyService } from '@/lib/services/CurrencyService'
+import { paymentSDK } from '@/lib/payment'
+import { exchangeRateRepository } from '@/lib/repositories/ExchangeRateRepository'
+
+const SUPPORTED_CURRENCIES = ['XAF', 'EUR', 'USD']
+
+const FALLBACK_RATES: Record<string, Record<string, number>> = {
+    XAF: { EUR: 0.001524, USD: 0.001667, XAF: 1 },
+    EUR: { XAF: 656, USD: 1.09, EUR: 1 },
+    USD: { XAF: 600, EUR: 0.917, USD: 1 },
+}
 
 export class CurrencyController {
-    /**
-     * GET /api/currencies
-     * Get list of supported currencies.
-     */
     static async getSupportedCurrencies() {
-        const currencies = CurrencyService.getSupportedCurrencies()
-
         return NextResponse.json({
             success: true,
-            data: {
-                currencies,
-                default: 'XAF',
-            },
+            data: { currencies: SUPPORTED_CURRENCIES, default: 'XAF' },
         })
     }
 
-    /**
-     * GET /api/currencies/rates
-     * Get current exchange rates.
-     */
     static async getRates() {
-        const rates = await CurrencyService.getAllRates()
-        const fallbackRates = CurrencyService.getFallbackRates()
-
-        return NextResponse.json({
-            success: true,
-            data: {
-                live: rates,
-                fallback: fallbackRates,
-            },
-        })
+        const rates = await exchangeRateRepository.findAllValid()
+        const now = new Date()
+        const live = rates.map((r) => ({
+            baseCurrency: r.baseCurrency,
+            targetCurrency: r.targetCurrency,
+            rate: r.rate,
+            inverseRate: r.inverseRate,
+            source: r.source,
+            fetchedAt: r.fetchedAt,
+            isExpired: r.expiresAt < now,
+        }))
+        return NextResponse.json({ success: true, data: { live, fallback: FALLBACK_RATES } })
     }
 
-    /**
-     * POST /api/currencies/convert
-     * Convert an amount between currencies.
-     */
     static async convert(req: Request) {
-        const body = await req.json() as {
-            amount: number
-            from: string
-            to: string
-        }
+        const body = await req.json() as { amount: number; from: string; to: string }
 
         if (!body.amount || !body.from || !body.to) {
             return NextResponse.json(
@@ -52,7 +42,6 @@ export class CurrencyController {
                 { status: 400 }
             )
         }
-
         if (typeof body.amount !== 'number' || body.amount <= 0) {
             return NextResponse.json(
                 { success: false, message: 'Amount must be a positive number' },
@@ -60,38 +49,22 @@ export class CurrencyController {
             )
         }
 
-        if (!CurrencyService.isSupportedCurrency(body.from)) {
-            return NextResponse.json(
-                { success: false, message: `Currency ${body.from} is not supported` },
-                { status: 400 }
-            )
+        const fromUpper = body.from.toUpperCase()
+        const toUpper = body.to.toUpperCase()
+
+        if (!SUPPORTED_CURRENCIES.includes(fromUpper)) {
+            return NextResponse.json({ success: false, message: `Currency ${body.from} is not supported` }, { status: 400 })
+        }
+        if (!SUPPORTED_CURRENCIES.includes(toUpper)) {
+            return NextResponse.json({ success: false, message: `Currency ${body.to} is not supported` }, { status: 400 })
         }
 
-        if (!CurrencyService.isSupportedCurrency(body.to)) {
-            return NextResponse.json(
-                { success: false, message: `Currency ${body.to} is not supported` },
-                { status: 400 }
-            )
-        }
-
-        const result = await CurrencyService.convert(body.amount, body.from, body.to)
-
-        return NextResponse.json({
-            success: true,
-            data: result,
-        })
+        const result = await paymentSDK.currency.convert(body.amount, fromUpper, toUpper)
+        return NextResponse.json({ success: true, data: result })
     }
 
-    /**
-     * POST /api/admin/currencies/refresh
-     * Admin: Refresh exchange rates from API.
-     */
     static async refreshRates() {
-        await CurrencyService.refreshRates('XAF')
-
-        return NextResponse.json({
-            success: true,
-            message: 'Exchange rates refreshed',
-        })
+        await paymentSDK.currency.refreshRates('XAF')
+        return NextResponse.json({ success: true, message: 'Exchange rates refreshed' })
     }
 }

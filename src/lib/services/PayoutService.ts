@@ -1,6 +1,7 @@
+import mongoose from "mongoose";
 import { payoutRepository } from "@/lib/repositories/PayoutRepository";
 import { walletRepository } from "@/lib/repositories/WalletRepository";
-import { PaymentStrategyFactory } from "@/lib/strategies/payment/PaymentStrategyFactory";
+import { paymentSDK } from "@/lib/payment";
 import { IPayout } from "@/models/Payout";
 import { Currency, MobileMoneyProvider, PayoutStatus } from "@/models/enums";
 import { randomUUID } from "crypto";
@@ -18,7 +19,72 @@ export interface RequestPayoutParams {
   recipientProvider: MobileMoneyProvider;
 }
 
+export interface ImmediateTransferParams {
+  sellerId: string
+  amount: number
+  currency: Currency
+  recipientPhone: string
+  recipientName: string
+  recipientProvider: MobileMoneyProvider
+  /** Référence de la vente à l'origine du virement (pour description + traçabilité) */
+  saleReference: string
+}
+
 export class PayoutService {
+  /**
+   * Virement immédiat vers le vendeur sans passer par le wallet interne.
+   *
+   * Option A — délégation à NotchPay :
+   * - Chaque vente déclenche un transfer NotchPay en temps réel.
+   * - Crée un Payout pour la traçabilité (audit trail).
+   * - N'interagit PAS avec le wallet Mongoose.
+   * - Si le transfer échoue, Payout est marqué FAILED.
+   */
+  static async transferImmediately(params: ImmediateTransferParams): Promise<IPayout> {
+    const payoutReference = `EARN-${randomUUID().slice(0, 12).toUpperCase()}`
+    const channel = this.mapProviderToChannel(params.recipientProvider)
+
+    // Enregistrement avant l'appel API — trace même en cas d'échec réseau
+    const payout = await payoutRepository.create({
+      userId:            new mongoose.Types.ObjectId(params.sellerId),
+      amount:            params.amount,
+      currency:          params.currency,
+      recipientPhone:    params.recipientPhone,
+      recipientName:     params.recipientName,
+      recipientProvider: params.recipientProvider,
+      status:            PayoutStatus.PROCESSING,
+      payoutReference,
+      paymentProvider:   'notchpay',
+    } as Partial<IPayout>)
+
+    try {
+      const provider = paymentSDK.providers.get('notchpay')
+      const result = await provider.transfer({
+        amount:        params.amount,
+        currency:      params.currency,
+        phone:         params.recipientPhone,
+        channel,
+        reference:     payoutReference,
+        description:   `Gains vente ${params.saleReference}`,
+        recipientName: params.recipientName,
+      })
+
+      const finalStatus =
+        result.status === 'completed' || result.status === 'processing'
+          ? PayoutStatus.COMPLETED
+          : PayoutStatus.FAILED
+
+      await payoutRepository.updateStatus(payoutReference, finalStatus, result.transferId)
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : 'Erreur inconnue'
+      await payoutRepository.updateStatus(payoutReference, PayoutStatus.FAILED, undefined, reason)
+      throw new Error(`Virement immédiat échoué : ${reason}`)
+    }
+
+    const updated = await payoutRepository.findByReference(payoutReference)
+    return updated ?? payout
+  }
+
   /**
    * Crée une demande de virement et l'envoie immédiatement à NotchPay.
    * Débite le wallet au moment de la demande (bloque les fonds).
@@ -55,8 +121,8 @@ export class PayoutService {
     });
 
     try {
-      const strategy = PaymentStrategyFactory.create("notchpay");
-      const result = await strategy.transfer({
+      const provider = paymentSDK.providers.get("notchpay");
+      const result = await provider.transfer({
         amount: params.amount,
         currency: params.currency,
         phone: params.recipientPhone,

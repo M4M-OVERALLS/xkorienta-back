@@ -29,7 +29,7 @@ export class BookRepository {
     async findById(id: string): Promise<IBook | null> {
         await connectDB()
         return Book.findById(id)
-            .populate('submittedBy', 'name email image')
+            .populate('submittedBy', 'name email image paymentInfo')
             .populate('validatedBy', 'name')
             .lean() as Promise<IBook | null>
     }

@@ -1,8 +1,8 @@
-# Document d'Analyse et de Conception - Module de Paiement QuizLock
+# Document d'Analyse et de Conception - Module de Paiement Xkorienta
 
 **Version:** 1.0  
 **Date:** Avril 2026  
-**Auteur:** Équipe Technique QuizLock  
+**Auteur:** Équipe Technique QuizLock
 
 ---
 
@@ -38,6 +38,7 @@ QuizLock est une plateforme éducative permettant aux élèves et enseignants d'
 ### 1.3 Prestataire de Paiement
 
 **NotchPay** est le prestataire principal, supportant :
+
 - Mobile Money (Orange, MTN, etc.)
 - Cartes bancaires
 - Paiements QR Code
@@ -50,29 +51,29 @@ Documentation : https://developer.notchpay.co/
 
 ### 2.1 Besoins Fonctionnels
 
-| ID | Besoin | Priorité |
-|----|--------|----------|
-| BF-01 | Initier un paiement pour tout type de produit | Haute |
-| BF-02 | Recevoir et traiter les webhooks du prestataire | Haute |
-| BF-03 | Convertir les devises automatiquement | Haute |
-| BF-04 | Notifier l'utilisateur en temps réel du statut | Haute |
-| BF-05 | Gérer les abonnements récurrents (mensuel/annuel) | Moyenne |
-| BF-06 | Appliquer des remises sur les transactions | Moyenne |
-| BF-07 | Calculer et répartir les commissions | Moyenne |
-| BF-08 | Fournir un historique des transactions | Moyenne |
-| BF-09 | Expirer automatiquement les transactions en attente | Basse |
-| BF-10 | Envoyer des emails de confirmation/échec | Basse |
+| ID    | Besoin                                              | Priorité |
+| ----- | --------------------------------------------------- | -------- |
+| BF-01 | Initier un paiement pour tout type de produit       | Haute    |
+| BF-02 | Recevoir et traiter les webhooks du prestataire     | Haute    |
+| BF-03 | Convertir les devises automatiquement               | Haute    |
+| BF-04 | Notifier l'utilisateur en temps réel du statut      | Haute    |
+| BF-05 | Gérer les abonnements récurrents (mensuel/annuel)   | Moyenne  |
+| BF-06 | Appliquer des remises sur les transactions          | Moyenne  |
+| BF-07 | Calculer et répartir les commissions                | Moyenne  |
+| BF-08 | Fournir un historique des transactions              | Moyenne  |
+| BF-09 | Expirer automatiquement les transactions en attente | Basse    |
+| BF-10 | Envoyer des emails de confirmation/échec            | Basse    |
 
 ### 2.2 Besoins Non-Fonctionnels
 
-| ID | Besoin | Contrainte |
-|----|--------|------------|
-| BNF-01 | Performance | < 2s pour initier un paiement |
-| BNF-02 | Disponibilité | 99.9% uptime |
-| BNF-03 | Sécurité | Validation HMAC des webhooks |
-| BNF-04 | Idempotence | Pas de double traitement des webhooks |
-| BNF-05 | Traçabilité | Historique complet des statuts |
-| BNF-06 | Scalabilité | Support de 1000+ transactions/jour |
+| ID     | Besoin        | Contrainte                            |
+| ------ | ------------- | ------------------------------------- |
+| BNF-01 | Performance   | < 2s pour initier un paiement         |
+| BNF-02 | Disponibilité | 99.9% uptime                          |
+| BNF-03 | Sécurité      | Validation HMAC des webhooks          |
+| BNF-04 | Idempotence   | Pas de double traitement des webhooks |
+| BNF-05 | Traçabilité   | Historique complet des statuts        |
+| BNF-06 | Scalabilité   | Support de 1000+ transactions/jour    |
 
 ### 2.3 Cas d'Utilisation
 
@@ -164,7 +165,7 @@ Documentation : https://developer.notchpay.co/
       │  NotchPay  │  │   Stripe   │
       │    API     │  │    API     │
       └────────────┘  └────────────┘
-                                 
+
 ┌────────────────────────────────────────────────────────────────────────┐
 │                       REPOSITORY LAYER                                 │
 │  ┌───────────────────┐ ┌─────────────────┐ ┌────────────────────────┐ │
@@ -184,24 +185,24 @@ Documentation : https://developer.notchpay.co/
 
 ### 3.2 Patterns de Conception
 
-| Pattern | Application | Justification |
-|---------|-------------|---------------|
-| **Strategy** | `IPaymentStrategy`, `NotchPayStrategy` | Permet de changer de prestataire sans modifier le code client |
-| **Factory** | `PaymentStrategyFactory` | Crée la bonne stratégie selon le provider configuré |
-| **Repository** | `TransactionRepository`, etc. | Abstrait l'accès aux données, facilite les tests |
-| **Service Layer** | `PaymentService`, `CurrencyService` | Encapsule la logique métier |
-| **Observer** | Pusher notifications | Notifie les clients des changements de statut |
+| Pattern           | Application                            | Justification                                                 |
+| ----------------- | -------------------------------------- | ------------------------------------------------------------- |
+| **Strategy**      | `IPaymentStrategy`, `NotchPayStrategy` | Permet de changer de prestataire sans modifier le code client |
+| **Factory**       | `PaymentStrategyFactory`               | Crée la bonne stratégie selon le provider configuré           |
+| **Repository**    | `TransactionRepository`, etc.          | Abstrait l'accès aux données, facilite les tests              |
+| **Service Layer** | `PaymentService`, `CurrencyService`    | Encapsule la logique métier                                   |
+| **Observer**      | Pusher notifications                   | Notifie les clients des changements de statut                 |
 
 ### 3.3 Technologies
 
-| Composant | Technologie | Version |
-|-----------|-------------|---------|
-| Backend | Next.js API Routes | 14.x |
-| Base de données | MongoDB | 7.x |
-| ODM | Mongoose | 8.x |
-| Notifications temps réel | Pusher | - |
-| Email | Nodemailer | - |
-| Validation | Zod | - |
+| Composant                | Technologie        | Version |
+| ------------------------ | ------------------ | ------- |
+| Backend                  | Next.js API Routes | 14.x    |
+| Base de données          | MongoDB            | 7.x     |
+| ODM                      | Mongoose           | 8.x     |
+| Notifications temps réel | Pusher             | -       |
+| Email                    | Nodemailer         | -       |
+| Validation               | Zod                | -       |
 
 ---
 
@@ -213,43 +214,43 @@ La table centrale qui enregistre toutes les transactions financières.
 
 ```typescript
 interface ITransaction {
-    _id: ObjectId
-    userId: ObjectId              // Référence vers User
-    type: TransactionType         // BOOK_PURCHASE | SUBSCRIPTION | COURSE | TOP_UP
-    productId: ObjectId           // Référence polymorphe (Book, Plan, Course)
-    productModel: string          // 'Book' | 'Plan' | 'Course'
-    
-    // Montants
-    originalAmount: number        // Montant original (devise du produit)
-    originalCurrency: Currency    // XAF | EUR | USD
-    convertedAmount: number       // Montant après conversion
-    paymentCurrency: Currency     // Devise de paiement choisie
-    exchangeRate: number          // Taux de change appliqué
-    discountPercent: number       // Réduction appliquée (0-100)
-    finalAmount: number           // Montant final payé
-    
-    // Commissions
-    platformCommission: number    // Commission plateforme (5% par défaut)
-    sellerAmount: number          // Montant reversé au vendeur
-    sellerId?: ObjectId           // Vendeur (pour les livres)
-    
-    // Paiement
-    paymentReference: string      // Référence unique (ex: BOOK-AB12CD-XXXXXX)
-    paymentProvider: string       // 'notchpay' | 'stripe'
-    providerTransactionId?: string
-    
-    // Statut
-    status: TransactionStatus     // PENDING | PROCESSING | COMPLETED | FAILED | REFUNDED | EXPIRED
-    statusHistory: StatusEntry[]  // Historique des changements de statut
-    
-    // Métadonnées
-    metadata: Record<string, unknown>
-    webhookReceivedAt?: Date
-    completedAt?: Date
-    expiresAt: Date               // TTL pour les transactions en attente
-    
-    createdAt: Date
-    updatedAt: Date
+  _id: ObjectId;
+  userId: ObjectId; // Référence vers User
+  type: TransactionType; // BOOK_PURCHASE | SUBSCRIPTION | COURSE | TOP_UP
+  productId: ObjectId; // Référence polymorphe (Book, Plan, Course)
+  productModel: string; // 'Book' | 'Plan' | 'Course'
+
+  // Montants
+  originalAmount: number; // Montant original (devise du produit)
+  originalCurrency: Currency; // XAF | EUR | USD
+  convertedAmount: number; // Montant après conversion
+  paymentCurrency: Currency; // Devise de paiement choisie
+  exchangeRate: number; // Taux de change appliqué
+  discountPercent: number; // Réduction appliquée (0-100)
+  finalAmount: number; // Montant final payé
+
+  // Commissions
+  platformCommission: number; // Commission plateforme (5% par défaut)
+  sellerAmount: number; // Montant reversé au vendeur
+  sellerId?: ObjectId; // Vendeur (pour les livres)
+
+  // Paiement
+  paymentReference: string; // Référence unique (ex: BOOK-AB12CD-XXXXXX)
+  paymentProvider: string; // 'notchpay' | 'stripe'
+  providerTransactionId?: string;
+
+  // Statut
+  status: TransactionStatus; // PENDING | PROCESSING | COMPLETED | FAILED | REFUNDED | EXPIRED
+  statusHistory: StatusEntry[]; // Historique des changements de statut
+
+  // Métadonnées
+  metadata: Record<string, unknown>;
+  webhookReceivedAt?: Date;
+  completedAt?: Date;
+  expiresAt: Date; // TTL pour les transactions en attente
+
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
 
@@ -257,36 +258,36 @@ interface ITransaction {
 
 ```typescript
 interface IPlan {
-    _id: ObjectId
-    code: string                  // FREEMIUM | PREMIUM_MONTHLY | PREMIUM_YEARLY | INSTITUTION
-    name: string
-    description: string
-    
-    prices: PlanPrice[]           // Prix par devise et intervalle
-    features: string[]            // Liste des fonctionnalités incluses
-    limits: PlanLimits            // Limites d'utilisation
-    
-    isActive: boolean
-    sortOrder: number
-    isFree: boolean
-    
-    createdAt: Date
-    updatedAt: Date
+  _id: ObjectId;
+  code: string; // FREEMIUM | PREMIUM_MONTHLY | PREMIUM_YEARLY | INSTITUTION
+  name: string;
+  description: string;
+
+  prices: PlanPrice[]; // Prix par devise et intervalle
+  features: string[]; // Liste des fonctionnalités incluses
+  limits: PlanLimits; // Limites d'utilisation
+
+  isActive: boolean;
+  sortOrder: number;
+  isFree: boolean;
+
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface PlanPrice {
-    currency: Currency            // XAF | EUR | USD
-    amount: number
-    interval: SubscriptionInterval // MONTHLY | YEARLY
+  currency: Currency; // XAF | EUR | USD
+  amount: number;
+  interval: SubscriptionInterval; // MONTHLY | YEARLY
 }
 
 interface PlanLimits {
-    maxExamsPerMonth?: number
-    maxClassesJoined?: number
-    downloadBooks: boolean
-    prioritySupport: boolean
-    aiAssistance: boolean
-    offlineAccess: boolean
+  maxExamsPerMonth?: number;
+  maxClassesJoined?: number;
+  downloadBooks: boolean;
+  prioritySupport: boolean;
+  aiAssistance: boolean;
+  offlineAccess: boolean;
 }
 ```
 
@@ -294,27 +295,27 @@ interface PlanLimits {
 
 ```typescript
 interface ISubscription {
-    _id: ObjectId
-    userId: ObjectId
-    planId: ObjectId
-    
-    status: SubscriptionPlanStatus  // ACTIVE | CANCELLED | EXPIRED | PAST_DUE
-    interval: SubscriptionInterval  // MONTHLY | YEARLY
-    
-    currentPeriodStart: Date
-    currentPeriodEnd: Date
-    cancelledAt?: Date
-    
-    // Paiement
-    lastTransactionId?: ObjectId
-    currency: Currency
-    amount: number
-    
-    autoRenew: boolean
-    renewalReminders: RenewalReminder[]
-    
-    createdAt: Date
-    updatedAt: Date
+  _id: ObjectId;
+  userId: ObjectId;
+  planId: ObjectId;
+
+  status: SubscriptionPlanStatus; // ACTIVE | CANCELLED | EXPIRED | PAST_DUE
+  interval: SubscriptionInterval; // MONTHLY | YEARLY
+
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date;
+  cancelledAt?: Date;
+
+  // Paiement
+  lastTransactionId?: ObjectId;
+  currency: Currency;
+  amount: number;
+
+  autoRenew: boolean;
+  renewalReminders: RenewalReminder[];
+
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
 
@@ -322,17 +323,17 @@ interface ISubscription {
 
 ```typescript
 interface IExchangeRate {
-    _id: ObjectId
-    baseCurrency: Currency
-    targetCurrency: Currency
-    rate: number
-    inverseRate: number
-    source: string                // 'exchangerate-api.com'
-    fetchedAt: Date
-    expiresAt: Date               // TTL de 1 heure
-    
-    createdAt: Date
-    updatedAt: Date
+  _id: ObjectId;
+  baseCurrency: Currency;
+  targetCurrency: Currency;
+  rate: number;
+  inverseRate: number;
+  source: string; // 'exchangerate-api.com'
+  fetchedAt: Date;
+  expiresAt: Date; // TTL de 1 heure
+
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
 
@@ -340,42 +341,42 @@ interface IExchangeRate {
 
 ```typescript
 enum TransactionType {
-    BOOK_PURCHASE = 'BOOK_PURCHASE',
-    SUBSCRIPTION = 'SUBSCRIPTION',
-    COURSE = 'COURSE',
-    TOP_UP = 'TOP_UP'
+  BOOK_PURCHASE = "BOOK_PURCHASE",
+  SUBSCRIPTION = "SUBSCRIPTION",
+  COURSE = "COURSE",
+  TOP_UP = "TOP_UP",
 }
 
 enum TransactionStatus {
-    PENDING = 'PENDING',          // Transaction créée, en attente
-    PROCESSING = 'PROCESSING',    // Paiement en cours
-    COMPLETED = 'COMPLETED',      // Paiement réussi
-    FAILED = 'FAILED',            // Paiement échoué
-    REFUNDED = 'REFUNDED',        // Remboursé
-    EXPIRED = 'EXPIRED'           // Expiré (TTL dépassé)
+  PENDING = "PENDING", // Transaction créée, en attente
+  PROCESSING = "PROCESSING", // Paiement en cours
+  COMPLETED = "COMPLETED", // Paiement réussi
+  FAILED = "FAILED", // Paiement échoué
+  REFUNDED = "REFUNDED", // Remboursé
+  EXPIRED = "EXPIRED", // Expiré (TTL dépassé)
 }
 
 enum Currency {
-    XAF = 'XAF',                  // Franc CFA
-    EUR = 'EUR',                  // Euro
-    USD = 'USD'                   // Dollar US
+  XAF = "XAF", // Franc CFA
+  EUR = "EUR", // Euro
+  USD = "USD", // Dollar US
 }
 
 enum SubscriptionInterval {
-    MONTHLY = 'MONTHLY',
-    YEARLY = 'YEARLY'
+  MONTHLY = "MONTHLY",
+  YEARLY = "YEARLY",
 }
 
 enum SubscriptionPlanStatus {
-    ACTIVE = 'ACTIVE',
-    CANCELLED = 'CANCELLED',
-    EXPIRED = 'EXPIRED',
-    PAST_DUE = 'PAST_DUE'
+  ACTIVE = "ACTIVE",
+  CANCELLED = "CANCELLED",
+  EXPIRED = "EXPIRED",
+  PAST_DUE = "PAST_DUE",
 }
 
 enum PaymentProvider {
-    NOTCHPAY = 'notchpay',
-    STRIPE = 'stripe'
+  NOTCHPAY = "notchpay",
+  STRIPE = "stripe",
 }
 ```
 
@@ -882,31 +883,31 @@ alt Transaction déjà COMPLETED
     PS --> PC: 200 OK (idempotent)
 else Transaction pas encore complétée
     PS -> PS: mapProviderStatus(event.status)
-    
+
     PS -> TR: updateStatus(reference, newStatus)
     activate TR
     TR -> DB: updateOne()
     TR --> PS: success
     deactivate TR
-    
+
     alt Status = COMPLETED
         PS -> PS: handlePaymentCompleted()
         note right: Ex: incrementPurchaseCount()\npour les livres
     end
-    
+
     PS -> NS: notifyPaymentStatus(transaction)
     activate NS
-    
+
     NS -> PU: trigger(channel, 'payment-status', payload)
     PU --> CL: WebSocket event
     note right: Client reçoit\nnotification temps réel
-    
+
     alt Status COMPLETED ou FAILED
         NS -> ES: sendPaymentEmail()
         ES -> ES: generateEmailHtml()
         ES --> NS: sent
     end
-    
+
     NS --> PS: done
     deactivate NS
 end
@@ -1103,84 +1104,87 @@ end note
 ### 7.1 Endpoints Paiement
 
 > **Webhook unifié** : un seul URL à configurer chez NotchPay pour **tous** les paiements de la plateforme (livres authentifiés, livres guest, abonnements, cours…) :
+>
 > - **Local (tunnel ngrok)** : `https://<ton-tunnel>.ngrok-free.app/api/payments/webhook/notchpay`
 > - **Production** : `https://ton-domaine.com/api/payments/webhook/notchpay`
 >
 > L'ancienne route `/api/books/purchase/webhook` est **dépréciée** mais reste fonctionnelle (elle délègue au webhook unifié).
 
-| Méthode | Endpoint | Description | Auth |
-|---------|----------|-------------|------|
-| POST | `/api/payments/initiate` | Initier un paiement | User |
-| GET | `/api/payments/status/:reference` | Statut d'une transaction | User |
-| GET | `/api/payments/verify/:reference` | Vérifier auprès du provider | User |
-| GET | `/api/payments/history` | Historique des transactions | User |
-| POST | `/api/payments/webhook/notchpay` | **Webhook unifié NotchPay** (livres auth + guest, abonnements, cours, recharges...) | Public |
-| GET | `/api/admin/payments/transactions` | Liste toutes les transactions | Admin |
-| GET | `/api/admin/payments/stats` | Statistiques de paiement | Admin |
+| Méthode | Endpoint                           | Description                                                                         | Auth   |
+| ------- | ---------------------------------- | ----------------------------------------------------------------------------------- | ------ |
+| POST    | `/api/payments/initiate`           | Initier un paiement                                                                 | User   |
+| GET     | `/api/payments/status/:reference`  | Statut d'une transaction                                                            | User   |
+| GET     | `/api/payments/verify/:reference`  | Vérifier auprès du provider                                                         | User   |
+| GET     | `/api/payments/history`            | Historique des transactions                                                         | User   |
+| POST    | `/api/payments/webhook/notchpay`   | **Webhook unifié NotchPay** (livres auth + guest, abonnements, cours, recharges...) | Public |
+| GET     | `/api/admin/payments/transactions` | Liste toutes les transactions                                                       | Admin  |
+| GET     | `/api/admin/payments/stats`        | Statistiques de paiement                                                            | Admin  |
 
 #### POST /api/payments/initiate
 
 **Request:**
+
 ```json
 {
-    "type": "BOOK_PURCHASE",
-    "productId": "65abc123...",
-    "paymentCurrency": "XAF",
-    "callbackUrl": "https://quizlock.cm/payment/success",
-    "discountPercent": 10,
-    "metadata": {
-        "source": "mobile_app"
-    }
+  "type": "BOOK_PURCHASE",
+  "productId": "65abc123...",
+  "paymentCurrency": "XAF",
+  "callbackUrl": "https://quizlock.cm/payment/success",
+  "discountPercent": 10,
+  "metadata": {
+    "source": "mobile_app"
+  }
 }
 ```
 
 **Response (200):**
+
 ```json
 {
-    "success": true,
-    "data": {
-        "paymentUrl": "https://pay.notchpay.co/checkout/xxx",
-        "reference": "BOOK-ABC123-XYZ789",
-        "provider": "notchpay",
-        "originalAmount": 5000,
-        "originalCurrency": "XAF",
-        "convertedAmount": 5000,
-        "paymentCurrency": "XAF",
-        "exchangeRate": 1,
-        "discountPercent": 10,
-        "finalAmount": 4500
-    }
+  "success": true,
+  "data": {
+    "paymentUrl": "https://pay.notchpay.co/checkout/xxx",
+    "reference": "BOOK-ABC123-XYZ789",
+    "provider": "notchpay",
+    "originalAmount": 5000,
+    "originalCurrency": "XAF",
+    "convertedAmount": 5000,
+    "paymentCurrency": "XAF",
+    "exchangeRate": 1,
+    "discountPercent": 10,
+    "finalAmount": 4500
+  }
 }
 ```
 
 ### 7.2 Endpoints Abonnement
 
-| Méthode | Endpoint | Description | Auth |
-|---------|----------|-------------|------|
-| POST | `/api/subscriptions/subscribe` | S'abonner à un forfait | User |
-| GET | `/api/subscriptions/mine` | Mon abonnement actif | User |
-| GET | `/api/subscriptions/history` | Historique abonnements | User |
-| POST | `/api/subscriptions/cancel` | Annuler mon abonnement | User |
-| POST | `/api/subscriptions/renew` | Renouveler manuellement | User |
+| Méthode | Endpoint                       | Description             | Auth |
+| ------- | ------------------------------ | ----------------------- | ---- |
+| POST    | `/api/subscriptions/subscribe` | S'abonner à un forfait  | User |
+| GET     | `/api/subscriptions/mine`      | Mon abonnement actif    | User |
+| GET     | `/api/subscriptions/history`   | Historique abonnements  | User |
+| POST    | `/api/subscriptions/cancel`    | Annuler mon abonnement  | User |
+| POST    | `/api/subscriptions/renew`     | Renouveler manuellement | User |
 
 ### 7.3 Endpoints Forfaits
 
-| Méthode | Endpoint | Description | Auth |
-|---------|----------|-------------|------|
-| GET | `/api/plans` | Liste des forfaits actifs | Public |
-| GET | `/api/plans/:id` | Détails d'un forfait | Public |
-| POST | `/api/admin/plans` | Créer un forfait | Admin |
-| PUT | `/api/admin/plans/:id` | Modifier un forfait | Admin |
-| DELETE | `/api/admin/plans/:id` | Désactiver un forfait | Admin |
+| Méthode | Endpoint               | Description               | Auth   |
+| ------- | ---------------------- | ------------------------- | ------ |
+| GET     | `/api/plans`           | Liste des forfaits actifs | Public |
+| GET     | `/api/plans/:id`       | Détails d'un forfait      | Public |
+| POST    | `/api/admin/plans`     | Créer un forfait          | Admin  |
+| PUT     | `/api/admin/plans/:id` | Modifier un forfait       | Admin  |
+| DELETE  | `/api/admin/plans/:id` | Désactiver un forfait     | Admin  |
 
 ### 7.4 Endpoints Devises
 
-| Méthode | Endpoint | Description | Auth |
-|---------|----------|-------------|------|
-| GET | `/api/currencies` | Liste devises supportées | Public |
-| GET | `/api/currencies/rates` | Taux de change actuels | Public |
-| POST | `/api/currencies/convert` | Convertir un montant | Public |
-| POST | `/api/admin/currencies/refresh` | Rafraîchir les taux | Admin |
+| Méthode | Endpoint                        | Description              | Auth   |
+| ------- | ------------------------------- | ------------------------ | ------ |
+| GET     | `/api/currencies`               | Liste devises supportées | Public |
+| GET     | `/api/currencies/rates`         | Taux de change actuels   | Public |
+| POST    | `/api/currencies/convert`       | Convertir un montant     | Public |
+| POST    | `/api/admin/currencies/refresh` | Rafraîchir les taux      | Admin  |
 
 ---
 
@@ -1191,12 +1195,12 @@ end note
 ```typescript
 // Validation HMAC-SHA256
 const expected = crypto
-    .createHmac('sha256', process.env.NOTCHPAY_HASH)
-    .update(rawPayload)
-    .digest('hex')
+  .createHmac("sha256", process.env.NOTCHPAY_HASH)
+  .update(rawPayload)
+  .digest("hex");
 
 if (expected !== signature) {
-    throw new Error('Invalid webhook signature')
+  throw new Error("Invalid webhook signature");
 }
 ```
 
@@ -1207,18 +1211,18 @@ Chaque webhook est traité une seule fois grâce à la vérification du statut :
 ```typescript
 // Dans PaymentService.handleWebhook()
 if (transaction.status === TransactionStatus.COMPLETED) {
-    return  // Déjà traité, rien à faire
+  return; // Déjà traité, rien à faire
 }
 ```
 
 ### 8.3 Protection des Endpoints
 
-| Endpoint | Protection |
-|----------|------------|
-| `/api/payments/initiate` | JWT required, rate limit 10/min |
+| Endpoint                  | Protection                             |
+| ------------------------- | -------------------------------------- |
+| `/api/payments/initiate`  | JWT required, rate limit 10/min        |
 | `/api/payments/webhook/*` | Signature HMAC, IP whitelist optionnel |
-| `/api/admin/*` | JWT + role ADMIN |
-| `/api/currencies/convert` | Rate limit 100/min |
+| `/api/admin/*`            | JWT + role ADMIN                       |
+| `/api/currencies/convert` | Rate limit 100/min                     |
 
 ### 8.4 Variables d'Environnement Sensibles
 
@@ -1236,26 +1240,31 @@ EXCHANGE_RATE_API_KEY=xxxxx
 ### 9.1 Ajouter un Nouveau Provider de Paiement
 
 1. **Créer la stratégie** :
+
 ```typescript
 // src/lib/strategies/payment/StripeStrategy.ts
 export class StripeStrategy implements IPaymentStrategy {
-    readonly providerName = 'stripe'
-    
-    async initiatePayment(params: PaymentInitParams): Promise<PaymentInitResult> {
-        // Intégration Stripe
-    }
-    
-    async verifyPayment(reference: string): Promise<PaymentVerifyResult> {
-        // Vérification Stripe
-    }
-    
-    async handleWebhook(payload: unknown, signature: string): Promise<WebhookEvent> {
-        // Webhook Stripe
-    }
+  readonly providerName = "stripe";
+
+  async initiatePayment(params: PaymentInitParams): Promise<PaymentInitResult> {
+    // Intégration Stripe
+  }
+
+  async verifyPayment(reference: string): Promise<PaymentVerifyResult> {
+    // Vérification Stripe
+  }
+
+  async handleWebhook(
+    payload: unknown,
+    signature: string,
+  ): Promise<WebhookEvent> {
+    // Webhook Stripe
+  }
 }
 ```
 
 2. **Enregistrer dans la factory** :
+
 ```typescript
 // src/lib/strategies/payment/PaymentStrategyFactory.ts
 case PaymentProvider.STRIPE:
@@ -1263,14 +1272,16 @@ case PaymentProvider.STRIPE:
 ```
 
 3. **Ajouter l'enum** :
+
 ```typescript
 enum PaymentProvider {
-    NOTCHPAY = 'notchpay',
-    STRIPE = 'stripe'  // Nouveau
+  NOTCHPAY = "notchpay",
+  STRIPE = "stripe", // Nouveau
 }
 ```
 
 4. **Créer la route webhook** :
+
 ```typescript
 // src/app/api/payments/webhook/stripe/route.ts
 ```
@@ -1280,14 +1291,16 @@ enum PaymentProvider {
 Pour ajouter le paiement de cours par exemple :
 
 1. **Ajouter dans l'enum** :
+
 ```typescript
 enum TransactionType {
-    // ...
-    COURSE = 'COURSE'
+  // ...
+  COURSE = "COURSE",
 }
 ```
 
 2. **Étendre `getProductDetails()`** :
+
 ```typescript
 case TransactionType.COURSE: {
     const course = await courseRepository.findById(productId)
@@ -1301,6 +1314,7 @@ case TransactionType.COURSE: {
 ```
 
 3. **Étendre `handlePaymentCompleted()`** :
+
 ```typescript
 case TransactionType.COURSE:
     await courseRepository.grantAccess(transaction.userId, transaction.productId)
@@ -1349,44 +1363,49 @@ PUSHER_CLUSTER="eu"
 
 ```javascript
 const defaultPlans = [
-    {
-        code: 'FREEMIUM',
-        name: 'Gratuit',
-        description: 'Accès limité pour découvrir la plateforme',
-        isFree: true,
-        prices: [],
-        features: ['5 examens/mois', '2 classes max', 'Contenu de base'],
-        limits: {
-            maxExamsPerMonth: 5,
-            maxClassesJoined: 2,
-            downloadBooks: false,
-            prioritySupport: false,
-            aiAssistance: false,
-            offlineAccess: false
-        }
+  {
+    code: "FREEMIUM",
+    name: "Gratuit",
+    description: "Accès limité pour découvrir la plateforme",
+    isFree: true,
+    prices: [],
+    features: ["5 examens/mois", "2 classes max", "Contenu de base"],
+    limits: {
+      maxExamsPerMonth: 5,
+      maxClassesJoined: 2,
+      downloadBooks: false,
+      prioritySupport: false,
+      aiAssistance: false,
+      offlineAccess: false,
     },
-    {
-        code: 'PREMIUM_MONTHLY',
-        name: 'Premium Mensuel',
-        description: 'Accès complet mensuel',
-        isFree: false,
-        prices: [
-            { currency: 'XAF', amount: 5000, interval: 'MONTHLY' },
-            { currency: 'EUR', amount: 10, interval: 'MONTHLY' },
-            { currency: 'USD', amount: 11, interval: 'MONTHLY' }
-        ],
-        features: ['Examens illimités', 'Classes illimitées', 'Téléchargement livres', 'Support prioritaire'],
-        limits: {
-            maxExamsPerMonth: null,
-            maxClassesJoined: null,
-            downloadBooks: true,
-            prioritySupport: true,
-            aiAssistance: true,
-            offlineAccess: true
-        }
+  },
+  {
+    code: "PREMIUM_MONTHLY",
+    name: "Premium Mensuel",
+    description: "Accès complet mensuel",
+    isFree: false,
+    prices: [
+      { currency: "XAF", amount: 5000, interval: "MONTHLY" },
+      { currency: "EUR", amount: 10, interval: "MONTHLY" },
+      { currency: "USD", amount: 11, interval: "MONTHLY" },
+    ],
+    features: [
+      "Examens illimités",
+      "Classes illimitées",
+      "Téléchargement livres",
+      "Support prioritaire",
+    ],
+    limits: {
+      maxExamsPerMonth: null,
+      maxClassesJoined: null,
+      downloadBooks: true,
+      prioritySupport: true,
+      aiAssistance: true,
+      offlineAccess: true,
     },
-    // ...
-]
+  },
+  // ...
+];
 ```
 
 ---
@@ -1395,25 +1414,25 @@ const defaultPlans = [
 
 ### A. Glossaire
 
-| Terme | Définition |
-|-------|------------|
-| **Transaction** | Enregistrement d'un paiement dans notre système |
-| **Reference** | Identifiant unique d'une transaction (ex: BOOK-ABC123-XYZ789) |
-| **Webhook** | Callback HTTP envoyé par NotchPay pour notifier du statut |
-| **Provider** | Prestataire de paiement (NotchPay, Stripe...) |
-| **Commission** | Pourcentage prélevé par la plateforme (5% par défaut) |
-| **TTL** | Time To Live - durée de validité d'une transaction en attente |
+| Terme           | Définition                                                    |
+| --------------- | ------------------------------------------------------------- |
+| **Transaction** | Enregistrement d'un paiement dans notre système               |
+| **Reference**   | Identifiant unique d'une transaction (ex: BOOK-ABC123-XYZ789) |
+| **Webhook**     | Callback HTTP envoyé par NotchPay pour notifier du statut     |
+| **Provider**    | Prestataire de paiement (NotchPay, Stripe...)                 |
+| **Commission**  | Pourcentage prélevé par la plateforme (5% par défaut)         |
+| **TTL**         | Time To Live - durée de validité d'une transaction en attente |
 
 ### B. Codes d'Erreur
 
-| Code | Message | Cause |
-|------|---------|-------|
-| `ALREADY_PURCHASED` | "You have already purchased this item" | L'utilisateur a déjà acheté ce produit |
-| `PRODUCT_NOT_FOUND` | "Book not found" | Le produit demandé n'existe pas |
-| `PRODUCT_NOT_AVAILABLE` | "Book is not available for purchase" | Le produit n'est pas en vente |
-| `FREE_PRODUCT` | "This book is free, no purchase needed" | Tentative de payer un produit gratuit |
-| `INVALID_SIGNATURE` | "Invalid NotchPay webhook signature" | Signature HMAC invalide |
-| `TRANSACTION_NOT_FOUND` | "Transaction not found" | Référence de transaction inconnue |
+| Code                    | Message                                 | Cause                                  |
+| ----------------------- | --------------------------------------- | -------------------------------------- |
+| `ALREADY_PURCHASED`     | "You have already purchased this item"  | L'utilisateur a déjà acheté ce produit |
+| `PRODUCT_NOT_FOUND`     | "Book not found"                        | Le produit demandé n'existe pas        |
+| `PRODUCT_NOT_AVAILABLE` | "Book is not available for purchase"    | Le produit n'est pas en vente          |
+| `FREE_PRODUCT`          | "This book is free, no purchase needed" | Tentative de payer un produit gratuit  |
+| `INVALID_SIGNATURE`     | "Invalid NotchPay webhook signature"    | Signature HMAC invalide                |
+| `TRANSACTION_NOT_FOUND` | "Transaction not found"                 | Référence de transaction inconnue      |
 
 ### C. Références
 
@@ -1462,82 +1481,85 @@ visibilité immédiate des gains, regroupement possible de plusieurs ventes.
 ### 11.2 Nouveaux modèles de données
 
 #### Invoice
+
 ```typescript
 interface IInvoice {
-    invoiceNumber: string      // INV-2026-000001 (séquentiel)
-    type: InvoiceType          // PURCHASE_RECEIPT | EARNINGS_STATEMENT
-    recipientId: ObjectId      // Destinataire (acheteur ou vendeur)
-    transactionId: ObjectId
-    paymentReference: string
-    productType: TransactionType
-    productDescription: string
-    subtotal: number
-    discountAmount: number
-    discountPercent: number
-    total: number
-    currency: string
-    platformCommission?: number  // EARNINGS_STATEMENT uniquement
-    sellerAmount?: number        // EARNINGS_STATEMENT uniquement
-    buyerName: string
-    buyerEmail?: string
-    sellerName?: string
-    status: InvoiceStatus        // ISSUED | SENT | VOIDED
-    issuedAt: Date
-    sentAt?: Date
+  invoiceNumber: string; // INV-2026-000001 (séquentiel)
+  type: InvoiceType; // PURCHASE_RECEIPT | EARNINGS_STATEMENT
+  recipientId: ObjectId; // Destinataire (acheteur ou vendeur)
+  transactionId: ObjectId;
+  paymentReference: string;
+  productType: TransactionType;
+  productDescription: string;
+  subtotal: number;
+  discountAmount: number;
+  discountPercent: number;
+  total: number;
+  currency: string;
+  platformCommission?: number; // EARNINGS_STATEMENT uniquement
+  sellerAmount?: number; // EARNINGS_STATEMENT uniquement
+  buyerName: string;
+  buyerEmail?: string;
+  sellerName?: string;
+  status: InvoiceStatus; // ISSUED | SENT | VOIDED
+  issuedAt: Date;
+  sentAt?: Date;
 }
 ```
 
 #### Wallet
+
 ```typescript
 interface IWallet {
-    userId: ObjectId       // Le vendeur
-    currency: Currency
-    balance: number        // Solde disponible pour virement
-    totalEarned: number    // Cumul de gains depuis la création
-    totalWithdrawn: number // Cumul des virements effectués
-    lastUpdatedAt: Date
+  userId: ObjectId; // Le vendeur
+  currency: Currency;
+  balance: number; // Solde disponible pour virement
+  totalEarned: number; // Cumul de gains depuis la création
+  totalWithdrawn: number; // Cumul des virements effectués
+  lastUpdatedAt: Date;
 }
 ```
 
 #### Payout
+
 ```typescript
 interface IPayout {
-    userId: ObjectId
-    walletId: ObjectId
-    amount: number
-    currency: Currency
-    recipientPhone: string
-    recipientName: string
-    recipientProvider: MobileMoneyProvider  // orange | mtn | other
-    status: PayoutStatus   // PENDING | PROCESSING | COMPLETED | FAILED
-    payoutReference: string
-    providerTransferId?: string
-    processedAt?: Date
-    failureReason?: string
+  userId: ObjectId;
+  walletId: ObjectId;
+  amount: number;
+  currency: Currency;
+  recipientPhone: string;
+  recipientName: string;
+  recipientProvider: MobileMoneyProvider; // orange | mtn | other
+  status: PayoutStatus; // PENDING | PROCESSING | COMPLETED | FAILED
+  payoutReference: string;
+  providerTransferId?: string;
+  processedAt?: Date;
+  failureReason?: string;
 }
 ```
 
 ### 11.3 Qui reçoit quelle facture
 
-| Acteur | Type | Déclencheur | Canal |
-|--------|------|-------------|-------|
-| **Élève** (acheteur) | `PURCHASE_RECEIPT` | Paiement COMPLETED | Email + historique `/api/invoices` |
-| **Enseignant** (acheteur d'un autre livre) | `PURCHASE_RECEIPT` | Paiement COMPLETED | Email + historique `/api/invoices` |
-| **Enseignant** (vendeur) | `EARNINGS_STATEMENT` | Paiement de son livre COMPLETED | Email + gains `/api/seller/earnings` |
-| **Admin** | Tous types | À la demande | `/api/admin/invoices` |
+| Acteur                                     | Type                 | Déclencheur                     | Canal                                |
+| ------------------------------------------ | -------------------- | ------------------------------- | ------------------------------------ |
+| **Élève** (acheteur)                       | `PURCHASE_RECEIPT`   | Paiement COMPLETED              | Email + historique `/api/invoices`   |
+| **Enseignant** (acheteur d'un autre livre) | `PURCHASE_RECEIPT`   | Paiement COMPLETED              | Email + historique `/api/invoices`   |
+| **Enseignant** (vendeur)                   | `EARNINGS_STATEMENT` | Paiement de son livre COMPLETED | Email + gains `/api/seller/earnings` |
+| **Admin**                                  | Tous types           | À la demande                    | `/api/admin/invoices`                |
 
 ### 11.4 Nouveaux endpoints
 
-| Méthode | Endpoint | Description | Auth |
-|---------|----------|-------------|------|
-| GET | `/api/invoices` | Mes factures (acheteur) | User |
-| GET | `/api/invoices/:num` | Détails d'une facture | Destinataire ou Admin |
-| GET | `/api/invoices/:num/html` | Facture HTML (impression/PDF) | Destinataire ou Admin |
-| GET | `/api/seller/wallet` | Solde wallet vendeur | User |
-| GET | `/api/seller/earnings` | Relevés de gains | User |
-| GET | `/api/seller/payout` | Historique virements | User |
-| POST | `/api/seller/payout` | Demander un virement | User |
-| GET | `/api/admin/invoices` | Toutes les factures | Admin |
+| Méthode | Endpoint                  | Description                   | Auth                  |
+| ------- | ------------------------- | ----------------------------- | --------------------- |
+| GET     | `/api/invoices`           | Mes factures (acheteur)       | User                  |
+| GET     | `/api/invoices/:num`      | Détails d'une facture         | Destinataire ou Admin |
+| GET     | `/api/invoices/:num/html` | Facture HTML (impression/PDF) | Destinataire ou Admin |
+| GET     | `/api/seller/wallet`      | Solde wallet vendeur          | User                  |
+| GET     | `/api/seller/earnings`    | Relevés de gains              | User                  |
+| GET     | `/api/seller/payout`      | Historique virements          | User                  |
+| POST    | `/api/seller/payout`      | Demander un virement          | User                  |
+| GET     | `/api/admin/invoices`     | Toutes les factures           | Admin                 |
 
 ### 11.5 Variables d'environnement ajoutées
 
@@ -1549,12 +1571,13 @@ NOTCHPAY_SECRET_KEY="sk_live_xxxxx"
 ### 11.6 Prérequis pour le professeur
 
 Le professeur doit renseigner ses informations Mobile Money dans son profil :
+
 ```typescript
 user.paymentInfo = {
-    mobileMoneyPhone: '+237690000000',
-    mobileMoneyProvider: 'orange',  // ou 'mtn'
-    mobileMoneyName: 'Jean Dupont'
-}
+  mobileMoneyPhone: "+237690000000",
+  mobileMoneyProvider: "orange", // ou 'mtn'
+  mobileMoneyName: "Jean Dupont",
+};
 ```
-Endpoint à créer : `PUT /api/profile/payment-info`
 
+Endpoint à créer : `PUT /api/profile/payment-info`

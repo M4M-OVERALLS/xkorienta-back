@@ -39,8 +39,6 @@ export async function POST(
             validation
         })
     } catch (error: any) {
-        console.error('[API] Error validating exam:', error)
-
         if (error.message.includes('Brouillon introuvable')) {
             return NextResponse.json(
                 { success: false, error: error.message },

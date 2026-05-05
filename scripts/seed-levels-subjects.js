@@ -1907,18 +1907,14 @@ const educationModelCM = {
 
 async function seed() {
     await mongoose.connect(DATABASE_URL)
-    console.log('✅ Connecté à MongoDB')
 
     // Clean
-    console.log('🗑️  Nettoyage des collections...')
     await EducationLevel.deleteMany({})
     await Subject.deleteMany({})
     await Field.deleteMany({})
 
     // Insert levels
-    console.log('📚 Création des niveaux scolaires...')
     const levels = await EducationLevel.insertMany(educationLevels)
-    console.log(`   ✅ ${levels.length} niveaux insérés`)
 
     // Helper functions to get level IDs by filter
     const byFilter = {
@@ -1954,9 +1950,7 @@ async function seed() {
         return { ...rest, applicableLevels: byFilter[cycle_filter] || [] }
     })
 
-    console.log('📖 Création des matières & UE...')
     const createdSubjects = await Subject.insertMany(subjectsWithLevels)
-    console.log(`   ✅ ${createdSubjects.length} matières insérées`)
 
     // Insert Fields/Séries/Filières with level IDs
     const fieldsWithLevels = seriesDefinitions.map(s => {
@@ -1964,24 +1958,14 @@ async function seed() {
         return { ...rest, applicableLevels: byFilter[filter] || [] }
     })
 
-    console.log('🎭 Création des Séries & Filières...')
     const createdFields = await Field.insertMany(fieldsWithLevels)
-    console.log(`   ✅ ${createdFields.length} séries/filières insérées`)
 
     // Summary
-    console.log('\n========================================')
-    console.log('🎉 SEED TERMINÉ AVEC SUCCÈS !')
-    console.log('========================================')
-    console.log(`📊 Résumé :`)
-    console.log(`   • ${levels.length} Niveaux (Primaire FR+EN, Collège FR+EN, Lycée FR+EN, Université)`)
-    console.log(`   • ${createdSubjects.length} Matières/UE (10 primaire, 16 collège, 15 lycée, 14 univ-info, 9 univ-eco, 6 univ-santé)`)
-    console.log(`   • ${createdFields.length} Séries/Filières (Lycée + Université)`)
 
     await mongoose.connection.close()
     process.exit(0)
 }
 
 seed().catch(err => {
-    console.error('❌ Erreur seed:', err.message)
     process.exit(1)
 })

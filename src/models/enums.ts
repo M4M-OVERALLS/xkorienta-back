@@ -389,6 +389,39 @@ export enum BookPurchaseStatus {
     REFUNDED = 'REFUNDED'
 }
 
+// ==========================================
+// MÉDIATHÈQUE (VIDEO, PODCAST, AUDIO)
+// ==========================================
+
+/** Type de contenu média (hors livres gérés par Book) */
+export enum MediaType {
+    VIDEO   = 'VIDEO',
+    PODCAST = 'PODCAST',
+    AUDIO   = 'AUDIO',
+}
+
+/** Visibilité d'un média : global (plateforme) ou restreint à une école */
+export enum MediaScope {
+    GLOBAL = 'GLOBAL',
+    SCHOOL = 'SCHOOL',
+}
+
+/** Cycle de vie d'un média soumis par un enseignant */
+export enum MediaStatus {
+    DRAFT    = 'DRAFT',
+    PENDING  = 'PENDING',
+    APPROVED = 'APPROVED',
+    REJECTED = 'REJECTED',
+}
+
+/** Statut d'un achat de média */
+export enum MediaPurchaseStatus {
+    PENDING   = 'PENDING',
+    COMPLETED = 'COMPLETED',
+    FAILED    = 'FAILED',
+    REFUNDED  = 'REFUNDED',
+}
+
 export enum StorageProvider {
     LOCAL = 'local',
     S3 = 's3',
@@ -405,10 +438,11 @@ export enum PaymentProvider {
 // ==========================================
 
 export enum TransactionType {
-    BOOK_PURCHASE = 'BOOK_PURCHASE',
-    SUBSCRIPTION = 'SUBSCRIPTION',
-    COURSE = 'COURSE',
-    TOP_UP = 'TOP_UP'
+    BOOK_PURCHASE  = 'BOOK_PURCHASE',
+    MEDIA_PURCHASE = 'MEDIA_PURCHASE',
+    SUBSCRIPTION   = 'SUBSCRIPTION',
+    COURSE         = 'COURSE',
+    TOP_UP         = 'TOP_UP',
 }
 
 export enum TransactionStatus {

@@ -36,7 +36,6 @@ export async function POST(
             { status: 200 }
         );
     } catch (error: any) {
-        console.error("Error rejecting teacher:", error);
         return NextResponse.json(
             {
                 success: false,

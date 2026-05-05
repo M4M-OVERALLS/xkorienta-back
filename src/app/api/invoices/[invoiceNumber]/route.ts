@@ -12,7 +12,7 @@ const ADMIN_ROLES = ['DG_M4M', 'TECH_SUPPORT']
  */
 export async function GET(
     _req: Request,
-    { params }: { params: { invoiceNumber: string } }
+    { params }: { params: Promise<{ invoiceNumber: string }> }
 ) {
     try {
         const session = await getServerSession(authOptions)
@@ -21,8 +21,9 @@ export async function GET(
         }
 
         const isAdmin = ADMIN_ROLES.includes(session.user.role as string)
+        const { invoiceNumber } = await params
         const invoice = await InvoiceService.getByNumber(
-            params.invoiceNumber,
+            invoiceNumber,
             session.user.id as string,
             isAdmin
         )
