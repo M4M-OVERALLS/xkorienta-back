@@ -59,7 +59,6 @@ export async function POST(request: NextRequest) {
             data: result
         }, { status: 201 })
     } catch (error: any) {
-        console.error('[API] Error initializing exam:', error)
 
         if (error.message.includes('Template introuvable')) {
             return NextResponse.json(

@@ -11,7 +11,6 @@ export async function POST(req: Request) {
         return await PaymentController.handleNotchPayWebhook(req)
     } catch (err) {
         // Return 200 to prevent NotchPay from retrying on signature errors
-        console.error('[Webhook] Error processing payment webhook:', (err as Error).message)
         return NextResponse.json({ success: false }, { status: 200 })
     }
 }

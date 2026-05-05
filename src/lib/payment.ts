@@ -89,7 +89,10 @@ paymentSDK.events.on('payment.completed', async (e) => {
 paymentSDK.events.on('payment.completed', async (e) => {
     const tx = await transactionRepository.findByReference(e.reference)
     if (!tx) return
-    await InvoiceService.generateForTransaction(tx)
+    const buyer = tx.userId as unknown as { name?: string; email?: string }
+    const buyerName = buyer?.name ?? 'Client'
+    const buyerEmail = buyer?.email
+    await InvoiceService.generateForTransaction(tx, buyerName, buyerEmail)
 })
 
 /** Sync legacy BookPurchase table on book sale completion. */

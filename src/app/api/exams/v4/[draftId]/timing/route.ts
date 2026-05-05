@@ -49,7 +49,6 @@ export async function PUT(
             validation: result.validation
         })
     } catch (error: any) {
-        console.error('[API] Error updating timing:', error)
 
         if (error.message.includes('Brouillon introuvable')) {
             return NextResponse.json(

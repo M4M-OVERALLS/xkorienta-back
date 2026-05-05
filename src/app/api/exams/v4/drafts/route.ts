@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
             count: drafts.length
         })
     } catch (error: any) {
-        console.error('[API] Error listing drafts:', error)
         return NextResponse.json(
             {
                 success: false,

@@ -67,7 +67,6 @@ function getSchoolTypeFromCycle(cycle) {
  * Migrer les EducationLevel
  */
 async function migrateEducationLevels() {
-  console.log("\n=== Migration des EducationLevel ===");
 
   const EducationLevel = mongoose.model("EducationLevel");
 
@@ -75,8 +74,6 @@ async function migrateEducationLevels() {
   const levels = await EducationLevel.find({
     $or: [{ schoolType: { $exists: false } }, { schoolType: null }],
   });
-
-  console.log(`📊 Niveaux à migrer : ${levels.length}`);
 
   let updated = 0;
   let errors = 0;
@@ -89,18 +86,12 @@ async function migrateEducationLevels() {
         { _id: level._id },
         { $set: { schoolType } },
       );
-
-      console.log(`✅ ${level.name} (${level.cycle}) → ${schoolType}`);
       updated++;
     } catch (error) {
-      console.error(`❌ Erreur pour ${level.name}:`, error.message);
       errors++;
     }
   }
-
-  console.log(`\n✅ EducationLevels migrés : ${updated}`);
   if (errors > 0) {
-    console.log(`⚠️ Erreurs : ${errors}`);
   }
 }
 
@@ -108,7 +99,6 @@ async function migrateEducationLevels() {
  * Migrer les Exams
  */
 async function migrateExams() {
-  console.log("\n=== Migration des Exams ===");
 
   const Exam = mongoose.model("Exam");
   const EducationLevel = mongoose.model("EducationLevel");
@@ -117,8 +107,6 @@ async function migrateExams() {
   const exams = await Exam.find({
     $or: [{ schoolType: { $exists: false } }, { schoolType: null }],
   }).populate("targetLevels");
-
-  console.log(`📊 Examens à migrer : ${exams.length}`);
 
   let updated = 0;
   let errors = 0;
@@ -153,18 +141,12 @@ async function migrateExams() {
       }
 
       await Exam.updateOne({ _id: exam._id }, { $set: { schoolType } });
-
-      console.log(`✅ ${exam.title} → ${schoolType}`);
       updated++;
     } catch (error) {
-      console.error(`❌ Erreur pour ${exam.title}:`, error.message);
       errors++;
     }
   }
-
-  console.log(`\n✅ Examens migrés : ${updated}`);
   if (errors > 0) {
-    console.log(`⚠️ Erreurs : ${errors}`);
   }
 }
 
@@ -172,7 +154,6 @@ async function migrateExams() {
  * Vérifier les résultats de la migration
  */
 async function verifyMigration() {
-  console.log("\n=== Vérification de la migration ===");
 
   const EducationLevel = mongoose.model("EducationLevel");
   const Exam = mongoose.model("Exam");
@@ -184,17 +165,8 @@ async function verifyMigration() {
 
   const totalLevels = await EducationLevel.countDocuments();
 
-  console.log(`\n📊 EducationLevel :`);
-  console.log(`   - Total : ${totalLevels}`);
-  console.log(
-    `   - Avec schoolType : ${totalLevels - levelsWithoutSchoolType}`,
-  );
-  console.log(`   - Sans schoolType : ${levelsWithoutSchoolType}`);
-
   if (levelsWithoutSchoolType === 0) {
-    console.log(`   ✅ Tous les niveaux ont un schoolType`);
   } else {
-    console.log(`   ⚠️ Certains niveaux n'ont pas de schoolType`);
   }
 
   // Vérifier les Exams
@@ -204,38 +176,24 @@ async function verifyMigration() {
 
   const totalExams = await Exam.countDocuments();
 
-  console.log(`\n📊 Exam :`);
-  console.log(`   - Total : ${totalExams}`);
-  console.log(`   - Avec schoolType : ${totalExams - examsWithoutSchoolType}`);
-  console.log(`   - Sans schoolType : ${examsWithoutSchoolType}`);
-
   if (examsWithoutSchoolType === 0) {
-    console.log(`   ✅ Tous les examens ont un schoolType`);
   } else {
-    console.log(`   ⚠️ Certains examens n'ont pas de schoolType`);
   }
 
   // Statistiques par type
-  console.log(`\n📊 Répartition par type d'école :`);
 
   const levelStats = await EducationLevel.aggregate([
     { $group: { _id: "$schoolType", count: { $sum: 1 } } },
     { $sort: { count: -1 } },
   ]);
-
-  console.log(`\n   EducationLevel :`);
   levelStats.forEach((stat) => {
-    console.log(`   - ${stat._id || "NULL"} : ${stat.count}`);
   });
 
   const examStats = await Exam.aggregate([
     { $group: { _id: "$schoolType", count: { $sum: 1 } } },
     { $sort: { count: -1 } },
   ]);
-
-  console.log(`\n   Exam :`);
   examStats.forEach((stat) => {
-    console.log(`   - ${stat._id || "NULL"} : ${stat.count}`);
   });
 }
 
@@ -244,10 +202,6 @@ async function verifyMigration() {
  */
 async function main() {
   try {
-    console.log("🚀 Démarrage de la migration schoolType...");
-    console.log(
-      `📡 Connexion à MongoDB : ${process.env.MONGODB_URI?.split("@")[1] || "localhost"}`,
-    );
 
     // Connexion à MongoDB
     await mongoose.connect(
@@ -257,8 +211,6 @@ async function main() {
         useUnifiedTopology: true,
       },
     );
-
-    console.log("✅ Connecté à MongoDB");
 
     // Charger les modèles
     require("../src/models/EducationLevel");
@@ -270,14 +222,10 @@ async function main() {
 
     // Vérifier les résultats
     await verifyMigration();
-
-    console.log("\n✅ Migration terminée avec succès !");
   } catch (error) {
-    console.error("\n❌ Erreur lors de la migration:", error);
     process.exit(1);
   } finally {
     await mongoose.connection.close();
-    console.log("\n👋 Connexion fermée");
   }
 }
 

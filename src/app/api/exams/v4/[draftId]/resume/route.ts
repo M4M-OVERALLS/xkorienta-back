@@ -38,7 +38,6 @@ export async function POST(
             data: result
         })
     } catch (error: any) {
-        console.error('[API] Error resuming draft:', error)
 
         if (error.message.includes('Brouillon introuvable')) {
             return NextResponse.json(

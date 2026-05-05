@@ -54,7 +54,6 @@ async function connectDB() {
         throw new Error('MONGODB_URI not defined in environment')
     }
     await mongoose.connect(uri)
-    console.log('✓ Connected to MongoDB')
 }
 
 async function migrate(dryRun = false) {
@@ -69,9 +68,6 @@ async function migrate(dryRun = false) {
     const totalPurchases = await bookPurchases.countDocuments()
     const existingMigrated = await transactions.countDocuments({ type: TransactionType.BOOK_PURCHASE })
 
-    console.log(`\n📊 Migration Status:`)
-    console.log(`   Total BookPurchases: ${totalPurchases}`)
-    console.log(`   Already migrated: ${existingMigrated}`)
 
     // Get all book purchases not yet migrated
     const existingRefs = await transactions.distinct('paymentReference', { type: TransactionType.BOOK_PURCHASE })
@@ -79,15 +75,12 @@ async function migrate(dryRun = false) {
         paymentReference: { $nin: existingRefs }
     }).toArray()
 
-    console.log(`   To migrate: ${toMigrate.length}`)
 
     if (toMigrate.length === 0) {
-        console.log('\n✓ Nothing to migrate!')
         return
     }
 
     if (dryRun) {
-        console.log('\n🔍 DRY RUN - No changes will be made')
     }
 
     let migrated = 0
@@ -150,35 +143,25 @@ async function migrate(dryRun = false) {
             migrated++
             
             if (migrated % 100 === 0) {
-                console.log(`   Processed ${migrated}/${toMigrate.length}...`)
             }
         } catch (err) {
             failed++
-            console.error(`   ✗ Failed to migrate ${purchase.paymentReference}:`, err.message)
         }
     }
 
-    console.log(`\n✓ Migration ${dryRun ? 'preview' : 'complete'}:`)
-    console.log(`   Migrated: ${migrated}`)
-    console.log(`   Failed: ${failed}`)
 }
 
 async function main() {
     const dryRun = process.argv.includes('--dry-run')
 
-    console.log('═══════════════════════════════════════════')
-    console.log(' BookPurchase -> Transaction Migration')
-    console.log('═══════════════════════════════════════════')
 
     try {
         await connectDB()
         await migrate(dryRun)
     } catch (err) {
-        console.error('\n✗ Migration failed:', err.message)
         process.exit(1)
     } finally {
         await mongoose.disconnect()
-        console.log('\n✓ Disconnected from MongoDB')
     }
 }
 

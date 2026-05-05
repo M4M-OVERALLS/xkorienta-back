@@ -29,7 +29,6 @@ export async function DELETE(
             message: 'Brouillon supprimé avec succès'
         })
     } catch (error: any) {
-        console.error('[API] Error deleting draft:', error)
 
         if (error.message.includes('Brouillon introuvable')) {
             return NextResponse.json(

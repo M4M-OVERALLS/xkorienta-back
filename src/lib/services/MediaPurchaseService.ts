@@ -86,7 +86,7 @@ export class MediaPurchaseService {
 
         // Crée l'entrée MediaPurchase (enregistrement local du paiement)
         const config = await bookConfigRepository.getOrCreate()
-        const commissionRate = config.platformCommissionRate ?? 5
+        const commissionRate = config.commissionRate ?? 5
         const platformCommission = Math.round(paymentResult.finalAmount * (commissionRate / 100))
         const teacherAmount = paymentResult.finalAmount - platformCommission
 
