@@ -43,7 +43,6 @@ export async function POST(
             data: exam
         })
     } catch (error: any) {
-        console.error('[API] Error publishing exam:', error)
 
         if (error.message.includes('Brouillon introuvable')) {
             return NextResponse.json(

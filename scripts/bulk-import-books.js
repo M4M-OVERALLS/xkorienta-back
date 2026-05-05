@@ -166,18 +166,13 @@ async function main() {
   // Connect to MongoDB
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
-    console.error(
-      "DATABASE_URL not found. Run with: node -r dotenv/config scripts/bulk-import-books.js",
-    );
     process.exit(1);
   }
-  console.log("Connecting to MongoDB...");
   await mongoose.connect(dbUrl, {
     serverSelectionTimeoutMS: 15000,
     connectTimeoutMS: 15000,
     socketTimeoutMS: 30000,
   });
-  console.log("✓ Connected to MongoDB");
 
   const User =
     mongoose.models.User ||
@@ -189,43 +184,30 @@ async function main() {
   // Find teacher
   const teacher = await User.findOne({ email: TEACHER_EMAIL }).lean();
   if (!teacher) {
-    console.error(`✗ Teacher not found with email: ${TEACHER_EMAIL}`);
-    console.log("  Available teachers:");
     const teachers = await User.find(
       { role: { $in: ["TEACHER", "DG_M4M"] } },
       { email: 1, name: 1 },
     )
       .limit(10)
       .lean();
-    teachers.forEach((t) => console.log(`    - ${t.email} (${t.name})`));
+    teachers.forEach((t) =>
     process.exit(1);
   }
-  console.log(
-    `✓ Teacher found: ${teacher.name || teacher.email} (${teacher._id})`,
-  );
 
   // Scan source directory
   const allFiles = await fsp.readdir(SOURCE_DIR);
-  console.log(`\n📂 Found ${allFiles.length} files in source folder`);
 
   // Filter: only PDF (platform doesn't support DOCX)
   const pdfFiles = allFiles.filter((f) => formatFromExt(f) !== null);
   const docxFiles = allFiles.filter(
     (f) => path.extname(f).toLowerCase() === ".docx",
   );
-  console.log(`   ${pdfFiles.length} PDF files (importable)`);
-  console.log(
-    `   ${docxFiles.length} DOCX files (skipped — platform accepts PDF/EPUB only)`,
-  );
 
   // Skip administrative files
   const candidates = pdfFiles.filter((f) => !shouldSkip(f));
   const skipped = pdfFiles.filter((f) => shouldSkip(f));
   if (skipped.length > 0) {
-    console.log(
-      `   ${skipped.length} PDF files skipped (admin/CV/duplicates):`,
-    );
-    skipped.forEach((f) => console.log(`     ✗ ${f}`));
+    skipped.forEach((f) =>
   }
 
   // Deduplicate by file size
@@ -236,16 +218,11 @@ async function main() {
     const stat = await fsp.stat(filePath);
     const key = `${stat.size}`;
     if (sizeMap.has(key)) {
-      console.log(
-        `   ⚠ Duplicate skipped: ${filename} (same size as ${sizeMap.get(key)})`,
-      );
     } else {
       sizeMap.set(key, filename);
       unique.push(filename);
     }
   }
-
-  console.log(`\n✓ ${unique.length} unique files to import\n`);
 
   // Ensure books directory exists
   await fsp.mkdir(BOOKS_DIR, { recursive: true });
@@ -277,7 +254,6 @@ async function main() {
       submittedBy: teacher._id,
     });
     if (existing) {
-      console.log(`   ⏭ Already exists: "${title}" — skipping`);
       byTheme[theme].push({ title, status: "already_exists" });
       continue;
     }
@@ -307,47 +283,24 @@ async function main() {
 
     byTheme[theme].push({ title, id: doc._id.toString(), status: "imported" });
     results.push({ title, id: doc._id.toString(), theme, fileKey });
-    console.log(`   ✓ ${title} → ${fileKey} (${sizeMB} Mo)`);
   }
 
   // Summary
-  console.log("\n" + "═".repeat(60));
-  console.log("📊 RÉSUMÉ DE L'IMPORT");
-  console.log("═".repeat(60));
-  console.log(`Enseignant : ${teacher.name || teacher.email}`);
-  console.log(`Total importé : ${results.length} livres`);
-  console.log(
-    `Prix : ${DEFAULT_PRICE === 0 ? "GRATUIT" : DEFAULT_PRICE + " " + DEFAULT_CURRENCY}`,
-  );
-  console.log(`Statut : ${DEFAULT_STATUS}`);
-  console.log(`Portée : ${DEFAULT_SCOPE}\n`);
-
-  console.log("📚 PAR THÈME :");
   for (const [theme, books] of Object.entries(byTheme)) {
     const imported = books.filter((b) => b.status === "imported");
     const existing = books.filter((b) => b.status === "already_exists");
-    console.log(
-      `\n  ▸ ${theme} (${imported.length} nouveau${imported.length > 1 ? "x" : ""}${existing.length ? `, ${existing.length} existant${existing.length > 1 ? "s" : ""}` : ""})`,
-    );
     books.forEach((b) => {
       const icon = b.status === "imported" ? "✓" : "⏭";
-      console.log(`    ${icon} ${b.title}`);
     });
   }
 
   if (docxFiles.length > 0) {
-    console.log("\n⚠ DOCX NON IMPORTÉS (convertir en PDF pour les ajouter) :");
-    docxFiles.forEach((f) => console.log(`    - ${f}`));
+    docxFiles.forEach((f) =>
   }
-
-  console.log("\n═".repeat(60));
-  console.log("✅ Import terminé. Les livres sont visibles sur /bibliotheque");
-  console.log("═".repeat(60));
 
   await mongoose.disconnect();
 }
 
 main().catch((err) => {
-  console.error("Fatal error:", err);
   process.exit(1);
 });

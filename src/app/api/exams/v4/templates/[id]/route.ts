@@ -29,7 +29,6 @@ export async function GET(
             data: template
         })
     } catch (error: any) {
-        console.error('[API] Error getting template:', error)
         return NextResponse.json(
             {
                 success: false,

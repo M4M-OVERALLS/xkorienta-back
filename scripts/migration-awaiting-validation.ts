@@ -14,21 +14,17 @@ import { UserRole } from '../src/models/enums'
  */
 async function migrateAwaitingValidation() {
     try {
-        console.log('[Migration] Connecting to database...')
         await connectDB()
 
-        console.log('[Migration] Finding learners without the awaitingSchoolValidation flag...')
         const learners = await LearnerProfile.find({
             awaitingSchoolValidation: { $exists: false }
         }).populate('user')
 
-        console.log(`[Migration] Found ${learners.length} profiles to update.`)
 
         let updatedCount = 0
         for (const profile of learners) {
             const user: any = profile.user
             if (!user) {
-                console.warn(`[Migration] Missing user for profile ${profile._id}, skipping.`)
                 continue
             }
 
@@ -52,14 +48,11 @@ async function migrateAwaitingValidation() {
 
             updatedCount++
             if (updatedCount % 50 === 0) {
-                console.log(`[Migration] Progress: ${updatedCount}/${learners.length}`)
             }
         }
 
-        console.log(`[Migration] Finished. Updated ${updatedCount} profiles.`)
         process.exit(0)
     } catch (error) {
-        console.error('[Migration] Error during migration:', error)
         process.exit(1)
     }
 }

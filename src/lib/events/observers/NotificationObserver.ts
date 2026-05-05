@@ -3,6 +3,7 @@ import User from "@/models/User";
 import { UserRole } from "@/models/enums";
 import mongoose from "mongoose";
 import { IObserver } from "../interfaces/IObserver";
+import logger from "@/lib/utils/logger";
 import {
   AttemptGradedEvent,
   BadgeEarnedEvent,
@@ -88,7 +89,7 @@ export class NotificationObserver implements IObserver {
           break;
       }
     } catch (error) {
-      console.error(
+      logger.error(
         "[NotificationObserver] Error creating notification:",
         error,
       );
@@ -143,9 +144,6 @@ export class NotificationObserver implements IObserver {
 
         if (notifications.length > 0) {
           await Notification.insertMany(notifications);
-          console.log(
-            `[NotificationObserver] ${notifications.length} notifications created for new syllabus`,
-          );
         }
       }
 
@@ -161,7 +159,7 @@ export class NotificationObserver implements IObserver {
         });
       }
     } catch (error) {
-      console.error("Error in handleSyllabusCreated", error);
+      logger.error("Error in handleSyllabusCreated", error);
     }
   }
 
@@ -206,9 +204,6 @@ export class NotificationObserver implements IObserver {
 
         if (notifications.length > 0) {
           await Notification.insertMany(notifications);
-          console.log(
-            `[NotificationObserver] ${notifications.length} notifications created for updated syllabus`,
-          );
         }
       }
 
@@ -224,7 +219,7 @@ export class NotificationObserver implements IObserver {
         });
       }
     } catch (error) {
-      console.error("Error in handleSyllabusUpdated", error);
+      logger.error("Error in handleSyllabusUpdated", error);
     }
   }
 
@@ -271,9 +266,6 @@ export class NotificationObserver implements IObserver {
 
       if (notifications.length > 0) {
         await Notification.insertMany(notifications);
-        console.log(
-          `[NotificationObserver] ${notifications.length} notifications created for new exam`,
-        );
       }
 
       // Notify Teacher
@@ -288,7 +280,7 @@ export class NotificationObserver implements IObserver {
         });
       }
     } catch (error) {
-      console.error("Error in handleExamCreated", error);
+      logger.error("Error in handleExamCreated", error);
     }
   }
 
@@ -314,10 +306,6 @@ export class NotificationObserver implements IObserver {
         percentage: event.data.percentage,
       },
     });
-
-    console.log(
-      `[NotificationObserver] Exam completion notification created for student ${event.userId}`,
-    );
   }
 
   /**
@@ -334,10 +322,6 @@ export class NotificationObserver implements IObserver {
       read: false,
       data: event.data,
     });
-
-    console.log(
-      `[NotificationObserver] Badge notification created for user ${event.userId}`,
-    );
   }
 
   /**
@@ -354,10 +338,6 @@ export class NotificationObserver implements IObserver {
       read: false,
       data: event.data,
     });
-
-    console.log(
-      `[NotificationObserver] Level up notification created for user ${event.userId}`,
-    );
   }
 
   /**
@@ -377,10 +357,6 @@ export class NotificationObserver implements IObserver {
       read: false,
       data: event.data,
     });
-
-    console.log(
-      `[NotificationObserver] XP notification created for user ${event.userId}`,
-    );
   }
 
   /**
@@ -407,11 +383,8 @@ export class NotificationObserver implements IObserver {
       }
 
       // TODO: Notifier les étudiants concernés par cet examen
-      console.log(
-        `[NotificationObserver] Exam published notifications created`,
-      );
     } catch (error) {
-      console.error(
+      logger.error(
         "[NotificationObserver] Error in handleExamPublished:",
         error,
       );
@@ -439,12 +412,8 @@ export class NotificationObserver implements IObserver {
           validatedBy: event.data.validatedBy,
         },
       });
-
-      console.log(
-        `[NotificationObserver] Exam validated notification created for teacher ${exam.createdById}`,
-      );
     } catch (error) {
-      console.error(
+      logger.error(
         "[NotificationObserver] Error in handleExamValidated:",
         error,
       );
@@ -478,12 +447,9 @@ export class NotificationObserver implements IObserver {
 
       if (notifications.length > 0) {
         await Notification.insertMany(notifications);
-        console.log(
-          `[NotificationObserver] ${notifications.length} validation notifications created for inspectors`,
-        );
       }
     } catch (error) {
-      console.error(
+      logger.error(
         "[NotificationObserver] Error in handleExamSubmittedForValidation:",
         error,
       );
@@ -504,10 +470,6 @@ export class NotificationObserver implements IObserver {
       read: false,
       data: event.data,
     });
-
-    console.log(
-      `[NotificationObserver] Grading notification created for student ${event.userId}`,
-    );
   }
 
   /**
@@ -524,10 +486,6 @@ export class NotificationObserver implements IObserver {
       read: false,
       data: event.data,
     });
-
-    console.log(
-      `[NotificationObserver] Late code notification created for student ${event.userId}`,
-    );
   }
 
   /**
@@ -545,9 +503,5 @@ export class NotificationObserver implements IObserver {
       read: false,
       data: {},
     });
-
-    console.log(
-      `[NotificationObserver] Welcome notification created for user ${event.userId}`,
-    );
   }
 }

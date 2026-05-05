@@ -86,7 +86,6 @@ export async function GET(req: Request) {
       { status: 200 },
     );
   } catch (error: any) {
-    console.error("[Public Exams] Error:", error);
     return NextResponse.json(
       { error: "Erreur lors de la récupération des examens publics" },
       { status: 500 },

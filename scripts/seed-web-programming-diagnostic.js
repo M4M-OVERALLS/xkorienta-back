@@ -20,7 +20,6 @@ const mongoose = require("mongoose");
 const MONGODB_URI = process.env.DATABASE_URL;
 
 if (!MONGODB_URI) {
-  console.error("❌ DATABASE_URL non défini dans .env");
   process.exit(1);
 }
 
@@ -420,9 +419,7 @@ const OptionSchema = new mongoose.Schema({}, { strict: false });
 
 async function seedWebProgrammingDiagnostic() {
   try {
-    console.log("\n🔌 Connexion à MongoDB...");
     await mongoose.connect(MONGODB_URI);
-    console.log("✅ Connecté à MongoDB\n");
 
     // Get or create models
     const User = mongoose.models.User || mongoose.model("User", UserSchema);
@@ -442,14 +439,6 @@ async function seedWebProgrammingDiagnostic() {
       tags: "seed-prog-web-diagnostic-v1",
     });
     if (existingExam) {
-      console.log(
-        '⚠️  Le diagnostic flash "Programmation Web" existe déjà en base.',
-      );
-      console.log("   ID:", existingExam._id);
-      console.log("   Titre:", existingExam.title);
-      console.log(
-        "\n   Pour réinitialiser, supprimez d'abord l'exam existant et relancez.\n",
-      );
       await mongoose.connection.close();
       return;
     }
@@ -474,9 +463,7 @@ async function seedWebProgrammingDiagnostic() {
           color: "#1e40af",
         },
       });
-      console.log("✅ Subject créé:", subject.name, "(ID:", subject._id + ")");
     } else {
-      console.log("ℹ️  Subject existant:", subject.name);
     }
 
     // ── 3. EducationLevel ──────────────────────────────────────────────
@@ -496,9 +483,7 @@ async function seedWebProgrammingDiagnostic() {
           description: "Première année de licence universitaire",
         },
       });
-      console.log("✅ EducationLevel créé:", educationLevel.name);
     } else {
-      console.log("ℹ️  EducationLevel existant:", educationLevel.name);
     }
 
     // ── 4. Teacher (Account système) ──────────────────────────────────
@@ -518,16 +503,11 @@ async function seedWebProgrammingDiagnostic() {
         metadata: {},
         loginAttempts: 0,
       });
-      console.log("✅ Teacher système créé:", teacher.name);
     } else {
       // Fallback : utiliser n'importe quel enseignant existant
       if (!teacher) {
         teacher = await User.findOne({ role: "TEACHER" });
       }
-      console.log(
-        "ℹ️  Teacher existant:",
-        teacher ? teacher.name : "non trouvé",
-      );
     }
 
     // Si pas d'enseignant du tout, créer un fallback
@@ -617,11 +597,7 @@ async function seedWebProgrammingDiagnostic() {
       previousVersions: [],
     });
 
-    console.log("\n✅ Exam créé:", exam.title);
-    console.log("   ID:", exam._id.toString());
-
     // ── 6. Questions & Options ─────────────────────────────────────────
-    console.log("\n📝 Création des questions...\n");
     let questionCount = 0;
     let optionCount = 0;
 
@@ -656,44 +632,17 @@ async function seedWebProgrammingDiagnostic() {
         });
         optionCount++;
       }
-
-      console.log(
-        `   ✅ Q${questionFields.order}: ${questionFields.text.substring(0, 65)}...`,
-      );
       questionCount++;
     }
 
     // ── Résumé ────────────────────────────────────────────────────────
     const totalPoints = QUESTIONS_DATA.reduce((sum, q) => sum + q.points, 0);
-
-    console.log("\n" + "═".repeat(60));
-    console.log("🎉 SEED TERMINÉ AVEC SUCCÈS !");
-    console.log("═".repeat(60));
-    console.log(`\n📊 Résumé:`);
-    console.log(`   📚 Matière     : Programmation Web (PROG-WEB-101)`);
-    console.log(`   📝 Questions   : ${questionCount}`);
-    console.log(`   🔘 Options     : ${optionCount}`);
-    console.log(`   🏆 Points tot. : ${totalPoints}`);
-    console.log(`   ⏱️  Durée       : 10 minutes`);
-    console.log(`   🆔 Exam ID     : ${exam._id.toString()}`);
-    console.log(`\n🌐 Accès:`);
-    console.log(`   Liste        : http://localhost:3000/mini-test`);
-    console.log(
-      `   Test direct  : http://localhost:3000/mini-test/${exam._id.toString()}`,
-    );
-    console.log("\n" + "═".repeat(60) + "\n");
   } catch (error) {
-    console.error("\n❌ Erreur lors du seed:", error.message);
     if (error.code === 11000) {
-      console.error(
-        "   Contrainte d'unicité violée. Clé dupliquée:",
-        JSON.stringify(error.keyValue),
-      );
     }
     process.exit(1);
   } finally {
     await mongoose.connection.close();
-    console.log("✓ Connexion MongoDB fermée.");
     process.exit(0);
   }
 }

@@ -340,9 +340,7 @@ const miniTestsData = [
 
 async function seedMiniTests() {
     try {
-        console.log('Connexion à MongoDB...');
         await mongoose.connect(MONGODB_URI);
-        console.log('✓ Connecté à MongoDB');
 
         const User = mongoose.model('User', new mongoose.Schema({}, { strict: false }));
         const Exam = mongoose.model('Exam', new mongoose.Schema({}, { strict: false }));
@@ -355,7 +353,6 @@ async function seedMiniTests() {
         let teacher = await User.findOne({ role: 'TEACHER' });
         
         if (!teacher) {
-            console.log('Aucun enseignant trouvé. Création d\'un enseignant de démonstration...');
             const bcrypt = require('bcryptjs');
             const hashedPassword = await bcrypt.hash('Demo2024!', 10);
             
@@ -367,10 +364,7 @@ async function seedMiniTests() {
                 isVerified: true,
                 subsystem: 'FRANCOPHONE'
             });
-            console.log('✓ Enseignant de démonstration créé');
         }
-
-        console.log(`\nUtilisation de l'enseignant: ${teacher.name} (${teacher._id})`);
 
         // Helper function pour créer/récupérer un Subject
         async function getOrCreateSubject(subjectName) {
@@ -390,7 +384,6 @@ async function seedMiniTests() {
                     description: `Matière ${subjectName}`,
                     createdBy: teacher._id
                 });
-                console.log(`  ✓ Subject créé: ${subjectName} (${code})`);
             }
             return subject;
         }
@@ -406,18 +399,15 @@ async function seedMiniTests() {
                     order: 1,
                     createdBy: teacher._id
                 });
-                console.log(`  ✓ LearningUnit créé: ${unitTitle}`);
             }
             return unit;
         }
 
         // Supprimer les anciens mini-tests de démo
         const deletedExams = await Exam.deleteMany({ isPublicDemo: true });
-        console.log(`✓ ${deletedExams.deletedCount} anciens mini-tests supprimés`);
 
         // Créer les nouveaux mini-tests
         for (const miniTestData of miniTestsData) {
-            console.log(`\nCréation du mini-test: ${miniTestData.title}`);
 
             // Créer/récupérer Subject et LearningUnit
             const subject = await getOrCreateSubject(miniTestData.subject);
@@ -487,28 +477,17 @@ async function seedMiniTests() {
                 }
                 
                 createdQuestions.push(question._id);
-                console.log(`  ✓ Question ${questionData.order} créée avec ${options?.length || 0} options`);
             }
 
             // Mettre à jour l'exam avec les IDs des questions
             exam.questions = createdQuestions;
             await exam.save();
-
-            console.log(`✓ Mini-test créé avec ${createdQuestions.length} questions (ID: ${exam._id})`);
         }
 
-        console.log('\n✅ Seed terminé avec succès!');
-        console.log(`\n📊 Résumé:`);
-        console.log(`   - ${miniTestsData.length} mini-tests créés`);
-        console.log(`   - ${miniTestsData.reduce((sum, mt) => sum + mt.questions.length, 0)} questions créées`);
-        console.log(`\n🌐 Accédez aux mini-tests sur: http://localhost:3000/mini-test`);
-
     } catch (error) {
-        console.error('❌ Erreur lors du seed:', error);
         process.exit(1);
     } finally {
         await mongoose.connection.close();
-        console.log('\n✓ Connexion MongoDB fermée');
         process.exit(0);
     }
 }

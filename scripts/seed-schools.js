@@ -104,9 +104,7 @@ const schools = [
 
 async function seedSchools() {
     try {
-        console.log('🔌 Connexion à MongoDB...')
         await mongoose.connect(DATABASE_URL)
-        console.log('✅ Connecté à MongoDB')
 
         const School = mongoose.model('School', new mongoose.Schema({
             name: String,
@@ -119,23 +117,16 @@ async function seedSchools() {
             contactInfo: Object
         }))
 
-        console.log('🗑️  Suppression des anciennes écoles...')
         await School.deleteMany({})
 
-        console.log('📚 Insertion des nouvelles écoles...')
         const result = await School.insertMany(schools)
         
-        console.log(`✅ ${result.length} écoles créées avec succès !`)
-        console.log('\n📋 Écoles créées :')
         result.forEach((school, index) => {
-            console.log(`   ${index + 1}. ${school.name} (${school.city})`)
         })
 
         await mongoose.connection.close()
-        console.log('\n✅ Seed terminé avec succès !')
         process.exit(0)
     } catch (error) {
-        console.error('❌ Erreur lors du seed:', error)
         process.exit(1)
     }
 }
