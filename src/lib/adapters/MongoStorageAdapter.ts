@@ -47,13 +47,13 @@ export class MongoStorageAdapter implements IStorageAdapter {
             completedAt: data.completedAt,
             expiresAt: data.expiresAt,
         })
-        return this.toTransactionData(doc.toObject())
+        return this.toTransactionData(doc.toObject() as unknown as Record<string, unknown>)
     }
 
     async findTransactionByReference(reference: string): Promise<TransactionData | null> {
         await connectDB()
         const doc = await Transaction.findOne({ paymentReference: reference }).lean()
-        return doc ? this.toTransactionData(doc) : null
+        return doc ? this.toTransactionData(doc as unknown as Record<string, unknown>) : null
     }
 
     async findTransactionsByUser(
@@ -68,7 +68,7 @@ export class MongoStorageAdapter implements IStorageAdapter {
             Transaction.countDocuments({ userId }),
         ])
         return {
-            transactions: docs.map((d) => this.toTransactionData(d)),
+            transactions: docs.map((d) => this.toTransactionData(d as unknown as Record<string, unknown>)),
             total,
             page,
             totalPages: Math.ceil(total / limit),
@@ -90,7 +90,7 @@ export class MongoStorageAdapter implements IStorageAdapter {
             { new: true }
         ).lean()
         if (!doc) throw new Error(`Transaction not found: ${reference}`)
-        return this.toTransactionData(doc)
+        return this.toTransactionData(doc as unknown as Record<string, unknown>)
     }
 
     async findDuplicateTransaction(
@@ -105,7 +105,7 @@ export class MongoStorageAdapter implements IStorageAdapter {
             type,
             status: DbStatus.COMPLETED,
         }).lean()
-        return doc ? this.toTransactionData(doc) : null
+        return doc ? this.toTransactionData(doc as unknown as Record<string, unknown>) : null
     }
 
     async expireStaleTransactions(ttlMinutes: number): Promise<number> {
