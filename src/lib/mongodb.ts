@@ -49,6 +49,14 @@ async function connectDB() {
     try {
         cached.conn = await cached.promise
 
+        // Run index migrations after connection
+        try {
+            await ensureIndexes()
+        } catch (indexError) {
+            console.error('[MongoDB] Index migration failed:', indexError)
+            // Don't throw - allow DB connection to continue
+        }
+
         // Initialize event system after database connection
         try {
             initEventSystem()
@@ -62,6 +70,41 @@ async function connectDB() {
     }
 
     return cached.conn
+}
+
+/**
+ * Ensure indexes are properly configured
+ * Fixes the email index to be sparse (allows multiple null values for phone-only users)
+ */
+async function ensureIndexes() {
+    try {
+        const db = mongoose.connection.db
+        if (!db) {
+            console.warn('[MongoDB] Database not available for index migration')
+            return
+        }
+
+        const usersCollection = db.collection('users')
+        const indexes = await usersCollection.indexes()
+        
+        // Check if email_1 index exists and is not sparse
+        const emailIndex = indexes.find(idx => idx.name === 'email_1')
+        
+        if (emailIndex && !emailIndex.sparse) {
+            console.log('[MongoDB] Migrating email index to sparse...')
+            await usersCollection.dropIndex('email_1')
+            await usersCollection.createIndex({ email: 1 }, { unique: true, sparse: true })
+            console.log('[MongoDB] ✓ Email index migrated to sparse')
+        } else if (!emailIndex) {
+            // Create sparse index if it doesn't exist
+            console.log('[MongoDB] Creating sparse email index...')
+            await usersCollection.createIndex({ email: 1 }, { unique: true, sparse: true })
+            console.log('[MongoDB] ✓ Sparse email index created')
+        }
+    } catch (error) {
+        console.error('[MongoDB] Index migration error:', error)
+        throw error
+    }
 }
 
 export default connectDB

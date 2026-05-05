@@ -11,29 +11,45 @@ export class RegistrationController {
             const data = await req.json();
             const result = await registrationService.registerUser(data);
             
-            const response: any = { success: true, message: "Registration successful" };
+            const response: any = { 
+                success: true, 
+                message: "Inscription réussie",
+                user: {
+                    id: result._id,
+                    name: result.name,
+                    email: result.email,
+                    phone: result.phone,
+                    role: result.role,
+                    awaitingSchoolValidation: result.awaitingSchoolValidation
+                }
+            };
             
-            // If a new school was created, include it in the response
             if (result.createdSchool) {
                 response.createdSchool = {
                     id: result.createdSchool._id,
                     name: result.createdSchool.name,
                     status: result.createdSchool.status
                 };
-                response.message = "Registration successful. Your school has been created and you are now the owner.";
+                response.message = "Inscription réussie. Votre école a été créée et vous en êtes l'administrateur.";
             }
-            
+
             return NextResponse.json(response);
 
         } catch (error: any) {
             console.error("Registration Error:", error);
 
-            // Handle specific errors with appropriate status codes
-            if (error.message === "User already exists" ||
-                error.message === "Invalid role" ||
-                error.message === "School selection is required" ||
-                error.message === "Selected school does not exist" ||
-                error.message.includes("validated partner schools")) {
+            const badRequestMessages = [
+                "Un compte existe déjà",
+                "Ce numéro de téléphone est déjà utilisé",
+                "Invalid role",
+                "School selection is required",
+                "Selected school does not exist",
+                "Email ou numéro de téléphone requis",
+                "L'email est requis pour ce type de compte",
+                "Caractères invalides détectés"
+            ];
+
+            if (badRequestMessages.some(msg => error.message.includes(msg))) {
                 return NextResponse.json(
                     { success: false, message: error.message },
                     { status: 400 }
@@ -41,7 +57,7 @@ export class RegistrationController {
             }
 
             return NextResponse.json(
-                { success: false, message: error.message || "Internal server error" },
+                { success: false, message: error.message || "Erreur interne du serveur" },
                 { status: 500 }
             );
         }
@@ -55,20 +71,24 @@ export class RegistrationController {
             const body = await req.json();
 
             // Sanitize inputs before validation
-            const sanitizedBody = {
+            const sanitizedBody: any = {
                 name: sanitizeString(body.name),
-                email: sanitizeEmail(body.email),
                 password: body.password, // Don't sanitize password, just validate
             };
+            if (body.email) sanitizedBody.email = sanitizeEmail(body.email);
+            if (body.phone) sanitizedBody.phone = body.phone?.trim();
 
-            // Validation schema
+            // Validation schema — email OR phone required
             const registerSchema = z.object({
                 name: z.string().min(2).max(100),
-                email: z.string().email(),
+                email: z.string().email().optional(),
+                phone: z.string().min(8).max(15).regex(/^\+?[0-9]+$/, "Numéro de téléphone invalide").optional(),
                 password: z.string().min(8).max(128),
+            }).refine(data => data.email || data.phone, {
+                message: "Email ou numéro de téléphone requis",
             });
 
-            const { name, email, password } = registerSchema.parse(sanitizedBody);
+            const { name, email, phone, password } = registerSchema.parse(sanitizedBody);
 
             // Additional password validation
             const passwordValidation = validatePassword(password);
@@ -79,7 +99,7 @@ export class RegistrationController {
                 );
             }
 
-            const user = await registrationService.registerUserWithoutRole({ name, email, password });
+            const user = await registrationService.registerUserWithoutRole({ name, email, phone, password });
             
             return NextResponse.json(
                 {
@@ -88,6 +108,7 @@ export class RegistrationController {
                         id: user._id,
                         name: user.name,
                         email: user.email,
+                        phone: user.phone,
                     }
                 },
                 { status: 201 }
@@ -102,7 +123,8 @@ export class RegistrationController {
                 );
             }
 
-            if (error.message === "User already exists") {
+            if (error.message === "User already exists" ||
+                error.message.includes("Email ou numéro de téléphone requis")) {
                 return NextResponse.json(
                     { message: error.message },
                     { status: 400 }

@@ -1,0 +1,319 @@
+/**
+ * Exemples d'utilisation du système de gestion d'erreurs
+ *
+ * Ce fichier contient des exemples pratiques pour utiliser
+ * le système de gestion d'erreurs dans différents contextes.
+ */
+
+import { NextResponse } from "next/server"
+import { AuthenticationError, withErrorHandler } from "./index"
+
+// ============================================
+// EXEMPLE 1: Route API Simple avec withErrorHandler
+// ============================================
+
+export async function loginExample(req: Request) {
+  return withErrorHandler(async () => {
+    const { email, password } = await req.json()
+
+    // Validation simple
+    if (!email || !password) {
+      throw AuthenticationError.missingCredentials()
+    }
+
+    // Validation du format d'email
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw AuthenticationError.invalidEmailFormat(email)
+    }
+
+    // Simule la recherche d'un utilisateur
+    const user = null // await User.findOne({ email })
+
+    if (!user) {
+      throw AuthenticationError.userNotFoundByEmail(email, {
+        path: "/api/auth/login",
+        method: "POST",
+      })
+    }
+
+    return NextResponse.json({ success: true, user })
+  })
+}
+
+// ============================================
+// EXEMPLE 2: Route API avec Try-Catch Manuel
+// ============================================
+
+export async function registerExample(req: Request) {
+  try {
+    const { email, password, phone } = await req.json()
+
+    // Validation
+    if (!email || !password) {
+      throw AuthenticationError.missingCredentials()
+    }
+
+    if (password.length < 8) {
+      throw AuthenticationError.weakPassword()
+    }
+
+    // Vérifier si l'email existe déjà
+    const existingUser = null // await User.findOne({ email })
+
+    if (existingUser) {
+      throw AuthenticationError.emailAlreadyExists(email, {
+        requestId: "req-123",
+      })
+    }
+
+    // Créer l'utilisateur
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    // Le gestionnaire d'erreurs s'occupe du formatage
+    if (error instanceof AuthenticationError) {
+      return NextResponse.json(error.toJSON(), { status: error.httpStatus })
+    }
+
+    // Erreur inattendue
+    console.error("Unexpected error:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "UNKNOWN_ERROR",
+          message: "Une erreur inattendue s'est produite",
+          severity: "ERROR",
+          category: "UNKNOWN",
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    )
+  }
+}
+
+// ============================================
+// EXEMPLE 3: Fonction de Service avec Contexte
+// ============================================
+
+export async function verifyUserService(
+  userId: string,
+  verificationCode: string
+) {
+  try {
+    // Simule la recherche d'un utilisateur
+    const user = null // await User.findById(userId)
+
+    if (!user) {
+      throw AuthenticationError.userNotFoundByEmail("unknown", {
+        userId,
+        operation: "verify",
+      })
+    }
+
+    // Vérifier le code (simulé)
+    const isValidCode = false
+
+    if (!isValidCode) {
+      throw AuthenticationError.invalidVerificationCode({
+        userId,
+        codeLength: verificationCode.length,
+      })
+    }
+
+    return { success: true, user }
+  } catch (error) {
+    // Logger l'erreur si c'est notre erreur personnalisée
+    if (error instanceof AuthenticationError) {
+      error.log()
+    }
+    throw error
+  }
+}
+
+// ============================================
+// EXEMPLE 4: Middleware d'Authentification
+// ============================================
+
+export async function authMiddleware(req: Request) {
+  const token = req.headers.get("authorization")?.replace("Bearer ", "")
+
+  if (!token) {
+    throw AuthenticationError.invalidToken({
+      path: new URL(req.url).pathname,
+      method: req.method,
+    })
+  }
+
+  // Vérifier le token (simulé)
+  const isValid = false
+
+  if (!isValid) {
+    throw AuthenticationError.sessionExpired({
+      path: new URL(req.url).pathname,
+    })
+  }
+
+  return true
+}
+
+// ============================================
+// EXEMPLE 5: Gestion des Erreurs OAuth
+// ============================================
+
+export async function oauthCallbackExample(provider: string, profile: any) {
+  try {
+    if (!profile?.email) {
+      throw AuthenticationError.oauthError(provider, {
+        reason: "No email in profile",
+      })
+    }
+
+    // Vérifier si le compte existe déjà
+    const existingUser: { provider: string } | null = null // await User.findOne({ email: profile.email })
+
+    if (existingUser && existingUser.provider !== provider) {
+      if (provider === "google") {
+        throw AuthenticationError.googleAccountConflict(profile.email, {
+          existingProvider: existingUser.provider,
+        })
+      } else if (provider === "github") {
+        throw AuthenticationError.githubAccountConflict(profile.email, {
+          existingProvider: existingUser.provider,
+        })
+      }
+    }
+
+    return { success: true }
+  } catch (error) {
+    if (error instanceof AuthenticationError) {
+      error.log()
+    }
+    throw error
+  }
+}
+
+// ============================================
+// EXEMPLE 6: Rate Limiting
+// ============================================
+
+export async function checkRateLimit(userId: string, action: string) {
+  // Simule la vérification du rate limit
+  const attempts = 10 // await redis.get(`rate:${userId}:${action}`)
+
+  if (attempts >= 5) {
+    throw AuthenticationError.rateLimitExceeded({
+      userId,
+      action,
+      attempts,
+      limit: 5,
+    })
+  }
+
+  return true
+}
+
+// ============================================
+// EXEMPLE 7: Reset Password avec Contexte Riche
+// ============================================
+
+export async function resetPasswordExample(req: Request) {
+  return withErrorHandler(async () => {
+    const { token, newPassword } = await req.json()
+
+    // Validation du mot de passe
+    if (newPassword.length < 8) {
+      throw AuthenticationError.weakPassword({
+        passwordLength: newPassword.length,
+        requiredLength: 8,
+      })
+    }
+
+    // Vérifier le token
+    const isValidToken = false
+
+    if (!isValidToken) {
+      throw AuthenticationError.invalidResetToken({
+        tokenPrefix: token.substring(0, 8),
+        timestamp: new Date().toISOString(),
+      })
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Mot de passe réinitialisé avec succès",
+    })
+  })
+}
+
+// ============================================
+// EXEMPLE 8: Autorisation avec Rôles
+// ============================================
+
+export async function checkAuthorization(userId: string, requiredRole: string) {
+  // Simule la recherche d'un utilisateur
+  const user = { role: "student" } // await User.findById(userId)
+
+  if (user.role !== requiredRole) {
+    throw AuthenticationError.accessDenied({
+      userId,
+      userRole: user.role,
+      requiredRole,
+    })
+  }
+
+  return true
+}
+
+// ============================================
+// EXEMPLE 9: Gestion des Erreurs de Base de Données
+// ============================================
+
+export async function databaseOperationExample(email: string) {
+  try {
+    // Simule une opération de base de données
+    const user = null // await User.create({ email })
+
+    if (!user) {
+      throw AuthenticationError.userCreationFailed({
+        email,
+        operation: "create",
+      })
+    }
+
+    return user
+  } catch (error: any) {
+    // Transformer les erreurs MongoDB en erreurs d'application
+    if (error.code === 11000) {
+      // Duplicate key error
+      throw AuthenticationError.emailAlreadyExists(email)
+    }
+
+    throw AuthenticationError.databaseError("create user", {
+      originalError: error.message,
+    })
+  }
+}
+
+// ============================================
+// EXEMPLE 10: Compte Désactivé
+// ============================================
+
+export async function checkAccountStatus(userId: string) {
+  const user = { isActive: false, emailVerified: true }
+
+  if (!user.isActive) {
+    throw AuthenticationError.accountDisabled({
+      userId,
+      reason: "Account suspended by admin",
+    })
+  }
+
+  if (!user.emailVerified) {
+    throw AuthenticationError.emailNotVerified({
+      userId,
+    })
+  }
+
+  return user
+}

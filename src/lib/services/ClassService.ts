@@ -58,11 +58,32 @@ export class ClassService {
     /**
      * Get classes for a teacher
      * Now includes performance data for each class
+     * Inclut : professeur principal (mainTeacher) et enseignants collaborateurs (teachers[])
      */
     static async getTeacherClasses(teacherId: string) {
         const Attempt = mongoose.models.Attempt || mongoose.model('Attempt');
 
-        const classes = await Class.find({ mainTeacher: teacherId })
+        let teacherOid: mongoose.Types.ObjectId
+        try {
+            teacherOid = new mongoose.Types.ObjectId(teacherId)
+        } catch {
+            return []
+        }
+
+        const classes = await Class.find({
+            $or: [
+                { mainTeacher: teacherOid },
+                {
+                    teachers: {
+                        $elemMatch: {
+                            teacher: teacherOid,
+                            isActive: true
+                        }
+                    }
+                }
+            ],
+            isActive: true
+        })
             .populate('level', 'name code')
             .populate('school', 'name')
             .populate('field', 'name code')
@@ -148,9 +169,25 @@ export class ClassService {
                     value: Math.round(p.value)
                 }))
             };
-        }));
+        }))
 
-        return classesWithStats;
+        // schoolId + isMainTeacher (UI : seul le titulaire modifie / supprime la classe)
+        return classesWithStats.map((cls: any) => {
+            const sid =
+                cls.school &&
+                typeof cls.school === 'object' &&
+                cls.school._id != null
+                    ? String(cls.school._id)
+                    : cls.school != null
+                      ? String(cls.school)
+                      : null
+            const mainRaw = cls.mainTeacher?._id ?? cls.mainTeacher
+            const isMainTeacher =
+                mainRaw != null &&
+                mongoose.Types.ObjectId.isValid(String(mainRaw)) &&
+                teacherOid.equals(new mongoose.Types.ObjectId(String(mainRaw)))
+            return { ...cls, schoolId: sid, isMainTeacher }
+        })
     }
 
     /**
@@ -294,11 +331,14 @@ export class ClassService {
         const classData = await this.getClassById(classId);
         if (!classData) return [];
 
+        // A class without a level cannot match any exam target
+        if (!classData.level) return [];
+
         const Exam = mongoose.models.Exam || mongoose.model('Exam');
 
         // Build query - only published exams for students
         const query: any = {
-            targetLevels: classData.level._id,
+            targetLevels: { $in: [classData.level._id] },
             status: 'PUBLISHED',
             isPublished: true
         };

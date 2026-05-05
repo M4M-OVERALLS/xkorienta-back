@@ -13,6 +13,20 @@ export class RegistrationRepository {
         return User.findOne({ email });
     }
 
+    async findUserByPhone(phone: string) {
+        await connectDB();
+        return User.findOne({ phone });
+    }
+
+    async findUserByIdentifier(identifier: { email?: string; phone?: string }) {
+        await connectDB();
+        const conditions = [];
+        if (identifier.email) conditions.push({ email: identifier.email });
+        if (identifier.phone) conditions.push({ phone: identifier.phone });
+        if (conditions.length === 0) return null;
+        return User.findOne(conditions.length === 1 ? conditions[0] : { $or: conditions });
+    }
+
     async findSchoolById(schoolId: string) {
         await connectDB();
         return School.findById(schoolId);

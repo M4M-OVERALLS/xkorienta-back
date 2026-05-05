@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import connectDB from "@/lib/mongodb";
 import { SchoolController } from "@/lib/controllers/SchoolController";
 
 /**
@@ -12,5 +13,6 @@ export async function POST(req: Request) {
         return SchoolController.applyToSchool(req, "");
     }
 
+    await connectDB();
     return SchoolController.applyToSchool(req, session.user.id);
 }

@@ -1,0 +1,332 @@
+{
+  "info": {
+    "_postman_id": "16-forum-conversations-quizlock-frontend-integration",
+    "name": "QuizLock API — 16. Forum & Conversations",
+    "description": "Module 16 — Forum & Conversations\n\nGère les messageries instantanées privées (DM / Chat) et les forums de discussion (Threads).\nLe volet Conversations intègre des events WebSockets Pusher.\n\n**Auth** : Cookie next-auth.session-token\n**Base URL** : {{baseUrl}}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "conversationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "forumId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "postId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Conversations (Privé)",
+      "item": [
+        {
+          "name": "GET Conversations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var res = pm.response.json();",
+                  "    if (res.data && res.data.length > 0) {",
+                  "        pm.collectionVariables.set('conversationId', res.data[0]._id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations?limit=20&page=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Conversation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participantIds\": [\"ID_AUTRE_USER_ICI\"],\n  \"type\": \"DIRECT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Messages (Chat)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations/{{conversationId}}/messages?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations", "{{conversationId}}", "messages"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Message",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations/{{conversationId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations", "{{conversationId}}", "messages"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"content\": \"Hey salut !\",\n    \"type\": \"TEXT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Forums (Groupes)",
+      "item": [
+        {
+          "name": "GET Forums (Classe)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var res = pm.response.json();",
+                  "    if (res.data && res.data.forums && res.data.forums.length > 0) {",
+                  "        pm.collectionVariables.set('forumId', res.data.forums[0]._id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums?classId=YOUR_CLASS_ID",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums"],
+              "query": [
+                {
+                  "key": "classId",
+                  "value": "YOUR_CLASS_ID"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Forum",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Discussion Générale\",\n  \"description\": \"Blabla de la classe\",\n  \"classId\": \"ID_CLASSE\",\n  \"type\": \"CLASS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Forum Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Forum (Modifier)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Discussion Générale Modifiée\",\n  \"description\": \"Nouveau blabla\",\n  \"isPrivate\": false,\n  \"allowStudentPosts\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE Forum (Archiver)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Forum Posts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var res = pm.response.json();",
+                  "    if (res.data && res.data.length > 0) {",
+                  "        pm.collectionVariables.set('postId', res.data[0]._id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}/posts?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}", "posts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Forum Post",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}", "posts"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Ceci est le dernier message posté. Quelqu'un comprend ?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Forum Post Reply",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}/posts/{{postId}}/replies",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}", "posts", "{{postId}}", "replies"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Oui on comprend !\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// CORS Configuration
+// CORS Configuration - Production domains + localhost for development
 const ALLOWED_ORIGINS = [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://xkorienta.com',
+    'https://www.xkorienta.com',
+    'https://gradeforcast.com',
+    'https://www.gradeforcast.com',
     'http://localhost:3000',
+    'http://localhost:3001',
     'http://localhost:3002',
 ];
 
@@ -12,9 +16,18 @@ const ALLOWED_HEADERS = ['Content-Type', 'Authorization', 'X-Requested-With', 'C
 
 /**
  * Add CORS headers to a response
+ * Accepts requests from gradeforcast.com, xkorin.com and localhost
  */
 function addCorsHeaders(response: NextResponse, origin: string | null): NextResponse {
-    const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+    // Check if origin matches any allowed domain (including subdomains)
+    const isAllowed = origin && (
+        ALLOWED_ORIGINS.includes(origin) ||
+        origin.endsWith('.xkorienta.com') ||
+        origin.endsWith('.gradeforcast.com') ||
+        origin.endsWith('.xkorin.com')
+    );
+
+    const allowedOrigin = isAllowed ? origin : ALLOWED_ORIGINS[0];
 
     response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
     response.headers.set('Access-Control-Allow-Credentials', 'true');

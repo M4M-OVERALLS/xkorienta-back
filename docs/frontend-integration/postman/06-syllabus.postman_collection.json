@@ -1,0 +1,714 @@
+{
+  "info": {
+    "name": "QuizLock — 06 Syllabus",
+    "description": "Module Syllabus : gestion complète des programmes pédagogiques (CRUD, clone, sync concepts, auto-évaluation élève).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
+    { "key": "sessionToken", "value": "REMPLACER_PAR_VOTRE_SESSION_TOKEN", "type": "string" },
+    { "key": "syllabusId", "value": "", "type": "string" },
+    { "key": "subjectId", "value": "", "type": "string" },
+    { "key": "classId", "value": "", "type": "string" },
+    { "key": "schoolId", "value": "", "type": "string" },
+    { "key": "conceptId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "01 — Lister les syllabus",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/syllabus",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "syllabus"]
+        },
+        "description": "Retourne tous les syllabus non-archivés de l'enseignant connecté."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);",
+              "pm.test('data est array', () => pm.expect(pm.response.json().data).to.be.an('array'));",
+              "// Vérifier qu'aucun syllabus ARCHIVED n'est retourné",
+              "pm.test('pas de syllabus archivé', () => {",
+              "    pm.response.json().data.forEach(s => {",
+              "        pm.expect(s.status).to.not.equal('ARCHIVED');",
+              "    });",
+              "});",
+              "const json = pm.response.json();",
+              "if (json.data && json.data.length > 0) {",
+              "    pm.collectionVariables.set('syllabusId', json.data[0]._id);",
+              "    console.log('syllabusId auto-set:', json.data[0]._id);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01b — Lister (filtré par schoolId)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/syllabus?schoolId={{schoolId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "syllabus"],
+          "query": [
+            { "key": "schoolId", "value": "{{schoolId}}", "description": "Filtrer par école" }
+          ]
+        },
+        "description": "Filtre les syllabus d'une école spécifique (utilisé quand une école est sélectionnée dans le sidebar)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01c — Lister (recherche par titre)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/syllabus?search=physique",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "syllabus"],
+          "query": [
+            { "key": "search", "value": "physique", "description": "Recherche insensible à la casse dans le titre" }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 — Créer un syllabus",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Syllabus Terminale C — Physique\",\n  \"description\": \"Programme du premier trimestre, mécanique et thermodynamique\",\n  \"subject\": \"{{subjectId}}\",\n  \"classes\": [\"{{classId}}\"],\n  \"learningObjectives\": [\n    \"Comprendre les lois de Newton\",\n    \"Appliquer le principe de conservation de l'énergie\"\n  ],\n  \"structure\": {\n    \"chapters\": [\n      {\n        \"title\": \"Mécanique\",\n        \"description\": \"Les forces et le mouvement\",\n        \"topics\": [\n          {\n            \"title\": \"Les lois de Newton\",\n            \"content\": \"Présentation des trois lois fondamentales\",\n            \"concepts\": [\n              {\n                \"id\": \"local-abc123\",\n                \"title\": \"Principe d'inertie\",\n                \"description\": \"Un corps au repos reste au repos en l'absence de force\"\n              }\n            ],\n            \"resources\": [\n              {\n                \"title\": \"Vidéo Newton\",\n                \"type\": \"VIDEO\",\n                \"url\": \"https://youtube.com/example\"\n              }\n            ]\n          }\n        ]\n      }\n    ]\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/syllabus",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "syllabus"]
+        },
+        "description": "Rôle TEACHER requis. Après succès, appeler POST /api/concepts/sync avec le _id retourné."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('success true avec _id', () => {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.success).to.be.true;",
+              "    pm.expect(json.data._id).to.be.a('string');",
+              "});",
+              "pm.test('status DRAFT par défaut', () => {",
+              "    pm.expect(pm.response.json().data.status).to.equal('DRAFT');",
+              "});",
+              "pm.test('version 1', () => {",
+              "    pm.expect(pm.response.json().data.version).to.equal(1);",
+              "});",
+              "const json = pm.response.json();",
+              "if (json.data && json.data._id) {",
+              "    pm.collectionVariables.set('syllabusId', json.data._id);",
+              "    console.log('syllabusId créé:', json.data._id);",
+              "    console.log('⚠️ Penser à appeler POST /api/concepts/sync avec ce syllabusId');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02b — Créer un syllabus (sans classe, sans school)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Syllabus libre — Mathématiques\",\n  \"subject\": \"{{subjectId}}\",\n  \"learningObjectives\": [],\n  \"structure\": {\n    \"chapters\": []\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/syllabus",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "syllabus"]
+        },
+        "description": "Syllabus sans classe ni école (Mode Classe Libre)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 — Obtenir un syllabus par ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/syllabus/{{syllabusId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "syllabus", "{{syllabusId}}"]
+        },
+        "description": "Retourne le syllabus avec subject, teacher, school, classes et structure populés."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);",
+              "pm.test('structure présente', () => {",
+              "    const data = pm.response.json().data;",
+              "    pm.expect(data).to.have.property('structure');",
+              "    pm.expect(data).to.have.property('version');",
+              "    pm.expect(data).to.have.property('status');",
+              "});",
+              "// Vérifier la présence de _rawSubjectId si subject non populé",
+              "const data = pm.response.json().data;",
+              "if (!data.subject || typeof data.subject === 'string') {",
+              "    console.log('⚠️ subject non populé — vérifier _rawSubjectId:', data._rawSubjectId);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 — Modifier un syllabus",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Syllabus Terminale C — Physique (mis à jour)\",\n  \"description\": \"Programme révisé pour le deuxième trimestre\",\n  \"status\": \"ACTIVE\",\n  \"learningObjectives\": [\n    \"Comprendre les lois de Newton\",\n    \"Maîtriser la thermodynamique\"\n  ],\n  \"structure\": {\n    \"chapters\": [\n      {\n        \"title\": \"Mécanique Révisée\",\n        \"description\": \"Contenu mis à jour\",\n        \"topics\": [\n          {\n            \"title\": \"Cinématique\",\n            \"content\": \"Étude du mouvement\",\n            \"concepts\": [\n              {\n                \"id\": \"local-xyz789\",\n                \"title\": \"Vitesse moyenne\",\n                \"description\": \"Rapport distance/temps\"\n              }\n            ],\n            \"resources\": []\n          }\n        ]\n      }\n    ]\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/syllabus/{{syllabusId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "syllabus", "{{syllabusId}}"]
+        },
+        "description": "Owner ou collaborateur d'une classe assignée. Envoyer uniquement les champs à modifier. La version est incrémentée automatiquement."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);",
+              "pm.test('version incrémentée', () => {",
+              "    pm.expect(pm.response.json().data.version).to.be.a('number');",
+              "    pm.expect(pm.response.json().data.version).to.be.greaterThan(0);",
+              "});",
+              "console.log('⚠️ Penser à appeler POST /api/concepts/sync après cette mise à jour');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04b — Modifier le statut uniquement (DRAFT → ACTIVE)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"ACTIVE\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/syllabus/{{syllabusId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "syllabus", "{{syllabusId}}"]
+        },
+        "description": "Publier un syllabus brouillon."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 — Supprimer (archiver) un syllabus",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/syllabus/{{syllabusId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "syllabus", "{{syllabusId}}"]
+        },
+        "description": "Owner uniquement. Action = archivage (status: ARCHIVED). IRRÉVERSIBLE via API."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('message archived', () => {",
+              "    pm.expect(pm.response.json().message).to.include('archived');",
+              "});",
+              "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 — Cloner un syllabus",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/syllabus/{{syllabusId}}/clone",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "syllabus", "{{syllabusId}}", "clone"]
+        },
+        "description": "Duplique le syllabus. Le clone a: titre = 'Copie de [original]', status = DRAFT, version = 1, classes = []."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('titre préfixé', () => {",
+              "    pm.expect(pm.response.json().data.title).to.include('Copie de');",
+              "});",
+              "pm.test('status DRAFT', () => {",
+              "    pm.expect(pm.response.json().data.status).to.equal('DRAFT');",
+              "});",
+              "pm.test('version 1', () => {",
+              "    pm.expect(pm.response.json().data.version).to.equal(1);",
+              "});",
+              "pm.test('classes vides', () => {",
+              "    pm.expect(pm.response.json().data.classes).to.deep.equal([]);",
+              "});",
+              "const json = pm.response.json();",
+              "if (json.data && json.data._id) {",
+              "    pm.collectionVariables.set('syllabusId', json.data._id);",
+              "    console.log('Clone créé:', json.data._id, '— syllabusId mis à jour');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 — Synchroniser les concepts (après create/update)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"syllabusId\": \"{{syllabusId}}\",\n  \"concepts\": [\n    {\n      \"title\": \"Principe d'inertie\",\n      \"description\": \"Un corps au repos reste au repos en l'absence de force nette\",\n      \"order\": 0\n    },\n    {\n      \"title\": \"Deuxième loi de Newton\",\n      \"description\": \"F = ma\",\n      \"order\": 1\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/concepts/sync",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "concepts", "sync"]
+        },
+        "description": "Appeler systématiquement après create/update. Fait un upsert de tous les concepts et supprime ceux absents de la liste. ATTENTION: retourne { error } et non { success: false, message }."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);",
+              "pm.test('message de synchro', () => {",
+              "    pm.expect(pm.response.json().message).to.include('synchronized');",
+              "});",
+              "pm.test('data est array', () => {",
+              "    pm.expect(pm.response.json().data).to.be.an('array');",
+              "});",
+              "const concepts = pm.response.json().data;",
+              "if (concepts && concepts.length > 0) {",
+              "    pm.collectionVariables.set('conceptId', concepts[0]._id);",
+              "    console.log('conceptId auto-set:', concepts[0]._id);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07b — Sync concepts (vider tous les concepts d'un syllabus)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"syllabusId\": \"{{syllabusId}}\",\n  \"concepts\": []\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/concepts/sync",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "concepts", "sync"]
+        },
+        "description": "Envoyer un tableau vide supprime tous les concepts du syllabus."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);",
+              "pm.test('0 concepts synchronisés', () => {",
+              "    pm.expect(pm.response.json().data).to.have.lengthOf(0);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 — Auto-évaluation d'un concept (élève)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"conceptId\": \"{{conceptId}}\",\n  \"syllabusId\": \"{{syllabusId}}\",\n  \"level\": 3,\n  \"reflection\": \"Je maîtrise bien ce concept, j'ai pu l'appliquer dans l'exercice 4\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/syllabus/concepts/evaluate",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "syllabus", "concepts", "evaluate"]
+        },
+        "description": "Rôle STUDENT. Se connecter avec un compte élève pour tester. level = niveau de maîtrise (ex: 1 à 5)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('success true', () => pm.expect(pm.response.json().success).to.be.true);",
+              "pm.test('évaluation créée', () => {",
+              "    const data = pm.response.json().data;",
+              "    pm.expect(data).to.have.property('conceptId');",
+              "    pm.expect(data).to.have.property('level');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cas d'erreur",
+      "item": [
+        {
+          "name": "ERR — Créer sans subject",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Syllabus sans matière\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/syllabus",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "syllabus"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Missing required fields', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('Missing required fields');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "ERR — ID de syllabus invalide",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/syllabus/id-invalide",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "syllabus", "id-invalide"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Invalid syllabus ID', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('Invalid syllabus ID');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "ERR — Syllabus inexistant",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/syllabus/507f1f77bcf86cd799000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "syllabus", "507f1f77bcf86cd799000000"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Syllabus not found', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('Syllabus not found');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "ERR — Supprimer sans être owner",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/syllabus/{{syllabusId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "syllabus", "{{syllabusId}}"]
+            },
+            "description": "Utiliser un token d'un autre enseignant pour tester le 403."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// 403 si pas owner, 200 si owner",
+                  "pm.test('Status 403 ou 200', () => {",
+                  "    pm.expect([200, 403]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "ERR — Sync concepts sans syllabusId",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"concepts\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/concepts/sync",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "concepts", "sync"]
+            },
+            "description": "ATTENTION: la réponse d'erreur est { error: '...' } et non { success: false, message: '...' }."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error key présente (pas message)', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('error');",
+                  "    pm.expect(json).to.not.have.property('message');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "ERR — Auto-éval sans fields requis",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{sessionToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conceptId\": \"{{conceptId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/syllabus/concepts/evaluate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "syllabus", "concepts", "evaluate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Missing required fields', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('Missing required fields');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "ERR — Non authentifié",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/syllabus",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "syllabus"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Unauthorized', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('Unauthorized');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

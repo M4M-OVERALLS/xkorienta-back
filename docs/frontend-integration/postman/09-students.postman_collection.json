@@ -1,0 +1,583 @@
+{
+  "info": {
+    "_postman_id": "09-students-quizlock-frontend-integration",
+    "name": "QuizLock API — 09. Students (Espace Étudiant)",
+    "description": "Module 09 — Espace Étudiant\n\nTous les endpoints du tableau de bord étudiant :\n1. Classes (liste + détail avec classement interne)\n2. Syllabuses\n3. Sujets et progression par concept\n4. Gamification (XP, badges, streaks)\n5. Leaderboard (classe / école / national)\n6. Rankings (résumé tous leaderboards)\n7. Challenges (rejoindre + progression)\n8. Analytics IA (prédiction, forces/faiblesses)\n9. Profil apprenant\n10. Orientation scolaire (recherche d'établissements)\n\n**Auth** : Cookie next-auth.session-token (login STUDENT requis)\n**Base URL** : {{baseUrl}} (défaut: http://localhost:3000)\n\n⚠️ La majorité des endpoints retournent les données directement\nà la racine sous une clé nommée (classes, subjects, analytics...)\npas dans 'data'. Vérifier chaque endpoint individuellement.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "URL de base de l'API"
+    },
+    {
+      "key": "classId",
+      "value": "",
+      "type": "string",
+      "description": "ID MongoDB d'une classe — à remplir depuis GET /api/student/classes"
+    },
+    {
+      "key": "challengeId",
+      "value": "",
+      "type": "string",
+      "description": "ID MongoDB d'un challenge — à remplir depuis GET /api/student/challenges"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Classes",
+      "item": [
+        {
+          "name": "1.1 Lister mes classes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "classes"]
+            },
+            "description": "GET /api/student/classes\n\nRetourne toutes les classes actives de l'étudiant avec son rang et sa moyenne.\n\n⚠️ Clé de réponse : 'classes' (pas 'data')\n\nUsage : Afficher le dashboard étudiant avec la liste des classes,\nchaque classe affiche myRank et myAverage."
+          },
+          "response": [
+            {
+              "name": "200 — Mes classes",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"classes\": [\n    {\n      \"id\": \"507f1f77bcf86cd799441000\",\n      \"name\": \"Terminale C — Groupe A\",\n      \"schoolName\": \"Lycée Technique de Douala\",\n      \"schoolLogo\": \"https://cdn.quizlock.app/schools/logos/ltd.png\",\n      \"level\": \"Terminale C\",\n      \"field\": \"Sciences\",\n      \"mainTeacher\": { \"name\": \"Prof. Martin Nkemeni\" },\n      \"studentCount\": 32,\n      \"academicYear\": \"2024-2025\",\n      \"myRank\": 5,\n      \"myAverage\": 14.8\n    }\n  ]\n}"
+            },
+            {
+              "name": "200 — Pas de classe (tableau vide)",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": true, \"classes\": [] }"
+            }
+          ]
+        },
+        {
+          "name": "1.2 Détail d'une classe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Sauvegarder l'examId du premier examen pour les tests suivants",
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.exams && res.exams.length > 0) {",
+                  "        pm.collectionVariables.set('examId', res.exams[0].id);",
+                  "        console.log('Premier examId from class:', res.exams[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/classes/{{classId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "classes", "{{classId}}"]
+            },
+            "description": "GET /api/student/classes/:classId\n\nVue complète d'une classe : exams, students, teachers, syllabuses, ranking.\n\n⚠️ TOUTES les données sont à la RACINE de l'objet (pas dans 'data') :\n{ success, class, exams, students, teachers, syllabuses, ranking }\n\nStatuts d'examen possibles :\n- upcoming : pas encore commencé\n- active : en cours (entre startTime et endTime)\n- in_progress : tentative STARTED en cours\n- completed : tentative COMPLETED\n- missed : terminé sans participation\n\nrankage[].isCurrentUser = true → entrée de l'étudiant connecté"
+          },
+          "response": [
+            {
+              "name": "200 — Détail de la classe",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"class\": {\n    \"id\": \"507f1f77bcf86cd799441000\",\n    \"name\": \"Terminale C — Groupe A\",\n    \"academicYear\": \"2024-2025\",\n    \"school\": { \"id\": \"...\", \"name\": \"Lycée Technique de Douala\" },\n    \"level\": { \"id\": \"...\", \"name\": \"Terminale C\" },\n    \"mainTeacher\": { \"id\": \"...\", \"name\": \"Prof. Martin Nkemeni\" },\n    \"studentsCount\": 32\n  },\n  \"exams\": [\n    {\n      \"id\": \"507f1f77bcf86cd799439200\",\n      \"title\": \"Contrôle Mécanique — Terminale C\",\n      \"startTime\": \"2025-01-20T08:00:00.000Z\",\n      \"endTime\": \"2025-01-20T10:00:00.000Z\",\n      \"duration\": 60,\n      \"closeMode\": \"STRICT\",\n      \"attempts\": [{ \"id\": \"...\", \"status\": \"COMPLETED\", \"score\": 14 }],\n      \"_count\": { \"questions\": 15 },\n      \"status\": \"completed\"\n    }\n  ],\n  \"students\": [\n    { \"id\": \"507f1f77bcf86cd799439050\", \"name\": \"Marie Dupont\", \"email\": \"marie@example.com\", \"image\": null, \"isActive\": true }\n  ],\n  \"teachers\": [\n    { \"id\": \"...\", \"name\": \"Prof. Martin\", \"role\": \"Professeur principal\", \"subjects\": [] },\n    { \"id\": \"...\", \"name\": \"M. Dupuis\", \"role\": \"Collaborateur\", \"subjects\": [{ \"name\": \"Physique-Chimie\", \"code\": \"PC\" }] }\n  ],\n  \"syllabuses\": [\n    { \"id\": \"...\", \"title\": \"Programme Mécanique\", \"status\": \"PUBLISHED\", \"chaptersCount\": 5 }\n  ],\n  \"ranking\": [\n    { \"rank\": 1, \"id\": \"...\", \"name\": \"Jean Obono\", \"averageScore\": 18.5, \"examsCompleted\": 4, \"isCurrentUser\": false },\n    { \"rank\": 5, \"id\": \"507f1f77bcf86cd799439050\", \"name\": \"Marie Dupont\", \"averageScore\": 14.8, \"examsCompleted\": 3, \"isCurrentUser\": true }\n  ]\n}"
+            },
+            {
+              "name": "403 — Non inscrit dans cette classe",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Vous n'êtes pas inscrit dans cette classe\" }"
+            },
+            {
+              "name": "404 — Classe introuvable",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Classe non trouvée\" }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Syllabuses & Sujets",
+      "item": [
+        {
+          "name": "2.1 Mes syllabuses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/syllabuses",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "syllabuses"]
+            },
+            "description": "GET /api/student/syllabuses\n\nSyllabuses assignés aux classes actives de l'étudiant.\nExclut les syllabuses archivés.\n\nRequiert rôle STUDENT explicitement (retourne 401 si autre rôle).\n\n⚠️ Clé de réponse : 'data' (format standard)"
+          },
+          "response": [
+            {
+              "name": "200 — Mes syllabuses",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"507f1f77bcf86cd799441100\",\n      \"title\": \"Programme Mécanique — Terminale C\",\n      \"status\": \"PUBLISHED\",\n      \"subject\": { \"_id\": \"...\", \"name\": \"Physique\", \"code\": \"PHY\" },\n      \"teacher\": { \"_id\": \"...\", \"name\": \"Prof. Martin Nkemeni\" },\n      \"school\": { \"_id\": \"...\", \"name\": \"Lycée Technique de Douala\" },\n      \"version\": 1\n    }\n  ]\n}"
+            },
+            {
+              "name": "401 — Non authentifié ou rôle non STUDENT",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Non autorisé\" }"
+            }
+          ]
+        },
+        {
+          "name": "2.2 Mes sujets et progression par concept",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/subjects",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "subjects"]
+            },
+            "description": "GET /api/student/subjects\n\nMatières de l'étudiant avec progression :\n- averageScore : moyenne en % sur les examens de ce sujet\n- conceptsCount : total de concepts dans le syllabus\n- conceptsMastered : concepts avec maîtrise >= 80%\n- trend : IMPROVING / STABLE / DECLINING (basé sur 4+ tentatives)\n- concepts[] : liste des concepts avec niveau de maîtrise\n\n⚠️ Clé de réponse : 'subjects' (pas 'data')"
+          },
+          "response": [
+            {
+              "name": "200 — Mes sujets",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"subjects\": [\n    {\n      \"id\": \"507f1f77bcf86cd799440100\",\n      \"name\": \"Physique\",\n      \"averageScore\": 72.5,\n      \"conceptsCount\": 18,\n      \"conceptsMastered\": 11,\n      \"trend\": \"IMPROVING\",\n      \"concepts\": [\n        {\n          \"id\": \"507f1f77bcf86cd799441200\",\n          \"title\": \"Lois de Newton\",\n          \"currentLevel\": \"PROFICIENT\",\n          \"lastEvaluated\": \"2025-01-15T10:00:00.000Z\"\n        },\n        {\n          \"id\": \"507f1f77bcf86cd799441201\",\n          \"title\": \"Thermodynamique\",\n          \"currentLevel\": null,\n          \"lastEvaluated\": null\n        }\n      ]\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Gamification & Classements",
+      "item": [
+        {
+          "name": "3.1 Stats de gamification (XP, badges)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/gamification",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "gamification"]
+            },
+            "description": "GET /api/student/gamification\n\nPoints XP, niveau, badges, streak de l'étudiant.\n\n⚠️ Clé de réponse : 'stats' (pas 'data')"
+          },
+          "response": [
+            {
+              "name": "200 — Stats gamification",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"stats\": {\n    \"xp\": 1250,\n    \"level\": 8,\n    \"levelName\": \"Explorateur\",\n    \"nextLevelXp\": 1500,\n    \"xpToNextLevel\": 250,\n    \"badges\": [\n      {\n        \"id\": \"507f1f77bcf86cd799442000\",\n        \"name\": \"Premier Pas\",\n        \"description\": \"Compléter le premier examen\",\n        \"imageUrl\": \"https://cdn.quizlock.app/badges/first-step.png\",\n        \"earnedAt\": \"2025-01-20T09:00:00.000Z\"\n      }\n    ],\n    \"streak\": { \"current\": 5, \"longest\": 12 },\n    \"stats\": {\n      \"totalExamsCompleted\": 15,\n      \"averageScore\": 71.4,\n      \"totalTimeSpent\": 12600\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "3.2 Leaderboard — Classe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/leaderboard?type=CLASS&metric=EXAM_AVERAGE",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "leaderboard"],
+              "query": [
+                { "key": "type", "value": "CLASS", "description": "CLASS | SCHOOL_LEVEL | NATIONAL_LEVEL" },
+                { "key": "metric", "value": "EXAM_AVERAGE", "description": "EXAM_AVERAGE | XP | PASS_RATE" }
+              ]
+            },
+            "description": "GET /api/student/leaderboard\n\nClassement de la classe de l'étudiant par moyenne d'examens.\nSi l'étudiant n'est dans aucune classe → leaderboard: null\n\n→ entries[].isCurrentUser = true pour identifier l'étudiant connecté\n→ currentUserPosition : son rang et score globaux\n\n⚠️ Clé de réponse : 'leaderboard' (pas 'data')"
+          },
+          "response": [
+            {
+              "name": "200 — Leaderboard classe",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"leaderboard\": {\n    \"type\": \"CLASS\",\n    \"metric\": \"EXAM_AVERAGE\",\n    \"entries\": [\n      { \"rank\": 1, \"userId\": \"...\", \"name\": \"Jean Obono\", \"score\": 18.5, \"isCurrentUser\": false },\n      { \"rank\": 5, \"userId\": \"507f1f77bcf86cd799439050\", \"name\": \"Marie Dupont\", \"score\": 14.8, \"isCurrentUser\": true }\n    ],\n    \"currentUserPosition\": { \"rank\": 5, \"score\": 14.8 }\n  }\n}"
+            },
+            {
+              "name": "200 — Pas de classe trouvée",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": true, \"leaderboard\": null, \"message\": \"No class found for student\" }"
+            }
+          ]
+        },
+        {
+          "name": "3.3 Leaderboard — Niveau Établissement",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/leaderboard?type=SCHOOL_LEVEL&metric=XP",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "leaderboard"],
+              "query": [
+                { "key": "type", "value": "SCHOOL_LEVEL" },
+                { "key": "metric", "value": "XP" }
+              ]
+            },
+            "description": "Classement par niveau au sein de l'établissement, trié par XP."
+          },
+          "response": []
+        },
+        {
+          "name": "3.4 Leaderboard — National",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/leaderboard?type=NATIONAL_LEVEL&metric=EXAM_AVERAGE",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "leaderboard"],
+              "query": [
+                { "key": "type", "value": "NATIONAL_LEVEL" },
+                { "key": "metric", "value": "EXAM_AVERAGE" }
+              ]
+            },
+            "description": "Classement national par niveau scolaire."
+          },
+          "response": []
+        },
+        {
+          "name": "3.5 Mes classements (résumé tous leaderboards)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/rankings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "rankings"]
+            },
+            "description": "GET /api/student/rankings\n\nRésumé des positions de l'étudiant dans tous les leaderboards.\nUtile pour le widget 'Mes classements' du dashboard.\n\n⚠️ Clé de réponse : 'rankings' (pas 'data')"
+          },
+          "response": [
+            {
+              "name": "200 — Résumé classements",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"rankings\": {\n    \"class\": { \"rank\": 5, \"total\": 32, \"score\": 14.8, \"className\": \"Terminale C — Groupe A\" },\n    \"schoolLevel\": { \"rank\": 12, \"total\": 120, \"score\": 14.8 },\n    \"national\": { \"rank\": 342, \"total\": 5000, \"score\": 14.8 }\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Challenges",
+      "item": [
+        {
+          "name": "4.1 Lister les challenges disponibles",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Sauvegarder l'ID du premier challenge non rejoint",
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.challenges) {",
+                  "        const notJoined = res.challenges.find(c => c.progress === null);",
+                  "        if (notJoined) {",
+                  "            pm.collectionVariables.set('challengeId', notJoined.id);",
+                  "            console.log('challengeId (non rejoint):', notJoined.id);",
+                  "        }",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/challenges",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "challenges"]
+            },
+            "description": "GET /api/student/challenges\n\nChallenges actifs ou à venir pour l'étudiant (filtrés par classe/école/niveau).\n\nprogress === null → Étudiant n'a pas encore rejoint → bouton 'Rejoindre'\nprogress !== null → Afficher barre de progression\n\nLe script de test sauvegarde l'ID du premier challenge non rejoint.\n\n⚠️ Clé de réponse : 'challenges' (pas 'data')"
+          },
+          "response": [
+            {
+              "name": "200 — Liste des challenges",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"challenges\": [\n    {\n      \"id\": \"507f1f77bcf86cd799443000\",\n      \"title\": \"Champion de Mécanique\",\n      \"description\": \"Compléter 5 examens avec un score > 70%\",\n      \"type\": \"EXAM_PERFORMANCE\",\n      \"status\": \"ACTIVE\",\n      \"startDate\": \"2025-01-01T00:00:00.000Z\",\n      \"endDate\": \"2025-01-31T23:59:59.000Z\",\n      \"goals\": [{ \"target\": 5, \"description\": \"Réussir 5 examens\" }],\n      \"rewards\": { \"xpBonus\": 500, \"badgeName\": \"Maître Mécanicien\", \"specialReward\": null },\n      \"progress\": null,\n      \"participantsCount\": 18,\n      \"completedCount\": 3\n    },\n    {\n      \"id\": \"507f1f77bcf86cd799443001\",\n      \"title\": \"Régularité\",\n      \"status\": \"ACTIVE\",\n      \"progress\": {\n        \"progress\": [{ \"goalIndex\": 0, \"current\": 3, \"target\": 7, \"completed\": false }],\n        \"overallProgress\": 42,\n        \"completed\": false\n      },\n      \"participantsCount\": 25,\n      \"completedCount\": 7\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "4.2 Rejoindre un challenge",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/challenges/{{challengeId}}/join",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "challenges", "{{challengeId}}", "join"]
+            },
+            "description": "POST /api/student/challenges/:id/join\n\nInscrit l'étudiant au challenge. Initialise la progression à 0.\n\n⚠️ Les erreurs métier sont retournées en 500 (bug de format) :\n- 'Challenge not found'\n- 'Challenge is not active'\n- 'Already participating in this challenge'\n→ Inspecter la clé 'message' pour distinguer le type d'erreur."
+          },
+          "response": [
+            {
+              "name": "200 — Inscrit avec succès",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": true, \"message\": \"Successfully joined challenge\" }"
+            },
+            {
+              "name": "500 — Déjà inscrit",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Already participating in this challenge\" }"
+            },
+            {
+              "name": "500 — Challenge non actif",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Challenge is not active\" }"
+            },
+            {
+              "name": "500 — Challenge introuvable",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Challenge not found\" }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Analytics & Profil",
+      "item": [
+        {
+          "name": "5.1 Analytics IA étudiant",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/analytics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "analytics"]
+            },
+            "description": "GET /api/student/analytics\n\nAnalyse IA complète :\n- prediction : score prédit, tendance, facteurs\n- successProbability : probabilité de réussite (0-1), riskLevel\n- strengths / weaknesses : par matière\n- recommendations : actions concrètes\n\n⚠️ REQUÊTE LENTE — Le moteur de prédiction IA prend du temps.\nAfficher un skeleton/loader dans l'UI.\n\nprediction peut être null si données insuffisantes (<4 tentatives).\n\n⚠️ Clé de réponse : 'analytics' (pas 'data')"
+          },
+          "response": [
+            {
+              "name": "200 — Analytics complètes",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"analytics\": {\n    \"prediction\": {\n      \"predictedPercentage\": 74.5,\n      \"confidenceLevel\": \"MODERATE\",\n      \"trendDirection\": \"IMPROVING\",\n      \"factors\": [\n        { \"factor\": \"Régularité\", \"impact\": \"POSITIVE\", \"weight\": 0.3 },\n        { \"factor\": \"Score moyen récent\", \"impact\": \"POSITIVE\", \"weight\": 0.5 }\n      ]\n    },\n    \"successProbability\": {\n      \"probability\": 0.78,\n      \"riskLevel\": \"LOW\",\n      \"recommendedActions\": [\n        \"Réviser le chapitre Thermodynamique\",\n        \"Compléter les exercices de Cinématique\"\n      ]\n    },\n    \"strengths\": [\n      { \"subject\": \"Mécanique\", \"averageScore\": 81.2 }\n    ],\n    \"weaknesses\": [\n      { \"subject\": \"Thermodynamique\", \"averageScore\": 52.0 }\n    ],\n    \"overallLevel\": \"PROFICIENT\",\n    \"recommendations\": [\n      \"Pratiquer davantage les questions à réponse ouverte\"\n    ]\n  }\n}"
+            },
+            {
+              "name": "200 — Données insuffisantes (prediction null)",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"analytics\": {\n    \"prediction\": null,\n    \"successProbability\": null,\n    \"strengths\": [],\n    \"weaknesses\": [],\n    \"overallLevel\": \"UNKNOWN\",\n    \"recommendations\": []\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "5.2 Profil apprenant",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "profile"]
+            },
+            "description": "GET /api/student/profile\n\nProfil apprenant enrichi : stats globales, style d'apprentissage,\nforces et faiblesses.\n\n⚠️ Clé de réponse : 'data' (format standard)"
+          },
+          "response": [
+            {
+              "name": "200 — Profil apprenant",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"507f1f77bcf86cd799444000\",\n    \"user\": \"507f1f77bcf86cd799439050\",\n    \"stats\": {\n      \"totalExamsTaken\": 15,\n      \"averageScore\": 71.4,\n      \"lastActivityDate\": \"2025-01-20T09:00:00.000Z\"\n    },\n    \"learningStyle\": \"VISUAL\",\n    \"strengths\": [\"Mécanique\", \"Électricité\"],\n    \"weaknesses\": [\"Thermodynamique\"],\n    \"createdAt\": \"2024-09-01T00:00:00.000Z\",\n    \"updatedAt\": \"2025-01-20T09:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "404 — Profil non trouvé",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": false, \"message\": \"Profile not found\" }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Orientation Scolaire",
+      "item": [
+        {
+          "name": "6.1 Rechercher des établissements (filtres avancés)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/schools?query=lycee&country=CM&type=LYCEE",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "schools"],
+              "query": [
+                { "key": "query", "value": "lycee", "description": "Recherche textuelle" },
+                { "key": "country", "value": "CM", "description": "Code pays (CM, FR...)" },
+                { "key": "city", "value": "", "description": "Ville", "disabled": true },
+                { "key": "type", "value": "LYCEE", "description": "LYCEE | UNIVERSITE | ...", "disabled": true },
+                { "key": "level", "value": "", "description": "Niveau d'enseignement", "disabled": true },
+                { "key": "specialty", "value": "", "description": "Spécialité", "disabled": true },
+                { "key": "accreditation", "value": "", "description": "Accréditation", "disabled": true },
+                { "key": "modality", "value": "", "description": "PRESENTIEL | DISTANCE | HYBRID", "disabled": true },
+                { "key": "costMin", "value": "", "description": "Coût minimum annuel (FCFA)", "disabled": true },
+                { "key": "costMax", "value": "", "description": "Coût maximum annuel (FCFA)", "disabled": true },
+                { "key": "scoreMin", "value": "", "description": "Score minimum requis", "disabled": true }
+              ]
+            },
+            "description": "GET /api/student/schools\n\nRecherche avancée d'établissements pour l'orientation.\nSupporte de nombreux filtres : pays, ville, type, spécialité, coût, score...\n\nActiver/désactiver les filtres ci-dessus selon les besoins."
+          },
+          "response": [
+            {
+              "name": "200 — Établissements trouvés",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"507f1f77bcf86cd799445000\",\n      \"name\": \"Lycée Technique de Douala\",\n      \"type\": \"LYCEE\",\n      \"address\": \"Rue de la Bassa, Douala, Cameroun\",\n      \"logoUrl\": \"https://cdn.quizlock.app/schools/ltd.png\",\n      \"country\": \"CM\",\n      \"city\": \"Douala\",\n      \"tuitionFee\": 150000,\n      \"programs\": [\"Sciences\", \"Technique\"]\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "6.2 Écoles d'orientation (liste simplifiée, avec fallback mock)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/orientation/schools?search=lycee",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "orientation", "schools"],
+              "query": [
+                { "key": "search", "value": "lycee", "description": "Recherche sur le nom" }
+              ]
+            },
+            "description": "GET /api/student/orientation/schools\n\nVersion simplifiée — données validées + fallback mock si DB indisponible.\n\nSi meta.source = 'mock' → données statiques (ne pas baser les décisions dessus).\n\nAuth non obligatoire pour cet endpoint."
+          },
+          "response": [
+            {
+              "name": "200 — Écoles d'orientation (DB)",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"507f1f77bcf86cd799445000\",\n      \"name\": \"Lycée Technique de Douala\",\n      \"type\": \"LYCEE\",\n      \"address\": \"Douala, Cameroun\",\n      \"logoUrl\": null,\n      \"status\": \"VALIDATED\",\n      \"contactInfo\": { \"phone\": \"+237 6XX XXX XXX\", \"email\": \"contact@ltd.cm\" }\n    }\n  ]\n}"
+            },
+            {
+              "name": "200 — Fallback données mock (DB indisponible)",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": [...],\n  \"meta\": { \"source\": \"mock\" }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Flux Complets (Référence)",
+      "item": [
+        {
+          "name": "Flux Dashboard — 1. Mes classes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "classes"]
+            },
+            "description": "FLUX DASHBOARD — ÉTAPE 1/3"
+          },
+          "response": []
+        },
+        {
+          "name": "Flux Dashboard — 2. Mes examens",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/exams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "exams"]
+            },
+            "description": "FLUX DASHBOARD — ÉTAPE 2/3"
+          },
+          "response": []
+        },
+        {
+          "name": "Flux Dashboard — 3. Gamification",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/gamification",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "gamification"]
+            },
+            "description": "FLUX DASHBOARD — ÉTAPE 3/3"
+          },
+          "response": []
+        },
+        {
+          "name": "Flux Classe — Détail complet",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/classes/{{classId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "classes", "{{classId}}"]
+            },
+            "description": "Vue complète d'une classe :\nexams + students + teachers + syllabuses + ranking"
+          },
+          "response": []
+        },
+        {
+          "name": "Flux Analytics — IA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/analytics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "analytics"]
+            },
+            "description": "⚠️ Requête lente — Afficher un loader/skeleton dans l'UI"
+          },
+          "response": []
+        },
+        {
+          "name": "Flux Leaderboard — Complet (3 niveaux)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/student/rankings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "student", "rankings"]
+            },
+            "description": "Résumé de tous les classements en une requête"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

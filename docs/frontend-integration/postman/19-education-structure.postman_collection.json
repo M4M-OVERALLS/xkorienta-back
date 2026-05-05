@@ -1,0 +1,180 @@
+{
+  "info": {
+    "_postman_id": "19-education-structure-quizlock-frontend-integration",
+    "name": "QuizLock API — 19. Education Structure",
+    "description": "Module 19 — Education Structure\n\nFournit l'ensemble des référentiels pédagogiques de la plateforme pour construire les selects dynamiques (Création d'examens, etc...)\n\n**Auth** : Cookie next-auth.session-token\n**Base URL** : {{baseUrl}}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "subjectId",
+      "value": "YOUR_SUBJECT_ID",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Reférentiels Standards",
+      "item": [
+        {
+          "name": "GET Education Levels (Filtre Francophone)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/education-levels?subSystem=FRANCOPHONE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "education-levels"
+              ],
+              "query": [
+                {
+                  "key": "subSystem",
+                  "value": "FRANCOPHONE"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Subjects (All actives)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/subjects?isActive=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "subjects"
+              ],
+              "query": [
+                {
+                  "key": "isActive",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Fields (University cycle)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fields?cycle=UNIVERSITY",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fields"
+              ],
+              "query": [
+                {
+                  "key": "cycle",
+                  "value": "UNIVERSITY"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Détails Pédagogiques",
+      "item": [
+        {
+          "name": "GET Learning Units (Root modules for Subject)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/learning-units?subject={{subjectId}}&parentUnit=null",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "learning-units"
+              ],
+              "query": [
+                {
+                  "key": "subject",
+                  "value": "{{subjectId}}"
+                },
+                {
+                  "key": "parentUnit",
+                  "value": "null"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Concepts (By Syllabus)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/concepts?syllabusId=YOUR_SYLLABUS_ID",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "concepts"
+              ],
+              "query": [
+                {
+                  "key": "syllabusId",
+                  "value": "YOUR_SYLLABUS_ID"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Competencies (By Subject)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/competencies?subject={{subjectId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "competencies"
+              ],
+              "query": [
+                {
+                  "key": "subject",
+                  "value": "{{subjectId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

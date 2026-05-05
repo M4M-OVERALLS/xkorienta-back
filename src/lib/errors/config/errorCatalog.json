@@ -1,0 +1,254 @@
+{
+  "AUTH": {
+    "AUTH_001": {
+      "code": "AUTH_001",
+      "message": {
+        "fr": "Identifiant et mot de passe requis",
+        "en": "Identifier and password are required"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "AUTH_002": {
+      "code": "AUTH_002",
+      "message": {
+        "fr": "Aucun utilisateur trouvé avec cet email",
+        "en": "No user found with this email"
+      },
+      "httpStatus": 404,
+      "severity": "ERROR",
+      "category": "NOT_FOUND"
+    },
+    "AUTH_003": {
+      "code": "AUTH_003",
+      "message": {
+        "fr": "Aucun compte trouvé avec ce numéro de téléphone",
+        "en": "No account found with this phone number"
+      },
+      "httpStatus": 404,
+      "severity": "ERROR",
+      "category": "NOT_FOUND"
+    },
+    "AUTH_004": {
+      "code": "AUTH_004",
+      "message": {
+        "fr": "Mot de passe incorrect",
+        "en": "Incorrect password"
+      },
+      "httpStatus": 401,
+      "severity": "ERROR",
+      "category": "AUTHENTICATION"
+    },
+    "AUTH_005": {
+      "code": "AUTH_005",
+      "message": {
+        "fr": "Ce compte utilise une autre méthode de connexion",
+        "en": "This account uses a different login method"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "AUTHENTICATION"
+    },
+    "AUTH_006": {
+      "code": "AUTH_006",
+      "message": {
+        "fr": "Token d'authentification invalide ou expiré",
+        "en": "Invalid or expired authentication token"
+      },
+      "httpStatus": 401,
+      "severity": "ERROR",
+      "category": "AUTHENTICATION"
+    },
+    "AUTH_007": {
+      "code": "AUTH_007",
+      "message": {
+        "fr": "Session expirée, veuillez vous reconnecter",
+        "en": "Session expired, please log in again"
+      },
+      "httpStatus": 401,
+      "severity": "ERROR",
+      "category": "AUTHENTICATION"
+    },
+    "AUTH_008": {
+      "code": "AUTH_008",
+      "message": {
+        "fr": "Accès refusé. Permissions insuffisantes",
+        "en": "Access denied. Insufficient permissions"
+      },
+      "httpStatus": 403,
+      "severity": "ERROR",
+      "category": "AUTHORIZATION"
+    },
+    "AUTH_009": {
+      "code": "AUTH_009",
+      "message": {
+        "fr": "Email déjà utilisé",
+        "en": "Email already in use"
+      },
+      "httpStatus": 409,
+      "severity": "ERROR",
+      "category": "CONFLICT"
+    },
+    "AUTH_010": {
+      "code": "AUTH_010",
+      "message": {
+        "fr": "Numéro de téléphone déjà utilisé",
+        "en": "Phone number already in use"
+      },
+      "httpStatus": 409,
+      "severity": "ERROR",
+      "category": "CONFLICT"
+    },
+    "AUTH_011": {
+      "code": "AUTH_011",
+      "message": {
+        "fr": "Format d'email invalide",
+        "en": "Invalid email format"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "AUTH_012": {
+      "code": "AUTH_012",
+      "message": {
+        "fr": "Format de numéro de téléphone invalide",
+        "en": "Invalid phone number format"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "AUTH_013": {
+      "code": "AUTH_013",
+      "message": {
+        "fr": "Le mot de passe doit contenir au moins 8 caractères",
+        "en": "Password must contain at least 8 characters"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "AUTH_014": {
+      "code": "AUTH_014",
+      "message": {
+        "fr": "Code de vérification invalide ou expiré",
+        "en": "Invalid or expired verification code"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "AUTH_015": {
+      "code": "AUTH_015",
+      "message": {
+        "fr": "Trop de tentatives de connexion. Veuillez réessayer plus tard",
+        "en": "Too many login attempts. Please try again later"
+      },
+      "httpStatus": 429,
+      "severity": "WARNING",
+      "category": "RATE_LIMIT"
+    },
+    "AUTH_016": {
+      "code": "AUTH_016",
+      "message": {
+        "fr": "Compte désactivé. Contactez l'administrateur",
+        "en": "Account disabled. Contact the administrator"
+      },
+      "httpStatus": 403,
+      "severity": "ERROR",
+      "category": "AUTHORIZATION"
+    },
+    "AUTH_017": {
+      "code": "AUTH_017",
+      "message": {
+        "fr": "Email non vérifié. Veuillez vérifier votre email",
+        "en": "Email not verified. Please verify your email"
+      },
+      "httpStatus": 403,
+      "severity": "ERROR",
+      "category": "AUTHORIZATION"
+    },
+    "AUTH_018": {
+      "code": "AUTH_018",
+      "message": {
+        "fr": "Token de réinitialisation invalide ou expiré",
+        "en": "Invalid or expired reset token"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "AUTH_019": {
+      "code": "AUTH_019",
+      "message": {
+        "fr": "Erreur lors de l'authentification OAuth",
+        "en": "Error during OAuth authentication"
+      },
+      "httpStatus": 500,
+      "severity": "ERROR",
+      "category": "EXTERNAL_SERVICE"
+    },
+    "AUTH_020": {
+      "code": "AUTH_020",
+      "message": {
+        "fr": "Provider OAuth non configuré",
+        "en": "OAuth provider not configured"
+      },
+      "httpStatus": 500,
+      "severity": "ERROR",
+      "category": "CONFIGURATION"
+    },
+    "AUTH_021": {
+      "code": "AUTH_021",
+      "message": {
+        "fr": "Erreur de connexion à la base de données",
+        "en": "Database connection error"
+      },
+      "httpStatus": 500,
+      "severity": "CRITICAL",
+      "category": "DATABASE"
+    },
+    "AUTH_022": {
+      "code": "AUTH_022",
+      "message": {
+        "fr": "Compte Google déjà lié à un autre utilisateur",
+        "en": "Google account already linked to another user"
+      },
+      "httpStatus": 409,
+      "severity": "ERROR",
+      "category": "CONFLICT"
+    },
+    "AUTH_023": {
+      "code": "AUTH_023",
+      "message": {
+        "fr": "Compte GitHub déjà lié à un autre utilisateur",
+        "en": "GitHub account already linked to another user"
+      },
+      "httpStatus": 409,
+      "severity": "ERROR",
+      "category": "CONFLICT"
+    },
+    "AUTH_024": {
+      "code": "AUTH_024",
+      "message": {
+        "fr": "Impossible de créer le compte utilisateur",
+        "en": "Unable to create user account"
+      },
+      "httpStatus": 500,
+      "severity": "ERROR",
+      "category": "DATABASE"
+    },
+    "AUTH_025": {
+      "code": "AUTH_025",
+      "message": {
+        "fr": "Erreur lors de l'envoi de l'email de vérification",
+        "en": "Error sending verification email"
+      },
+      "httpStatus": 500,
+      "severity": "ERROR",
+      "category": "EXTERNAL_SERVICE"
+    }
+  }
+}

@@ -1,5 +1,14 @@
 import { NextResponse } from "next/server";
 import { SchoolService, StudentSchoolFilters } from "@/lib/services/SchoolService";
+import { SchoolStatus } from "@/models/enums";
+
+function parseSchoolStatus(value: unknown): SchoolStatus | undefined {
+    if (typeof value !== "string" || !value.trim()) return undefined;
+    const normalized = value.trim().toUpperCase();
+    return (Object.values(SchoolStatus) as string[]).includes(normalized)
+        ? (normalized as SchoolStatus)
+        : undefined;
+}
 
 export class SchoolController {
     static async getSchools(req: Request) {
@@ -7,8 +16,9 @@ export class SchoolController {
             const { searchParams } = new URL(req.url);
             const search = searchParams.get('search') || undefined;
             const type = searchParams.get('type') || undefined;
+            const status = searchParams.get('status') || undefined;
 
-            const schools = await SchoolService.searchSchools(search, type);
+            const schools = await SchoolService.searchSchools(search, type, status as any);
             return NextResponse.json({ success: true, data: schools });
         } catch (error: any) {
             console.error("[Schools Controller] Error:", error);
@@ -64,12 +74,35 @@ export class SchoolController {
     static async validateSchool(req: Request, schoolId: string, adminId: string) {
         try {
             const body = await req.json();
-            const { status } = body;
+            const rawStatus = body?.status;
+            const notes =
+                typeof body?.notes === "string"
+                    ? body.notes
+                    : typeof body?.rejectionNotes === "string"
+                      ? body.rejectionNotes
+                      : "";
 
-            // Optional: Role check could be here if not in Route
-            // But usually Route handles Auth/Role basics
+            const requested = parseSchoolStatus(rawStatus);
 
-            await SchoolService.validateSchool(schoolId, adminId, status);
+            if (rawStatus !== undefined && rawStatus !== null && String(rawStatus).trim() !== "" && !requested) {
+                return NextResponse.json(
+                    { success: false, message: `Invalid status: ${rawStatus}` },
+                    { status: 400 }
+                );
+            }
+
+            if (!requested || requested === SchoolStatus.VALIDATED) {
+                await SchoolService.validateSchool(schoolId, adminId);
+            } else if (requested === SchoolStatus.REJECTED) {
+                await SchoolService.rejectSchool(schoolId, adminId, notes);
+            } else if (requested === SchoolStatus.SUSPENDED) {
+                await SchoolService.suspendSchool(schoolId, adminId, notes);
+            } else {
+                return NextResponse.json(
+                    { success: false, message: "This endpoint cannot set status to PENDING" },
+                    { status: 400 }
+                );
+            }
 
             return NextResponse.json({ success: true, message: "School status updated" });
 

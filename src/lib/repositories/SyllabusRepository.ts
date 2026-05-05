@@ -6,9 +6,21 @@ export class SyllabusRepository {
     static async findById(id: string): Promise<ISyllabus | null> {
         await connectDB();
         return await Syllabus.findById(id)
-            .populate('subject', 'name code')
+            .populate('subject', 'name code subSystem applicableLevels')
             .populate('school', 'name')
-            .populate('teacher', 'name email');
+            .populate('teacher', 'name email')
+            .populate({
+                path: 'classes',
+                select: 'name level',
+                populate: { path: 'level', select: 'name code' },
+            });
+    }
+
+    /** Retourne l'ObjectId brut du subject, même si le document référencé n'existe plus. */
+    static async findSubjectIdRaw(syllabusId: string): Promise<string | null> {
+        await connectDB();
+        const lean = await Syllabus.findById(syllabusId).select('subject').lean();
+        return lean?.subject ? lean.subject.toString() : null;
     }
 
     static async findByIdLean(id: string): Promise<ISyllabus | null> {

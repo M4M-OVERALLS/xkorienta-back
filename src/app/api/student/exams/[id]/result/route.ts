@@ -60,13 +60,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         const now = new Date();
         const lateDuration = (examDoc.config as any)?.lateDuration || 0;
         const delayResultsUntilLateEnd = (examDoc.config as any)?.delayResultsUntilLateEnd ?? false;
+        const showResultsImmediately = (examDoc.config as any)?.showResultsImmediately ?? true;
         const examEndTime = new Date(examDoc.endTime);
         const lateEndTime = addMinutes(examEndTime, lateDuration);
 
         // Check access conditions
         const examEnded = isPast(examEndTime);
         const inLatePeriod = examEnded && isAfter(lateEndTime, now) && lateDuration > 0;
-        const resultsBlocked = !examEnded || (delayResultsUntilLateEnd && inLatePeriod);
+
+        // Si showResultsImmediately est activé, on affiche toujours les résultats
+        // Sinon, on applique la logique de blocage habituelle
+        const resultsBlocked = showResultsImmediately
+            ? false
+            : (!examEnded || (delayResultsUntilLateEnd && inLatePeriod));
 
         // Time remaining until results
         const timeUntilResults = inLatePeriod
@@ -76,7 +82,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         const attempt = {
             id: attemptDoc._id.toString(),
             examId: attemptDoc.examId.toString(),
-            userId: attemptDoc.userId.toString(),
+            userId: attemptDoc.userId?.toString() || '',
             startedAt: attemptDoc.startedAt.toISOString(),
             expiresAt: attemptDoc.expiresAt.toISOString(),
             submittedAt: attemptDoc.submittedAt?.toISOString(),

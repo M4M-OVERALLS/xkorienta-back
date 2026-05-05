@@ -7,16 +7,17 @@ export class AuthController {
     static async verify(req: Request) {
         try {
             const body = await req.json();
-            const { email, password } = body;
+            const { identifier, email, password } = body;
+            const resolvedIdentifier = identifier || email; // backward compat
 
-            if (!email || !password) {
+            if (!resolvedIdentifier || !password) {
                 return NextResponse.json(
-                    { message: "Email and password are required" },
+                    { message: "Identifiant et mot de passe requis" },
                     { status: 400 }
                 );
             }
 
-            const user = await authService.verifyCredentials(email, password);
+            const user = await authService.verifyCredentials(resolvedIdentifier, password);
 
             if (!user) {
                 return NextResponse.json(
@@ -85,7 +86,8 @@ export class AuthController {
                 );
             }
 
-            const result = await authService.requestPasswordReset(email);
+            // Pass request headers to detect frontend domain dynamically
+            const result = await authService.requestPasswordReset(email, req.headers);
             return NextResponse.json({
                 success: true,
                 message: "Si un compte existe avec cet email, un lien de réinitialisation a été envoyé."

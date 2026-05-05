@@ -1,0 +1,32 @@
+{
+  "workspace": {
+    "id": "d3697d8f-0a7c-4a43-9518-b5b62919141f"
+  },
+  "entities": {
+    "environments": [],
+    "flows": [],
+    "globals": [],
+    "mocks": [],
+    "specs": [],
+    "collections": [
+      "../QuizLock_API_Collection.json",
+      "../docs/frontend-integration/postman/02-onboarding.postman_collection.json",
+      "../docs/frontend-integration/postman/03-user-profile.postman_collection.json",
+      "../docs/frontend-integration/postman/04-schools.postman_collection.json",
+      "../docs/frontend-integration/postman/05-classes.postman_collection.json",
+      "../docs/frontend-integration/postman/06-syllabus.postman_collection.json",
+      "../docs/frontend-integration/postman/07-exams.postman_collection.json",
+      "../docs/frontend-integration/postman/08-attempts.postman_collection.json",
+      "../docs/frontend-integration/postman/09-students.postman_collection.json",
+      "../docs/frontend-integration/postman/10-teachers.postman_collection.json",
+      "../docs/frontend-integration/postman/11-self-assessments.postman_collection.json",
+      "../docs/frontend-integration/postman/12-analytics.postman_collection.json",
+      "../docs/frontend-integration/postman/13-late-codes.postman_collection.json",
+      "../docs/frontend-integration/postman/14-notifications.postman_collection.json",
+      "../docs/frontend-integration/postman/15-assistance.postman_collection.json",
+      "../docs/frontend-integration/postman/16-forum-conversations.postman_collection.json",
+      "../docs/frontend-integration/postman/19-education-structure.postman_collection.json",
+      "../docs/frontend-integration/postman/20-public-mini-tests.postman_collection.json"
+    ]
+  }
+}

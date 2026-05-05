@@ -12,6 +12,7 @@ const getExamModel = () => {
     require("@/models/Field")
     require("@/models/Competency")
     require("@/models/User")
+    require("@/models/Syllabus")
     require("@/models/Exam")
     return mongoose.model<IExam>('Exam')
 }
@@ -40,6 +41,7 @@ export class ExamServiceV2 {
         difficultyLevel?: DifficultyLevel
         createdBy?: string
         isPublished?: boolean
+        schoolId?: string
         limit?: number
         skip?: number
     } = {}) {
@@ -55,6 +57,16 @@ export class ExamServiceV2 {
         if (filters.difficultyLevel) query.difficultyLevel = filters.difficultyLevel
         if (filters.createdBy) query.createdById = filters.createdBy
         if (filters.isPublished !== undefined) query.isPublished = filters.isPublished
+
+        // Filtrer par école via la relation Exam → Syllabus → School
+        if (filters.schoolId) {
+            const Syllabus = require("@/models/Syllabus").default
+            const syllabusIds = await Syllabus.find(
+                { school: filters.schoolId },
+                '_id'
+            ).lean().then((docs: any[]) => docs.map((d: any) => d._id))
+            query.syllabus = { $in: syllabusIds }
+        }
 
         const limit = filters.limit || 20
         const skip = filters.skip || 0
@@ -151,6 +163,20 @@ export class ExamServiceV2 {
                 data[field] = data[field].filter((id: string) => id !== "")
             }
         })
+
+        // linkedConcepts can arrive as:
+        // - string[] of ObjectId
+        // - object[] like [{ id, title }]
+        // - mixed array
+        if (Array.isArray(data.linkedConcepts)) {
+            data.linkedConcepts = data.linkedConcepts
+                .map((concept: any) => {
+                    if (typeof concept === 'string') return concept
+                    if (concept && typeof concept === 'object') return concept.id || concept._id
+                    return undefined
+                })
+                .filter((id: any) => typeof id === 'string' && id.trim() !== '')
+        }
     }
 
     /**

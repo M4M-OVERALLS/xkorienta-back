@@ -4,15 +4,16 @@ import { BaseAuthStrategy } from "./AuthStrategy"
 import connectDB from "@/lib/mongodb"
 import User from "@/models/User"
 import bcrypt from "bcryptjs"
+import { AuthenticationError } from "@/lib/errors"
 
 /**
- * Credentials (Email/Password) Authentication Strategy
+ * Credentials (Email/Password/Phone) Authentication Strategy
  *
- * Traditional email and password login
+ * Supports login via email OR phone number + password
  */
 export class CredentialsAuthStrategy extends BaseAuthStrategy {
     readonly id = "credentials"
-    readonly name = "Email & Password"
+    readonly name = "Email, Téléphone & Mot de passe"
     readonly icon = "mail"
 
     getProvider(): Provider {
@@ -20,10 +21,10 @@ export class CredentialsAuthStrategy extends BaseAuthStrategy {
             id: this.id,
             name: this.name,
             credentials: {
-                email: {
-                    label: "Email",
-                    type: "email",
-                    placeholder: "votremail@example.com"
+                identifier: {
+                    label: "Email ou Téléphone",
+                    type: "text",
+                    placeholder: "email@exemple.com ou 6XXXXXXXX"
                 },
                 password: {
                     label: "Mot de passe",
@@ -31,40 +32,60 @@ export class CredentialsAuthStrategy extends BaseAuthStrategy {
                 },
             },
             async authorize(credentials) {
-                if (!credentials?.email || !credentials?.password) {
-                    throw new Error("Email et mot de passe requis")
-                }
+                try {
+                    if (!credentials?.identifier || !credentials?.password) {
+                        throw AuthenticationError.missingCredentials()
+                    }
 
-                await connectDB()
+                    await connectDB()
 
-                const user = await User.findOne({
-                    email: credentials.email.toLowerCase(),
-                })
+                    const identifier = credentials.identifier.trim()
+                    const isPhone = /^\+?[0-9]{8,15}$/.test(identifier)
 
-                if (!user) {
-                    throw new Error("Aucun utilisateur trouvé avec cet email")
-                }
+                    const query = isPhone
+                        ? { phone: identifier }
+                        : { email: identifier.toLowerCase() }
 
-                // Check if user has a password (OAuth users don't)
-                if (!user.password) {
-                    throw new Error("Ce compte utilise une autre méthode de connexion")
-                }
+                    const user = await User.findOne(query)
 
-                const isPasswordValid = await bcrypt.compare(
-                    credentials.password,
-                    user.password
-                )
+                    if (!user) {
+                        throw isPhone
+                            ? AuthenticationError.userNotFoundByPhone(identifier)
+                            : AuthenticationError.userNotFoundByEmail(identifier)
+                    }
 
-                if (!isPasswordValid) {
-                    throw new Error("Mot de passe incorrect")
-                }
+                    // Check if user has a password (OAuth users don't)
+                    if (!user.password) {
+                        throw AuthenticationError.differentAuthMethod(undefined, {
+                            userId: user._id.toString(),
+                        })
+                    }
 
-                return {
-                    id: user._id.toString(),
-                    email: user.email,
-                    name: user.name,
-                    role: user.role,
-                    image: user.image || null,
+                    const isPasswordValid = await bcrypt.compare(
+                        credentials.password,
+                        user.password
+                    )
+
+                    if (!isPasswordValid) {
+                        throw AuthenticationError.invalidPassword(undefined, {
+                            userId: user._id.toString(),
+                            identifier,
+                        })
+                    }
+
+                    return {
+                        id: user._id.toString(),
+                        email: user.email || user.phone || "",
+                        name: user.name,
+                        role: user.role,
+                        image: user.image || null,
+                    }
+                } catch (error) {
+                    // Log the error before re-throwing
+                    if (error instanceof AuthenticationError) {
+                        error.log()
+                    }
+                    throw error
                 }
             },
         })

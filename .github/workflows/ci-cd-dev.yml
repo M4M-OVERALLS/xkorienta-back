@@ -147,59 +147,30 @@ jobs:
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
-          sshpass -p "$DEPLOY_PASSWORD" ssh -o StrictHostKeyChecking=no -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- "$DEPLOY_PATH" << 'REMOTE'
+          sshpass -p "$DEPLOY_PASSWORD" ssh -o StrictHostKeyChecking=no -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "export DEPLOY_PATH='$DEPLOY_PATH'; bash -s" << 'REMOTE'
           set -euo pipefail
-          DEPLOY_PATH="${1:-}"
           if [ -z "$DEPLOY_PATH" ]; then
-            echo "Erreur: DEPLOY_PATH est vide"; exit 2
+            echo "❌ Erreur: DEPLOY_PATH est vide"; exit 2
           fi
 
-          echo "=== Pré-check serveur ==="
-          systemd-detect-virt || true
-          grep overlay /proc/filesystems || true
-          command -v docker || true
-          docker version || true
-
-          echo "=== Auto-fix Docker (driver & DNS) ==="
-          sudo mkdir -p /etc/docker
-          if ! grep -q "^nodev[[:space:]]\+overlay$" /proc/filesystems || [ "$(systemd-detect-virt || true)" = "lxc" ]; then
-            echo "=> overlayfs indisponible : driver VFS"
-            sudo sh -c 'printf %s "
-            {
-              \"storage-driver\": \"vfs\",
-              \"dns\": [\"1.1.1.1\", \"8.8.8.8\"]
-            }
-            " > /etc/docker/daemon.json'
-          else
-            echo "=> overlayfs dispo : overlay2 + DNS publics"
-            sudo sh -c 'printf %s "
-            {
-              \"storage-driver\": \"overlay2\",
-              \"dns\": [\"1.1.1.1\", \"8.8.8.8\"]
-            }
-            " > /etc/docker/daemon.json'
-          fi
-
-          echo "=== Restart Docker ==="
-          sudo systemctl restart docker
-          sleep 2
-          docker info | egrep -i "Storage Driver|Server Version|containerd-snapshotter" || true
-
-          echo "=== Extracting deploy files ==="
+          echo "=== [DEV] Extracting deploy files ==="
           cd "$DEPLOY_PATH"
-          # Extract only docker-compose.yml, preserve existing .env on server
           tar -xzf deploy-files.tar.gz docker-compose.yml
-          
+
           echo "=== Déploiement (docker compose) ==="
           if docker compose version >/dev/null 2>&1; then
+            echo "✓ Utilisation de docker compose (v2 plugin)"
             docker compose down || true
             docker compose pull app
             docker compose up -d
           else
-            echo "docker compose v2 absent — fallback via image docker/compose"
+            echo "⚠️ docker compose v2 absent — fallback via image docker/compose"
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD":"$PWD" -w "$PWD" docker/compose:2.30.3 down || true
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD":"$PWD" -w "$PWD" docker/compose:2.30.3 pull app
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD":"$PWD" -w "$PWD" docker/compose:2.30.3 up -d
           fi
 
+          echo "=== ✅ Déploiement DEV API terminé ==="
           REMOTE
+

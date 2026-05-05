@@ -210,86 +210,7 @@ export class StudentService {
      * Get student's rankings across all leaderboards
      */
     static async getStudentRankings(studentId: string) {
-        const classRepo = new ClassRepository();
-
-        // Find student's class using Repository
-        const studentClass = await classRepo.findStudentClass(studentId);
-
-        if (!studentClass) {
-            return {};
-        }
-
-        // Delegate to LeaderboardService for leaderboard logic
-        // Note: LeaderboardService still accesses DB directly for complex leaderboard calculations
-        // but we've at least used Repository for the initial class lookup
-        const studentClassData = studentClass as unknown as Record<string, unknown>;
-        const result: {
-            class?: Record<string, unknown>;
-            school?: Record<string, unknown>;
-            national?: Record<string, unknown>;
-        } = {};
-
-        // Class ranking
-        try {
-            const classId = (studentClassData._id as { toString: () => string }).toString();
-            const classLeaderboard = await LeaderboardService.getClassLeaderboard(
-                classId,
-                studentId
-            );
-            if (classLeaderboard.currentUserPosition) {
-                result.class = {
-                    ...classLeaderboard.currentUserPosition,
-                    className: studentClassData.name as string,
-                    totalStudents: classLeaderboard.totalParticipants
-                };
-            }
-        } catch (e) {
-            console.error('Error getting class ranking', e);
-        }
-
-        // School level ranking
-        try {
-            const school = studentClassData.school as Record<string, unknown>;
-            const level = studentClassData.level as Record<string, unknown>;
-            const schoolId = (school._id as { toString: () => string }).toString();
-            const levelId = (level._id as { toString: () => string }).toString();
-
-            const schoolLeaderboard = await LeaderboardService.getSchoolLevelLeaderboard(
-                schoolId,
-                levelId,
-                studentId
-            );
-            if (schoolLeaderboard.currentUserPosition) {
-                result.school = {
-                    ...schoolLeaderboard.currentUserPosition,
-                    schoolName: school.name as string,
-                    totalStudents: schoolLeaderboard.totalParticipants
-                };
-            }
-        } catch (e) {
-            console.error('Error getting school ranking', e);
-        }
-
-        // National ranking
-        try {
-            const level = studentClassData.level as Record<string, unknown>;
-            const levelId = (level._id as { toString: () => string }).toString();
-
-            const nationalLeaderboard = await LeaderboardService.getNationalLevelLeaderboard(
-                levelId,
-                studentId
-            );
-            if (nationalLeaderboard.currentUserPosition) {
-                result.national = {
-                    ...nationalLeaderboard.currentUserPosition,
-                    totalStudents: nationalLeaderboard.totalParticipants
-                };
-            }
-        } catch (e) {
-            console.error('Error getting national ranking', e);
-        }
-
-        return result;
+        return LeaderboardService.getStudentAllRankings(studentId);
     }
 
     /**
@@ -484,12 +405,18 @@ export class StudentService {
             const examData = e as any;
             const lateDuration = examData.config?.lateDuration || 0;
             const delayResultsUntilLateEnd = examData.config?.delayResultsUntilLateEnd ?? false;
+            const showResultsImmediately = examData.config?.showResultsImmediately ?? true;
             const examEndTime = new Date(examData.endTime);
             const lateEndTime = addMinutes(examEndTime, lateDuration);
 
             const examEnded = isPast(examEndTime);
             const inLatePeriod = examEnded && isAfter(lateEndTime, now) && lateDuration > 0;
-            const resultsBlocked = !examEnded || (delayResultsUntilLateEnd && inLatePeriod);
+
+            // Si showResultsImmediately est activé, on affiche toujours les résultats
+            // Sinon, on applique la logique de blocage habituelle
+            const resultsBlocked = showResultsImmediately
+                ? false
+                : (!examEnded || (delayResultsUntilLateEnd && inLatePeriod));
 
             return {
                 ...e,
@@ -713,15 +640,19 @@ export class StudentService {
             // Calculate if results are delayed due to late exam period
             const lateDuration = (config?.lateDuration as number) || 0;
             const delayResultsUntilLateEnd = (config?.delayResultsUntilLateEnd as boolean) ?? false;
+            const showResultsImmediately = (config?.showResultsImmediately as boolean) ?? true;
             const examEndTime = examData.endTime ? new Date(examData.endTime as Date) : null;
             const lateEndTime = examEndTime ? addMinutes(examEndTime, lateDuration) : null;
 
             // Results are locked if:
-            // 1. Exam hasn't ended yet, OR
-            // 2. We're in late period AND delayResultsUntilLateEnd is enabled
+            // Si showResultsImmediately est activé, jamais verrouillé
+            // Sinon: 1. Exam hasn't ended yet, OR
+            //        2. We're in late period AND delayResultsUntilLateEnd is enabled
             const examEnded = examEndTime ? isPast(examEndTime) : false;
             const inLatePeriod = lateEndTime ? isAfter(lateEndTime, now) && examEnded : false;
-            const resultsLocked = !examEnded || (delayResultsUntilLateEnd && inLatePeriod && lateDuration > 0);
+            const resultsLocked = showResultsImmediately
+                ? false
+                : (!examEnded || (delayResultsUntilLateEnd && inLatePeriod && lateDuration > 0));
 
             // Time until results if locked due to late period
             const timeUntilResults = inLatePeriod && lateEndTime

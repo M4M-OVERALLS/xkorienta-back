@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { InvitationService } from "@/lib/services/InvitationService";
+import { getFrontendUrl } from "@/lib/utils/frontendUrl";
 
 const MAX_BATCH_SIZE = 500;
 
 export class InvitationController {
-    static async getOrCreateLink(classId: string, userId: string) {
+    static async getOrCreateLink(classId: string, userId: string, headers?: Headers) {
         try {
             const invitation = await InvitationService.getOrCreateLink(classId, userId);
 
-            const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/join/${invitation.token}`;
+            // Dynamically detect frontend URL from request headers
+            const frontendUrl = getFrontendUrl(headers);
+            const inviteUrl = `${frontendUrl}/join/${invitation.token}`;
 
             return NextResponse.json({
                 invitation,
@@ -20,10 +23,13 @@ export class InvitationController {
         }
     }
 
-    static async createLink(classId: string, userId: string, options?: any) {
+    static async createLink(classId: string, userId: string, options?: any, headers?: Headers) {
         try {
             const invitation = await InvitationService.getOrCreateLink(classId, userId, options);
-            const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/join/${invitation.token}`;
+
+            // Dynamically detect frontend URL from request headers
+            const frontendUrl = getFrontendUrl(headers);
+            const inviteUrl = `${frontendUrl}/join/${invitation.token}`;
 
             return NextResponse.json({ invitation, url: inviteUrl });
         } catch (error: any) {
@@ -32,13 +38,13 @@ export class InvitationController {
         }
     }
 
-    static async inviteIndividual(classId: string, email: string, name: string, userId: string) {
+    static async inviteIndividual(classId: string, email: string, name: string, userId: string, headers?: Headers) {
         try {
             if (!email || !name) {
                 return NextResponse.json({ error: "Email et nom requis" }, { status: 400 });
             }
 
-            const result = await InvitationService.inviteStudent(classId, email, name, userId);
+            const result = await InvitationService.inviteStudent(classId, email, name, userId, headers);
             return NextResponse.json(result);
         } catch (error: any) {
             console.error("[Invitation Controller] Invite Individual Error:", error);
@@ -100,7 +106,7 @@ export class InvitationController {
      * POST /api/schools/[id]/invitations
      * Invite teachers to a school (individual or batch)
      */
-    static async inviteTeachersToSchool(schoolId: string, type: string, email: string, name: string, teachers: any[], userId: string) {
+    static async inviteTeachersToSchool(schoolId: string, type: string, email: string, name: string, teachers: any[], userId: string, headers?: Headers) {
         try {
             // Validate ID
             if (!schoolId || schoolId === 'undefined') {
@@ -112,7 +118,7 @@ export class InvitationController {
                     return NextResponse.json({ error: "Email and name are required" }, { status: 400 });
                 }
 
-                const result = await InvitationService.inviteTeacher(schoolId, email, name, userId);
+                const result = await InvitationService.inviteTeacher(schoolId, email, name, userId, 'TEACHER', headers);
                 return NextResponse.json(result);
             }
 

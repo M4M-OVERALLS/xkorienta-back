@@ -1,0 +1,100 @@
+@startuml Events
+
+title Quizlock API - Events System
+
+skinparam class {
+    BackgroundColor #F3E5F5
+    BorderColor #424242
+    ArrowColor #616161
+}
+
+enum EventType {
+    EXAM_CREATED
+    EXAM_COMPLETED
+    EXAM_VALIDATED
+    ATTEMPT_STARTED
+    ATTEMPT_GRADED
+    QUESTION_ANSWERED
+    BADGE_EARNED
+    LEVEL_UP
+    XP_GAINED
+    LATE_CODE_GENERATED
+    USER_REGISTERED
+    REQUEST_CREATED
+    FORUM_POST_CREATED
+}
+
+interface Event {
+    +type: EventType
+    +timestamp: Date
+    +userId: ObjectId
+    +data: Record<string, any>
+}
+
+class ExamCompletedEvent {
+    +type: EventType.EXAM_COMPLETED
+    +data: {
+        examId: ObjectId
+        attemptId: ObjectId
+        score: number
+        maxScore: number
+        percentage: number
+        passed: boolean
+        timeSpent: number
+    }
+}
+
+class BadgeEarnedEvent {
+    +type: EventType.BADGE_EARNED
+    +data: {
+        badgeId: string
+        badgeName: string
+        reason: string
+    }
+}
+
+class XPGainedEvent {
+    +type: EventType.XP_GAINED
+    +data: {
+        amount: number
+        source: string
+        newTotal: number
+    }
+}
+
+class LevelUpEvent {
+    +type: EventType.LEVEL_UP
+    +data: {
+        oldLevel: number
+        newLevel: number
+        rewards: string[]
+    }
+}
+
+class AttemptGradedEvent {
+    +type: EventType.ATTEMPT_GRADED
+    +data: {
+        attemptId: ObjectId
+        examId: ObjectId
+        score: number
+        percentage: number
+        passed: boolean
+    }
+}
+
+Event --> EventType
+Event <|.. ExamCompletedEvent
+Event <|.. BadgeEarnedEvent
+Event <|.. XPGainedEvent
+Event <|.. LevelUpEvent
+Event <|.. AttemptGradedEvent
+
+note top of Event
+  Event System
+  (src/lib/events/types.ts)
+
+  Events are published by EventPublisher
+  and consumed by Observers
+end note
+
+@enduml

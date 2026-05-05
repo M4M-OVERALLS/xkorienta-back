@@ -23,6 +23,9 @@ export interface ILearnerProfile extends Document {
     enrollmentDate: Date
     expectedGraduationDate?: Date
 
+    // Flag pour école en attente de validation
+    awaitingSchoolValidation: boolean
+
     // Profil Cognitif
     cognitiveProfile?: CognitiveProfile
     learnerType?: LearnerType
@@ -81,6 +84,8 @@ const LearnerProfileSchema = new Schema<ILearnerProfile>(
             default: Date.now
         },
         expectedGraduationDate: Date,
+
+        awaitingSchoolValidation: { type: Boolean, default: false },
 
         cognitiveProfile: {
             type: String,

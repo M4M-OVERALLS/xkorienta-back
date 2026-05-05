@@ -38,7 +38,7 @@ export class ForumController {
     static async createForum(req: Request, userId: string, role: UserRole) {
         try {
             const body = await req.json();
-            const { name, description, type, classId, subjectId, isPrivate, allowStudentPosts } = body;
+            const { name, description, type, classId, subjectId, isPrivate, allowStudentPosts, requireApproval } = body;
 
             if (!name) {
                 return NextResponse.json({ error: "Le nom est requis" }, { status: 400 });
@@ -61,7 +61,8 @@ export class ForumController {
                 classId,
                 subjectId,
                 isPrivate,
-                allowStudentPosts
+                allowStudentPosts,
+                requireApproval
             });
 
             return NextResponse.json({
@@ -75,6 +76,16 @@ export class ForumController {
             }
             if (error.message === "Le nom est requis") {
                 return NextResponse.json({ error: error.message }, { status: 400 });
+            }
+            if (
+                error.message === "classId requis pour un forum de type CLASS" ||
+                error.message === "subjectId requis pour un forum de type SUBJECT" ||
+                error.message === "Un forum GENERAL ne doit pas avoir de classId/subjectId"
+            ) {
+                return NextResponse.json({ error: error.message }, { status: 400 });
+            }
+            if (error.message === "Classe introuvable" || error.message === "Matière introuvable") {
+                return NextResponse.json({ error: error.message }, { status: 404 });
             }
             return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
         }

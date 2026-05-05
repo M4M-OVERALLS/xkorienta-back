@@ -1,8 +1,10 @@
 version: "3.8"
 
+name: xkorienta-api
+
 services:
   app:
-    image: nkot20/xkorienta-api:${TAG:-develop}
+    image: nkot20/xkorienta-api:${TAG:-main}
     container_name: xkorienta-api
     restart: unless-stopped
     ports:
@@ -17,8 +19,15 @@ services:
       - .env
     networks:
       - xkorienta-network
+      - backend_appnet
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3001/api/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -27,3 +36,5 @@ services:
 networks:
   xkorienta-network:
     driver: bridge
+  backend_appnet:
+    external: true

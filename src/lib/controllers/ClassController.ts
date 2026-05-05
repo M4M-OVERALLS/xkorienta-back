@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ClassService } from "@/lib/services/ClassService";
+import { ClassTeacherService } from "@/lib/services/ClassTeacherService";
 import { UserRole } from "@/models/enums";
 
 export class ClassController {
@@ -101,12 +102,30 @@ export class ClassController {
                 return NextResponse.json({ success: false, message: "Class not found" }, { status: 404 });
             }
 
-            // Access control: only teacher or admin/inspector
-            if (userRole === UserRole.TEACHER && classData.mainTeacher._id.toString() !== userId) {
-                return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 403 });
+            // Accès : titulaire (mainTeacher) ou enseignant collaborateur sur au moins une matière
+            if (userRole === UserRole.TEACHER) {
+                const allowed = await ClassTeacherService.isTeacherInClass(classId, userId);
+                if (!allowed) {
+                    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 403 });
+                }
             }
 
-            return NextResponse.json({ success: true, data: classData });
+            const plain =
+                typeof (classData as { toObject?: () => Record<string, unknown> }).toObject === "function"
+                    ? (classData as { toObject: () => Record<string, unknown> }).toObject()
+                    : (JSON.parse(JSON.stringify(classData)) as Record<string, unknown>);
+            const mainRaw =
+                (plain.mainTeacher as { _id?: unknown } | undefined)?._id ?? plain.mainTeacher;
+            const isMainTeacherForCurrentUser =
+                mainRaw != null && String(mainRaw) === String(userId);
+
+            return NextResponse.json({
+                success: true,
+                data: {
+                    ...plain,
+                    isMainTeacherForCurrentUser,
+                },
+            });
 
         } catch (error: any) {
             console.error("[Class Controller] Get Class By ID Error:", error);

@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import connectDB from "@/lib/mongodb";
 import { SchoolController } from "@/lib/controllers/SchoolController";
 
 /**
@@ -15,6 +16,7 @@ export async function GET(
         return SchoolController.getSchoolTeachers("");
     }
 
+    await connectDB();
     const { id } = await params;
     return SchoolController.getSchoolTeachers(id);
 }

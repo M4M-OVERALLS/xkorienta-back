@@ -1,11 +1,19 @@
 import mongoose, { Schema, Document, Model } from 'mongoose'
-import { SchoolStatus, ModalityStatus, LanguageStatus, SpecialtyLevel, certificationType } from './enums'
+import { SchoolStatus, ModalityStatus, LanguageStatus, SpecialtyLevel, certificationType, Cycle } from './enums'
 
 export enum SchoolType {
-    PRIMARY = 'PRIMARY',
-    SECONDARY = 'SECONDARY',
-    HIGHER_ED = 'HIGHER_ED',
-    TRAINING_CENTER = 'TRAINING_CENTER',
+    // --- Système camerounais ---
+    PRESCHOOL = 'PRESCHOOL',                   // Préscolaire (maternelle, pépinière)
+    PRIMARY = 'PRIMARY',                        // École primaire
+    SECONDARY_GENERAL = 'SECONDARY_GENERAL',    // Lycée / Collège général
+    SECONDARY_TECHNICAL = 'SECONDARY_TECHNICAL',// CETIC / Lycée technique
+    TEACHER_TRAINING = 'TEACHER_TRAINING',      // ENIEG / ENIET / TTC
+    HIGHER_ED = 'HIGHER_ED',                   // Université / Grandes écoles / BTS
+    NON_FORMAL = 'NON_FORMAL',                 // Alphabétisation, formation non formelle
+
+    // --- Alias de compatibilité (anciens codes) ---
+    SECONDARY = 'SECONDARY',                   // Alias → SECONDARY_GENERAL
+    TRAINING_CENTER = 'TRAINING_CENTER',       // Alias → SECONDARY_TECHNICAL ou HIGHER_ED
     OTHER = 'OTHER'
 }
 
@@ -13,6 +21,7 @@ export interface ISchool extends Document {
     _id: mongoose.Types.ObjectId
     name: string
     type: SchoolType
+    cycles?: Cycle[] // Cycles effectivement enseignés dans l'école (ex: [COLLEGE, LYCEE] pour un établissement combiné)
     address?: string
     city: mongoose.Types.ObjectId, // clé étrangère city
     country: mongoose.Types.ObjectId, // clé étrangère country
@@ -59,8 +68,14 @@ export interface ISchool extends Document {
     applicants: mongoose.Types.ObjectId[] // Refs to User
 
     // Metadata
-    certificationBadge?: string // URL or Badge ID 
-    owner: mongoose.Types.ObjectId // Ref to User (Teacher who created it)
+    certificationBadge?: string // URL or Badge ID
+    owner: mongoose.Types.ObjectId // Ref to User (Teacher who created it during registration)
+
+    // Verification audit trail
+    verifiedBy?: mongoose.Types.ObjectId // Ref to User (platform admin who validated/rejected)
+    verifiedAt?: Date
+    rejectionNotes?: string  // Admin notes when rejecting or suspending
+
     isActive: boolean
     createdAt: Date
     updatedAt: Date
@@ -79,6 +94,10 @@ const SchoolSchema = new Schema<ISchool>(
             enum: Object.values(SchoolType),
             default: SchoolType.OTHER
         },
+        cycles: [{
+            type: String,
+            enum: Object.values(Cycle)
+        }],
         address: {
             type: String,
             trim: true
@@ -164,12 +183,22 @@ const SchoolSchema = new Schema<ISchool>(
         status: {
             type: String,
             enum: Object.values(SchoolStatus),
-            default: SchoolStatus.PENDING
+            default: SchoolStatus.PENDING,
+            index: true
         },
         owner: {
             type: Schema.Types.ObjectId,
             ref: 'User',
             required: true
+        },
+        verifiedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        verifiedAt: Date,
+        rejectionNotes: {
+            type: String,
+            maxlength: 1000
         },
         isActive: {
             type: Boolean,

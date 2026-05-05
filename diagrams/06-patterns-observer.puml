@@ -1,0 +1,88 @@
+@startuml Patterns - Observer
+
+title Quizlock API - Observer Pattern
+
+skinparam class {
+    BackgroundColor #FCE4EC
+    BorderColor #424242
+    ArrowColor #616161
+}
+
+interface IObserver {
+    +update(event: Event): Promise<void>
+    +getName(): string
+    +getInterestedEvents(): string[]
+}
+
+class EventPublisher {
+    -{static} instance: EventPublisher
+    -observers: Map<string, IObserver[]>
+    -eventHistory: Event[]
+    -maxHistorySize: number
+    +{static} getInstance(): EventPublisher
+    +subscribe(observer: IObserver): void
+    +unsubscribe(observer: IObserver): void
+    +publish(event: Event): Promise<void>
+    -notifyObserver(observer: IObserver, event: Event): Promise<void>
+    +getHistory(limit?: number): Event[]
+    +getEventsByType(type: EventType, limit?: number): Event[]
+    +getObserverCount(eventType: EventType): number
+}
+
+class EmailNotificationObserver {
+    +update(event: Event): Promise<void>
+    +getName(): string
+    +getInterestedEvents(): string[]
+    -sendExamCompletedEmail(): Promise<void>
+    -sendAttemptGradedEmail(): Promise<void>
+    -sendBadgeEarnedEmail(): Promise<void>
+}
+
+class XPUpdateObserver {
+    +update(event: Event): Promise<void>
+    +getName(): string
+    +getInterestedEvents(): string[]
+}
+
+class NotificationObserver {
+    +update(event: Event): Promise<void>
+    +getName(): string
+    +getInterestedEvents(): string[]
+}
+
+class StatsUpdateObserver {
+    +update(event: Event): Promise<void>
+    +getName(): string
+    +getInterestedEvents(): string[]
+}
+
+class BadgeAwardObserver {
+    +update(event: Event): Promise<void>
+    +getName(): string
+    +getInterestedEvents(): string[]
+}
+
+IObserver <|.. EmailNotificationObserver
+IObserver <|.. XPUpdateObserver
+IObserver <|.. NotificationObserver
+IObserver <|.. StatsUpdateObserver
+IObserver <|.. BadgeAwardObserver
+EventPublisher o--> IObserver : manages
+EventPublisher ..> IObserver : notifies
+
+note top of EventPublisher
+  Singleton + Observer Pattern
+  Central event management
+  (src/lib/events/EventPublisher.ts)
+end note
+
+note bottom of IObserver
+  Observers react to events:
+  - Email notifications
+  - XP updates
+  - In-app notifications
+  - Statistics updates
+  - Badge awards
+end note
+
+@enduml

@@ -1,0 +1,177 @@
+{
+  "info": {
+    "_postman_id": "11-self-assessments-quizlock-frontend-integration",
+    "name": "QuizLock API — 11. Self-Assessments (Auto-Évaluation)",
+    "description": "Module 11 — Auto Évaluations\n\nPermet aux étudiants de s'auto-évaluer sur les concepts à l'issue d'un examen et aux enseignants de suivre ces analytics.\n\n1. Soumettre Auto-évaluation (étudiants)\n2. Réflexion Guidée (étudiants)\n3. Analytics & Historique (profs/étudiants)\n\n**Auth** : Cookie next-auth.session-token\n**Base URL** : {{baseUrl}}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "examId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "conceptId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "syllabusId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "classId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "chapterId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Étudiant - Auto Évaluation",
+      "item": [
+        {
+          "name": "Soumettre une auto-évaluation globale",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/self-assessments/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "self-assessments", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"examId\": \"{{examId}}\",\n  \"conceptAssessments\": [\n    {\n      \"conceptId\": \"{{conceptId}}\",\n      \"level\": 4\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "POST /api/self-assessments/submit\n\nL'exam doit être de type SELF_ASSESSMENT. Level de 0 à 6. Retourne une carte de compétence et des recommandations."
+          },
+          "response": []
+        },
+        {
+          "name": "Soumettre réflexion guidée",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/self-assessment/reflection",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "self-assessment", "reflection"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"examTitle\": \"Physique - Cinématique\",\n  \"reflection\": \"C'était assez difficile, j'ai surtout bloqué sur l'application des formules.\",\n  \"syllabusId\": \"{{syllabusId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "POST /api/self-assessment/reflection\n\nSoumet un simple retour textuel. Donne de l'XP à l'élève."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Historique & Profil",
+      "item": [
+        {
+          "name": "Profil d'auto-évaluation (Syllabus)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/self-assessments/profile?syllabusId={{syllabusId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "self-assessments", "profile"],
+              "query": [
+                {
+                  "key": "syllabusId",
+                  "value": "{{syllabusId}}"
+                },
+                {
+                  "key": "studentId",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "GET /api/self-assessments/profile\n\nProgression d'un niveau d'un élève sur un syllabus complet."
+          },
+          "response": []
+        },
+        {
+          "name": "Historique sur un concept",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/self-assessments/concept-history?conceptId={{conceptId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "self-assessments", "concept-history"],
+              "query": [
+                {
+                  "key": "conceptId",
+                  "value": "{{conceptId}}"
+                },
+                {
+                  "key": "studentId",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "GET /api/self-assessments/concept-history\n\nL'évolution de la maîtrise (niveau 0 à 6) dans le temps sur ce concept."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Enseignant",
+      "item": [
+        {
+          "name": "Analytics Classe (Vue Chapitre)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/self-assessments/class-analytics?classId={{classId}}&chapterId={{chapterId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "self-assessments", "class-analytics"],
+              "query": [
+                {
+                  "key": "classId",
+                  "value": "{{classId}}"
+                },
+                {
+                  "key": "chapterId",
+                  "value": "{{chapterId}}"
+                }
+              ]
+            },
+            "description": "GET /api/self-assessments/class-analytics\n\nRécupère les concepts difficiles de toute une classe sur un chapitre particulier, et identifie les 'conceptsNeedingReview'."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

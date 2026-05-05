@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const body = await req.json();
         const { type, email, name, teachers } = body;
 
-        return InvitationController.inviteTeachersToSchool(id, type, email, name, teachers, session.user.id);
+        return InvitationController.inviteTeachersToSchool(id, type, email, name, teachers, session.user.id, req.headers);
     } catch (error) {
         console.error("[Route] Parse body error:", error);
         return NextResponse.json({ error: "Invalid request body" }, { status: 400 });

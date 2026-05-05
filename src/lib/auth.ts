@@ -3,6 +3,13 @@ import { authStrategyManager } from "./auth/strategies/AuthStrategyManager"
 import User from "@/models/User"
 import connectDB from "@/lib/mongodb"
 
+function sanitizeTokenImage(image?: unknown): string | undefined {
+    if (typeof image !== "string" || image.length === 0) return undefined
+    // Never store base64 image payloads in JWT cookies
+    if (image.startsWith("data:image/")) return undefined
+    return image
+}
+
 /**
  * NextAuth Configuration with Strategy Pattern
  *
@@ -83,8 +90,18 @@ export const authOptions: NextAuthOptions = {
         /**
          * JWT callback - add user data to token
          */
-        async jwt({ token, user, account, profile }) {
+        async jwt({ token, user, trigger, session }) {
             try {
+                // When client calls session.update(...), persist updated fields in JWT
+                if (trigger === "update" && session) {
+                    if (typeof session.name === "string" && session.name.length > 0) {
+                        token.name = session.name
+                    }
+                    if (typeof session.image === "string" && session.image.length > 0) {
+                        token.picture = sanitizeTokenImage(session.image)
+                    }
+                }
+
                 // Initial sign in
                 if (user) {
                     // Fetch user from DB to get the role
@@ -92,31 +109,45 @@ export const authOptions: NextAuthOptions = {
                     // so the 'user' object here doesn't have our DB fields
                     try {
                         await connectDB()
-                        const dbUser = await User.findOne({ email: user.email }).lean()
+                        // user.email may contain a phone number for phone-only users
+                        const identifier = (user.email || "") as string
+                        const isPhone = /^\+?[0-9]{8,15}$/.test(identifier)
+                        const dbUser = isPhone
+                            ? await User.findOne({ phone: identifier }).lean()
+                            : await User.findOne({ email: identifier }).lean()
                         if (dbUser) {
                             token.id = dbUser._id.toString()
                             token.role = dbUser.role
                             token.name = dbUser.name
-                            token.picture = dbUser.image || dbUser.metadata?.avatar
+                            token.picture = sanitizeTokenImage(dbUser.image || dbUser.metadata?.avatar)
                             token.schools = dbUser.schools?.map((id: any) => id.toString()) || []
+                            // Store the real phone in token if phone-only user
+                            if (isPhone) token.phone = identifier
                         } else {
-                            console.warn(`[Auth] User not found in DB: ${user.email}`)
+                            console.warn(`[Auth] User not found in DB: ${identifier}`)
                         }
                     } catch (error) {
                         console.error("Error fetching user in JWT callback:", error)
                         // Continue with existing token data
                     }
-                } else if (token.email) {
+                } else if (token.email || token.phone) {
                     // On subsequent calls, check if role has been updated (e.g. after onboarding)
                     // This ensures the session updates immediately after role selection
                     try {
                         await connectDB()
-                        const dbUser = await User.findOne({ email: token.email }).lean()
+                        const identifier = (token.email || token.phone) as string
+                        const isPhone = !token.email && !!token.phone
+                        const dbUser = isPhone
+                            ? await User.findOne({ phone: identifier }).lean()
+                            : await User.findOne({ email: identifier }).lean()
                         if (dbUser) {
                             if (dbUser.role !== token.role) {
-                                console.log(`[Auth] Role updated for ${token.email}: ${token.role} -> ${dbUser.role}`)
+                                console.log(`[Auth] Role updated for ${identifier}: ${token.role} -> ${dbUser.role}`)
                                 token.role = dbUser.role
                             }
+                            // Keep session identity fields in sync with DB
+                            token.name = dbUser.name
+                            token.picture = sanitizeTokenImage(dbUser.image || dbUser.metadata?.avatar)
                             // Always refresh schools
                             token.schools = dbUser.schools?.map((id: any) => id.toString()) || []
                         }
