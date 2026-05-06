@@ -1,5 +1,5 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
-import { BookFormat, BookScope, BookStatus } from "./enums";
+import { BookFormat, BookScope, BookStatus, DifficultyLevel } from "./enums";
 
 export interface IBook extends Document {
   _id: mongoose.Types.ObjectId;
@@ -20,6 +20,12 @@ export interface IBook extends Document {
   copyrightAccepted: boolean;
   downloadCount: number;
   purchaseCount: number;
+  /** Métadonnées pédagogiques (recommandation IA), alignées sur Media */
+  targetLevels?: mongoose.Types.ObjectId[];
+  targetFields?: mongoose.Types.ObjectId[];
+  subjects?: mongoose.Types.ObjectId[];
+  difficulty?: DifficultyLevel;
+  tags?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -110,6 +116,14 @@ const BookSchema = new Schema<IBook>(
       default: 0,
       min: 0,
     },
+    targetLevels: [{ type: Schema.Types.ObjectId, ref: "EducationLevel" }],
+    targetFields: [{ type: Schema.Types.ObjectId, ref: "Field" }],
+    subjects: [{ type: Schema.Types.ObjectId, ref: "Subject" }],
+    difficulty: {
+      type: String,
+      enum: Object.values(DifficultyLevel),
+    },
+    tags: [{ type: String, trim: true, lowercase: true, maxlength: 50 }],
   },
   { timestamps: true },
 );
@@ -121,6 +135,10 @@ BookSchema.index({ submittedBy: 1 });
 BookSchema.index({ schoolId: 1, status: 1 });
 BookSchema.index({ price: 1, status: 1 });
 BookSchema.index({ title: "text", description: "text" });
+BookSchema.index({ targetLevels: 1, status: 1 });
+BookSchema.index({ targetFields: 1, status: 1 });
+BookSchema.index({ subjects: 1, status: 1 });
+BookSchema.index({ tags: 1 });
 
 const Book: Model<IBook> =
   mongoose.models.Book || mongoose.model<IBook>("Book", BookSchema);

@@ -1,6 +1,6 @@
 import { fileTypeFromBuffer } from 'file-type'
 import { IBook } from '@/models/Book'
-import { BookFormat, BookScope, BookStatus, UserRole } from '@/models/enums'
+import { BookFormat, BookScope, BookStatus, UserRole, DifficultyLevel } from '@/models/enums'
 import { bookRepository, BookFilters, PaginatedBooks } from '@/lib/repositories/BookRepository'
 import { bookConfigRepository } from '@/lib/repositories/BookConfigRepository'
 import { StorageStrategyFactory } from '@/lib/strategies/storage/StorageStrategyFactory'
@@ -28,6 +28,12 @@ export interface SubmitBookInput {
     schoolId?: string
     copyrightAccepted: boolean
     teacherId: string
+    /** Métadonnées pédagogiques (recommandation IA) */
+    targetLevels?: string[]
+    targetFields?: string[]
+    subjects?: string[]
+    difficulty?: DifficultyLevel
+    tags?: string[]
 }
 
 export interface UpdateBookInput {
@@ -120,6 +126,11 @@ export class BookService {
             submittedBy: new mongoose.Types.ObjectId(input.teacherId),
             status: BookStatus.PENDING,
             copyrightAccepted: true,
+            targetLevels: input.targetLevels?.map((id) => new mongoose.Types.ObjectId(id)),
+            targetFields: input.targetFields?.map((id) => new mongoose.Types.ObjectId(id)),
+            subjects: input.subjects?.map((id) => new mongoose.Types.ObjectId(id)),
+            difficulty: input.difficulty,
+            tags: input.tags,
         })
     }
 

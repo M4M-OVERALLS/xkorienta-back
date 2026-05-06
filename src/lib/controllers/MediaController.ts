@@ -116,6 +116,23 @@ export class MediaController {
             coverOriginalName = coverFile.name
         }
 
+        // Métadonnées pédagogiques (recommandation IA)
+        const parseJsonField = (key: string): string[] | undefined => {
+            const raw = formData.get(key) as string | null
+            if (!raw) return undefined
+            try {
+                const arr = JSON.parse(raw)
+                return Array.isArray(arr) ? arr.filter((v: unknown) => typeof v === 'string' && v.length > 0) : undefined
+            } catch {
+                return undefined
+            }
+        }
+        const targetLevels   = parseJsonField('targetLevels')
+        const targetFields   = parseJsonField('targetFields')
+        const subjects       = parseJsonField('targetSubjects')
+        const difficulty     = (formData.get('difficulty') as string) ?? undefined
+        const tags           = parseJsonField('tags')
+
         const media = await MediaService.submitMedia({
             mediaType,
             title,
@@ -134,6 +151,11 @@ export class MediaController {
             seriesTitle,
             episodeNumber,
             seasonNumber,
+            targetLevels,
+            targetFields,
+            subjects,
+            difficulty,
+            tags,
         })
 
         return NextResponse.json({ success: true, data: media }, { status: 201 })

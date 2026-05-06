@@ -44,6 +44,12 @@ export interface SubmitMediaInput {
     seriesTitle?: string
     episodeNumber?: number
     seasonNumber?: number
+    // Métadonnées pédagogiques (recommandation IA)
+    targetLevels?: string[]
+    targetFields?: string[]
+    subjects?: string[]
+    difficulty?: string
+    tags?: string[]
 }
 
 export interface UpdateMediaInput {
@@ -147,6 +153,12 @@ export class MediaService {
             seriesTitle: input.seriesTitle,
             episodeNumber: input.episodeNumber,
             seasonNumber: input.seasonNumber,
+            // Métadonnées pédagogiques
+            targetLevels: input.targetLevels?.map(id => new mongoose.Types.ObjectId(id)),
+            targetFields: input.targetFields?.map(id => new mongoose.Types.ObjectId(id)),
+            subjects: input.subjects?.map(id => new mongoose.Types.ObjectId(id)),
+            difficulty: input.difficulty as any,
+            tags: input.tags,
         })
     }
 
