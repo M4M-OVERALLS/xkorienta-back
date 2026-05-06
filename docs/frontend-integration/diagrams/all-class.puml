@@ -1,0 +1,432 @@
+@startuml xkorienta-class-diagram
+
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+title Diagramme de Classes - Xkorienta API
+footer Mai 2026
+
+' ============================================
+' ENUMS PRINCIPAUX
+' ============================================
+package "Enums" #EEE {
+    enum UserRole {
+        STUDENT
+        TEACHER
+        SCHOOL_ADMIN
+        INSPECTOR
+        PRINCIPAL
+        DG_M4M
+        TECH_SUPPORT
+    }
+    enum SubSystem {
+        FRANCOPHONE
+        ANGLOPHONE
+        BILINGUAL
+    }
+    enum Cycle {
+        PRESCOLAIRE
+        PRIMAIRE
+        SECONDAIRE_PREMIER_CYCLE
+        SECONDAIRE_SECOND_CYCLE
+        BTS_HND
+        LICENCE
+        MASTER
+        DOCTORAT
+    }
+    enum SchoolStatus {
+        PENDING
+        VALIDATED
+        REJECTED
+        SUSPENDED
+    }
+    enum ClassValidationStatus {
+        PENDING
+        VALIDATED
+        REJECTED
+    }
+    enum ExamStatus {
+        DRAFT
+        PENDING_VALIDATION
+        VALIDATED
+        PUBLISHED
+        ARCHIVED
+    }
+    enum TransactionStatus {
+        PENDING
+        PROCESSING
+        COMPLETED
+        FAILED
+        REFUNDED
+    }
+}
+
+' ============================================
+' UTILISATEURS
+' ============================================
+package "Utilisateurs" #E3F2FD {
+    class User {
+        _id: ObjectId
+        name: String
+        email: String
+        phone: String
+        role: UserRole
+        subSystem: SubSystem
+        isActive: Boolean
+        preferences: Object
+        gamification: Object
+        paymentInfo: Object
+    }
+    class LearnerProfile {
+        _id: ObjectId
+        enrollmentDate: Date
+        subscriptionStatus: String
+        stats: Object
+        gamification: Object
+    }
+    class PedagogicalProfile {
+        _id: ObjectId
+        teachingExperience: Number
+        certifications: Array
+        stats: Object
+    }
+    User "1" --> "0..1" LearnerProfile : learnerProfile
+    User "1" --> "0..1" PedagogicalProfile : pedagogicalProfile
+}
+
+' ============================================
+' ETABLISSEMENTS
+' ============================================
+package "Etablissements" #E8F5E9 {
+    class School {
+        _id: ObjectId
+        name: String
+        type: SchoolType
+        cycles: Cycle[]
+        status: SchoolStatus
+        contactInfo: Object
+        isActive: Boolean
+    }
+    class Country {
+        _id: ObjectId
+        name: String
+        isoCode: String
+        currency: String
+    }
+    class City {
+        _id: ObjectId
+        name: String
+        region: String
+    }
+    School "*" --> "1" Country : country
+    School "*" --> "1" City : city
+    School "*" --> "*" User : teachers
+    School "*" --> "*" User : admins
+    School "1" --> "1" User : owner
+    User "*" --> "*" School : schools
+}
+
+' ============================================
+' STRUCTURE EDUCATIVE
+' ============================================
+package "Structure Educative" #FFF3E0 {
+    class EducationLevel {
+        _id: ObjectId
+        name: String
+        code: String
+        cycle: Cycle
+        subSystem: SubSystem
+        order: Number
+    }
+    class Field {
+        _id: ObjectId
+        name: String
+        code: String
+        category: String
+    }
+    class Subject {
+        _id: ObjectId
+        name: String
+        code: String
+        subjectType: String
+        coefficient: Number
+    }
+    class LearningUnit {
+        _id: ObjectId
+        name: String
+        unitType: String
+        order: Number
+    }
+    class Concept {
+        _id: ObjectId
+        name: String
+        keywords: Array
+    }
+    class Competency {
+        _id: ObjectId
+        name: String
+        code: String
+        type: String
+    }
+    Field "*" --> "*" EducationLevel : levels
+    Field "*" --> "0..1" Field : parentField
+    Subject "*" --> "*" EducationLevel : levels
+    Subject "*" --> "*" Field : fields
+    LearningUnit "*" --> "1" Subject : subject
+    LearningUnit "*" --> "0..1" LearningUnit : parentUnit
+    Concept "*" --> "1" LearningUnit : unit
+    Competency "*" --> "1" Subject : subject
+    LearnerProfile "*" --> "0..1" EducationLevel : currentLevel
+    LearnerProfile "*" --> "0..1" Field : currentField
+}
+
+' ============================================
+' CLASSES
+' ============================================
+package "Classes" #FCE4EC {
+    class Class {
+        _id: ObjectId
+        name: String
+        academicYear: String
+        isIndependent: Boolean
+        validationStatus: ClassValidationStatus
+        isActive: Boolean
+    }
+    class ClassTeacher {
+        teacher: ObjectId
+        subject: ObjectId
+        role: String
+        permissions: Array
+        isActive: Boolean
+    }
+    class Invitation {
+        _id: ObjectId
+        token: String
+        type: String
+        email: String
+        expiresAt: Date
+        maxUses: Number
+    }
+    Class "1" --> "0..1" School : school
+    Class "1" --> "0..1" School : pendingSchoolId
+    Class "1" --> "1" User : mainTeacher
+    Class "1" --> "1" EducationLevel : level
+    Class "1" --> "0..1" Field : field
+    Class "*" --> "*" User : students
+    Class "1" *-- "*" ClassTeacher : teachers
+    ClassTeacher "*" --> "1" User : teacher
+    ClassTeacher "*" --> "1" Subject : subject
+    Invitation "*" --> "1" Class : class
+}
+
+' ============================================
+' SYLLABUS
+' ============================================
+package "Syllabus" #F3E5F5 {
+    class Syllabus {
+        _id: ObjectId
+        title: String
+        status: String
+        version: Number
+        isPublished: Boolean
+    }
+    class Chapter {
+        _id: ObjectId
+        title: String
+        order: Number
+        duration: Number
+    }
+    Syllabus "1" --> "1" User : teacher
+    Syllabus "1" --> "1" Subject : subject
+    Syllabus "1" --> "1" EducationLevel : level
+    Syllabus "*" --> "*" Class : classes
+    Syllabus "1" *-- "*" Chapter : chapters
+    Chapter "*" --> "*" LearningUnit : units
+}
+
+' ============================================
+' EXAMENS
+' ============================================
+package "Examens" #FFFDE7 {
+    class Exam {
+        _id: ObjectId
+        title: String
+        examType: String
+        status: ExamStatus
+        duration: Number
+        totalPoints: Number
+        startTime: Date
+        endTime: Date
+    }
+    class Question {
+        _id: ObjectId
+        text: String
+        type: String
+        points: Number
+        options: Array
+        correctAnswer: String
+    }
+    class Attempt {
+        _id: ObjectId
+        status: String
+        startedAt: Date
+        submittedAt: Date
+        score: Number
+        percentage: Number
+        answers: Array
+    }
+    Exam "1" --> "1" User : createdById
+    Exam "1" --> "1" Subject : subject
+    Exam "*" --> "*" EducationLevel : targetLevels
+    Exam "*" --> "*" Field : targetFields
+    Exam "*" --> "*" Class : targetClasses
+    Exam "0..1" --> "0..1" Syllabus : syllabus
+    Exam "1" *-- "*" Question : questions
+    Question "*" --> "*" Concept : concepts
+    Question "*" --> "*" Competency : competencies
+    Attempt "*" --> "1" User : userId
+    Attempt "*" --> "1" Exam : examId
+}
+
+' ============================================
+' CONTENUS (Bibliothèque & Médiathèque)
+' ============================================
+package "Contenus" #E0F7FA {
+    class Book {
+        _id: ObjectId
+        title: String
+        author: String
+        format: String
+        status: String
+        fileUrl: String
+        price: Number
+        isFree: Boolean
+    }
+    class Media {
+        _id: ObjectId
+        title: String
+        type: String
+        status: String
+        fileUrl: String
+        price: Number
+    }
+    class BookPurchase {
+        _id: ObjectId
+        amount: Number
+        status: String
+        purchasedAt: Date
+    }
+    class MediaPurchase {
+        _id: ObjectId
+        amount: Number
+        status: String
+        purchasedAt: Date
+    }
+    Book "1" --> "1" User : uploadedBy
+    Book "1" --> "0..1" School : school
+    Book "*" --> "*" Subject : subjects
+    Media "1" --> "1" User : uploadedBy
+    BookPurchase "*" --> "1" User : buyer
+    BookPurchase "*" --> "1" Book : book
+    MediaPurchase "*" --> "1" User : buyer
+    MediaPurchase "*" --> "1" Media : media
+}
+
+' ============================================
+' PAIEMENTS & ABONNEMENTS
+' ============================================
+package "Paiements" #FFEBEE {
+    class Plan {
+        _id: ObjectId
+        code: String
+        name: String
+        prices: Array
+        limits: Object
+    }
+    class Subscription {
+        _id: ObjectId
+        status: String
+        currentPeriodStart: Date
+        currentPeriodEnd: Date
+        amount: Number
+    }
+    class Transaction {
+        _id: ObjectId
+        type: String
+        status: TransactionStatus
+        amount: Number
+        paymentProvider: String
+    }
+    class Wallet {
+        _id: ObjectId
+        balance: Number
+        totalEarned: Number
+        totalWithdrawn: Number
+    }
+    class Payout {
+        _id: ObjectId
+        amount: Number
+        status: String
+        mobileMoneyPhone: String
+    }
+    Subscription "*" --> "1" User : userId
+    Subscription "*" --> "1" Plan : planId
+    Transaction "*" --> "1" User : userId
+    Wallet "1" --> "1" User : userId
+    Payout "*" --> "1" User : userId
+    Payout "*" --> "1" Wallet : walletId
+}
+
+' ============================================
+' COMMUNICATION
+' ============================================
+package "Communication" #F5F5F5 {
+    class Notification {
+        _id: ObjectId
+        type: String
+        title: String
+        message: String
+        isRead: Boolean
+    }
+    class ForumConversation {
+        _id: ObjectId
+        title: String
+        type: String
+        isActive: Boolean
+    }
+    class ForumMessage {
+        _id: ObjectId
+        content: String
+        createdAt: Date
+    }
+    Notification "*" --> "1" User : userId
+    ForumConversation "*" --> "0..1" Class : classId
+    ForumConversation "1" --> "1" User : createdBy
+    ForumConversation "*" --> "*" User : participants
+    ForumMessage "*" --> "1" ForumConversation : conversation
+    ForumMessage "1" --> "1" User : author
+}
+
+' ============================================
+' PARTENARIATS
+' ============================================
+package "Partenariats" #ECEFF1 {
+    class Partner {
+        _id: ObjectId
+        name: String
+        type: String
+        logoUrl: String
+    }
+    class InstitutionPartner {
+        _id: ObjectId
+        partnershipType: String
+        startDate: Date
+        endDate: Date
+    }
+    InstitutionPartner "*" --> "1" School : school
+    InstitutionPartner "*" --> "1" Partner : partner
+    School "*" --> "*" Partner : partnerships
+}
+
+@enduml
