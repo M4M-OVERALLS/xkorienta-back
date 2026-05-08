@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { BookService } from '@/lib/services/BookService'
 import { BookPurchaseService } from '@/lib/services/BookPurchaseService'
-import { BookScope, UserRole } from '@/models/enums'
+import { BookScope, DifficultyLevel, UserRole } from '@/models/enums'
 
 export class BookController {
     /** Construit l'URL absolue de l'image de couverture à partir de la clé. */
@@ -59,8 +59,13 @@ export class BookController {
         const description = formData.get('description') as string
         const price = Number(formData.get('price') ?? 0)
         const currency = (formData.get('currency') as string) ?? 'XAF'
-        const scope = (formData.get('scope') as BookScope) ?? BookScope.GLOBAL
-        const schoolId = (formData.get('schoolId') as string) ?? undefined
+        const scopeRaw = formData.get('scope') as string | null
+        const scope =
+            scopeRaw && Object.values(BookScope).includes(scopeRaw as BookScope)
+                ? (scopeRaw as BookScope)
+                : BookScope.GLOBAL
+        const schoolIdRaw = (formData.get('schoolId') as string) ?? ''
+        const schoolId = schoolIdRaw.trim() || undefined
         const copyrightAccepted = formData.get('copyrightAccepted') === 'true'
 
         if (!title?.trim()) return NextResponse.json({ success: false, message: 'title is required' }, { status: 400 })
@@ -84,6 +89,29 @@ export class BookController {
             coverOriginalName = coverFile.name
         }
 
+        const parseJsonField = (key: string): string[] | undefined => {
+            const raw = formData.get(key) as string | null
+            if (!raw) return undefined
+            try {
+                const arr = JSON.parse(raw)
+                return Array.isArray(arr) ? arr.filter((v: unknown) => typeof v === 'string' && v.length > 0) : undefined
+            } catch {
+                return undefined
+            }
+        }
+        const targetLevels = parseJsonField('targetLevels')
+        const targetFields = parseJsonField('targetFields')
+        const subjects = parseJsonField('targetSubjects')
+        const tags = parseJsonField('tags')
+        const difficultyRaw = (formData.get('difficulty') as string) ?? undefined
+        let difficulty: DifficultyLevel | undefined
+        if (difficultyRaw?.trim()) {
+            if (!Object.values(DifficultyLevel).includes(difficultyRaw as DifficultyLevel)) {
+                return NextResponse.json({ success: false, message: 'difficulty invalide' }, { status: 400 })
+            }
+            difficulty = difficultyRaw as DifficultyLevel
+        }
+
         const book = await BookService.submitBook({
             title,
             description,
@@ -97,6 +125,11 @@ export class BookController {
             schoolId,
             copyrightAccepted,
             teacherId: session.user.id,
+            targetLevels,
+            targetFields,
+            subjects,
+            difficulty,
+            tags,
         })
 
         return NextResponse.json({ success: true, data: book }, { status: 201 })

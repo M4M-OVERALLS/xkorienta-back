@@ -22,7 +22,7 @@ const BookPurchaseSchema = new Schema<IBookPurchase>(
     {
         bookId: {
             type: Schema.Types.ObjectId,
-            ref: 'Book',
+            ref: 'Media',
             required: true,
         },
         userId: {
