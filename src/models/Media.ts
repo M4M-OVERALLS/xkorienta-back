@@ -1,9 +1,9 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
-import { DifficultyLevel, MediaScope, MediaStatus, MediaType } from "./enums";
+import { BookFormat, DifficultyLevel, MediaScope, MediaStatus, MediaType } from "./enums";
 
 export interface IMedia extends Document {
   _id: mongoose.Types.ObjectId;
-  /** Discriminant : VIDEO | PODCAST | AUDIO */
+  /** Discriminant : VIDEO | PODCAST | AUDIO | BOOK */
   mediaType: MediaType;
   title: string;
   description: string;
@@ -48,6 +48,19 @@ export interface IMedia extends Document {
   seriesTitle?: string;
   episodeNumber?: number;
   seasonNumber?: number;
+
+  // Métadonnées spécifiques aux livres (mediaType === BOOK)
+  /** Format du livre : PDF ou EPUB */
+  bookFormat?: BookFormat;
+  /** Nombre de téléchargements complétés (livre uniquement) */
+  downloadCount?: number;
+
+  /**
+   * Classes libres ciblées (scope=GLOBAL, cours de répétition sans école).
+   * Uniquement les classes sans school affiliation (IClass.school === undefined).
+   */
+  classIds?: mongoose.Types.ObjectId[];
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -177,6 +190,20 @@ const MediaSchema = new Schema<IMedia>(
       type: Number,
       min: 1,
     },
+
+    // Livre (mediaType === BOOK)
+    bookFormat: {
+      type: String,
+      enum: Object.values(BookFormat),
+    },
+    downloadCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    // Classes libres ciblées (cours de répétition sans école)
+    classIds: [{ type: Schema.Types.ObjectId, ref: "Class" }],
   },
   { timestamps: true },
 );
@@ -193,6 +220,7 @@ MediaSchema.index({ targetLevels: 1, status: 1 });
 MediaSchema.index({ targetFields: 1, status: 1 });
 MediaSchema.index({ subjects: 1, status: 1 });
 MediaSchema.index({ tags: 1 });
+MediaSchema.index({ classIds: 1, status: 1 });
 
 const Media: Model<IMedia> =
   mongoose.models.Media || mongoose.model<IMedia>("Media", MediaSchema);

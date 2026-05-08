@@ -50,6 +50,8 @@ export interface SubmitMediaInput {
     subjects?: string[]
     difficulty?: string
     tags?: string[]
+    /** Classes libres ciblées (scope GLOBAL, cours de répétition sans école affiliée) */
+    classIds?: string[]
 }
 
 export interface UpdateMediaInput {
@@ -159,6 +161,7 @@ export class MediaService {
             subjects: input.subjects?.map(id => new mongoose.Types.ObjectId(id)),
             difficulty: input.difficulty as any,
             tags: input.tags,
+            classIds: input.classIds?.map(id => new mongoose.Types.ObjectId(id)),
         })
     }
 

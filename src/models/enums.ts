@@ -370,18 +370,6 @@ export enum BookFormat {
   EPUB = "EPUB",
 }
 
-export enum BookScope {
-  GLOBAL = "GLOBAL",
-  SCHOOL = "SCHOOL",
-}
-
-export enum BookStatus {
-  DRAFT = "DRAFT",
-  PENDING = "PENDING",
-  APPROVED = "APPROVED",
-  REJECTED = "REJECTED",
-}
-
 export enum BookPurchaseStatus {
   PENDING = "PENDING",
   COMPLETED = "COMPLETED",
@@ -393,11 +381,12 @@ export enum BookPurchaseStatus {
 // MÉDIATHÈQUE (VIDEO, PODCAST, AUDIO)
 // ==========================================
 
-/** Type de contenu média (hors livres gérés par Book) */
+/** Type de contenu média — BOOK inclus, un livre est un média comme les autres */
 export enum MediaType {
   VIDEO = "VIDEO",
   PODCAST = "PODCAST",
   AUDIO = "AUDIO",
+  BOOK = "BOOK",
 }
 
 /** Visibilité d'un média : global (plateforme) ou restreint à une école */
@@ -408,6 +397,20 @@ export enum MediaScope {
 
 /** Cycle de vie d'un média soumis par un enseignant */
 export enum MediaStatus {
+  DRAFT = "DRAFT",
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
+
+/** @deprecated Utiliser MediaScope. BookScope est conservé pour compatibilité. */
+export enum BookScope {
+  GLOBAL = "GLOBAL",
+  SCHOOL = "SCHOOL",
+}
+
+/** @deprecated Utiliser MediaStatus. BookStatus est conservé pour compatibilité. */
+export enum BookStatus {
   DRAFT = "DRAFT",
   PENDING = "PENDING",
   APPROVED = "APPROVED",

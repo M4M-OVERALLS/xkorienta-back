@@ -26,7 +26,7 @@ export interface IGuestPurchase extends Document {
 
 const GuestPurchaseSchema = new Schema<IGuestPurchase>(
     {
-        bookId:           { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true },
+        bookId:           { type: Schema.Types.ObjectId, ref: 'Media', required: true, index: true },
         email:            { type: String, required: true, lowercase: true, trim: true, index: true },
         paymentReference: { type: String, required: true, unique: true, index: true },
         paymentProvider:  { type: String, required: true },

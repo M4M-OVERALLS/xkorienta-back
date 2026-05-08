@@ -132,6 +132,7 @@ export class MediaController {
         const subjects       = parseJsonField('targetSubjects')
         const difficulty     = (formData.get('difficulty') as string) ?? undefined
         const tags           = parseJsonField('tags')
+        const classIds       = parseJsonField('classIds')
 
         const media = await MediaService.submitMedia({
             mediaType,
@@ -156,6 +157,7 @@ export class MediaController {
             subjects,
             difficulty,
             tags,
+            classIds,
         })
 
         return NextResponse.json({ success: true, data: media }, { status: 201 })
