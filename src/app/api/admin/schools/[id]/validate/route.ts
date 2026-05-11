@@ -7,10 +7,8 @@ import { UserRole } from "@/models/enums"
 
 /** Roles allowed to validate / reject / suspend schools on the platform */
 const PLATFORM_ADMIN_ROLES = [
-    UserRole.RECTOR,
     UserRole.DG_M4M,
     UserRole.TECH_SUPPORT,
-    UserRole.DG_ISIMMA,
 ]
 
 /**
@@ -22,7 +20,7 @@ const PLATFORM_ADMIN_ROLES = [
  * - REJECT   : marks as rejected with mandatory notes (PENDING → REJECTED)
  * - SUSPEND  : suspends a previously validated school (VALIDATED → SUSPENDED)
  *
- * Access: platform admins only (RECTOR, DG_M4M, TECH_SUPPORT, DG_ISIMMA)
+ * Access: platform admins only (DG_M4M, TECH_SUPPORT)
  */
 export async function POST(
     req: Request,

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import User from '@/models/User';
 import Class from '@/models/Class';
+import School from '@/models/School';
 import Subject from '@/models/Subject';
 import Notification from '@/models/Notification';
 import Invitation from '@/models/Invitation';
@@ -127,6 +128,13 @@ export class TeacherInvitationService {
                     }
                 }
 
+                // Rattacher l'enseignant à l'école de la classe
+                if (classDoc.school) {
+                    const schoolId = (classDoc.school as any)._id ?? classDoc.school;
+                    await School.findByIdAndUpdate(schoolId, { $addToSet: { teachers: existingUser._id } });
+                    await User.findByIdAndUpdate(existingUser._id, { $addToSet: { schools: schoolId } });
+                }
+
                 // Send email to existing teacher
                 try {
                     await sendTeacherAddedEmail(
@@ -229,6 +237,13 @@ export class TeacherInvitationService {
                 }
             }
 
+            // Rattacher l'enseignant à l'école de la classe
+            if (classDoc.school) {
+                const schoolId = (classDoc.school as any)._id ?? classDoc.school;
+                await School.findByIdAndUpdate(schoolId, { $addToSet: { teachers: newUser._id } });
+                await User.findByIdAndUpdate(newUser._id, { $addToSet: { schools: schoolId } });
+            }
+
             // Send activation email
             try {
                 await sendTeacherActivationEmail(
@@ -268,8 +283,8 @@ export class TeacherInvitationService {
      */
     static async importTeachersFromExcel(
         classId: string,
-        teachers: { name: string; email: string }[],
-        subjectIds: string[],
+        teachers: { name: string; email: string; subjectIds?: string[] }[],
+        commonSubjectIds: string[],
         role: ClassTeacherRole,
         permissions: string[],
         invitedByUserId: string,
@@ -278,11 +293,16 @@ export class TeacherInvitationService {
         const results: InviteTeacherResult[] = [];
 
         for (const teacher of teachers) {
+            // Per-teacher subjectIds take priority over common subjectIds
+            const resolvedSubjectIds = (teacher.subjectIds && teacher.subjectIds.length > 0)
+                ? teacher.subjectIds
+                : commonSubjectIds;
+
             const result = await this.inviteTeacher(
                 classId,
                 teacher.email,
                 teacher.name,
-                subjectIds,
+                resolvedSubjectIds,
                 role,
                 permissions,
                 invitedByUserId,
