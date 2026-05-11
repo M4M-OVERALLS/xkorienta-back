@@ -648,5 +648,53 @@ export class SchoolService {
 
         return { success: true, message: "Application submitted successfully" };
     }
-}
 
+    /**
+     * PLATFORM ADMIN: Create a school directly with VALIDATED status.
+     * Bypasses the teacher application workflow.
+     */
+    static async createSchoolByAdmin(input: {
+        name: string
+        type: string
+        address?: string
+        city?: string
+        country?: string
+        contactInfo?: { email?: string; phone?: string; website?: string }
+        adminId: string
+    }): Promise<ISchool> {
+        const School = (await import("@/models/School")).default
+        const { SchoolStatus } = await import("@/models/enums")
+
+        const school = await School.create({
+            name: input.name,
+            type: input.type,
+            address: input.address,
+            contactInfo: input.contactInfo,
+            status: SchoolStatus.VALIDATED,
+            verifiedBy: input.adminId,
+            verifiedAt: new Date(),
+            isActive: true,
+            teachers: [],
+            admins: [],
+            applicants: [],
+            specialties: [],
+            accreditation: null,
+            tuitionFee: { min: 0, max: 0, currency: "XAF" },
+            modality: "PRESENTIEL",
+            Languages: [],
+            badges: { employment: false, alternance: false, certification: [] },
+            academicLevel: [],
+            degrees: [],
+            partnerships: [],
+            studentCount: 0,
+            foundedYear: new Date().getFullYear(),
+            description: "",
+            learningOutcomes: [],
+            careerPaths: [],
+            owner: input.adminId,
+        })
+
+        return school
+    }
+
+}
