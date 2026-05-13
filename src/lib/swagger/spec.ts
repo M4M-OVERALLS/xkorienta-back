@@ -26,6 +26,7 @@ export const swaggerSpec = {
     tags: [
         { name: "Auth", description: "Authentification et gestion de session" },
         { name: "Register", description: "Inscription des utilisateurs" },
+        { name: "User", description: "Gestion du profil utilisateur" },
         { name: "Schools", description: "Gestion des établissements" },
         { name: "Classes", description: "Gestion des classes" },
         { name: "Exams", description: "Gestion des examens" },
@@ -350,6 +351,111 @@ export const swaggerSpec = {
         },
     },
 
+        // ─────────────────────────────────────────────────────────────
+        // USER — EMAIL CHANGE (A-14)
+        // ─────────────────────────────────────────────────────────────
+        "/api/user/email/change": {
+            post: {
+                tags: ["User"],
+                summary: "Demander un changement d'email (étape 1)",
+                description: `**Sécurité A-14** — Requiert le mot de passe actuel. Envoie un lien de confirmation au nouvel email.
+
+Le changement n'est **pas** appliqué immédiatement. L'utilisateur doit cliquer sur le lien envoyé au nouvel email (étape 2).`,
+                operationId: "requestEmailChange",
+                security: [{ cookieAuth: [] }],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                $ref: "#/components/schemas/EmailChangeRequest",
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    "200": {
+                        description: "Email de confirmation envoyé au nouvel email",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: {
+                                        success: { type: "boolean", example: true },
+                                        message: { type: "string", example: "Un email de confirmation a été envoyé à votre nouvelle adresse" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    "400": {
+                        description: "Données invalides (email identique, format incorrect, champs manquants)",
+                        content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+                    },
+                    "401": {
+                        description: "Non authentifié",
+                        content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+                    },
+                    "403": {
+                        description: "Mot de passe incorrect",
+                        content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+                    },
+                    "409": {
+                        description: "Le nouvel email est déjà utilisé par un autre compte",
+                        content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+                    },
+                },
+            },
+        },
+
+        "/api/user/email/confirm": {
+            post: {
+                tags: ["User"],
+                summary: "Confirmer le changement d'email (étape 2)",
+                description: `**Sécurité A-14** — Valide le token reçu par email. Applique le changement, notifie l'ancien email, et demande une re-connexion.
+
+Le token est à usage unique et expire après **1 heure**.`,
+                operationId: "confirmEmailChange",
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                $ref: "#/components/schemas/EmailChangeConfirm",
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    "200": {
+                        description: "Email modifié avec succès — re-connexion requise",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: {
+                                        success: { type: "boolean", example: true },
+                                        message: { type: "string", example: "Adresse email modifiée avec succès. Veuillez vous reconnecter." },
+                                        requireReLogin: { type: "boolean", example: true },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    "400": {
+                        description: "Token manquant",
+                        content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+                    },
+                    "410": {
+                        description: "Token invalide ou expiré",
+                        content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+                    },
+                },
+            },
+        },
+
+    },
+
     components: {
         securitySchemes: {
             cookieAuth: {
@@ -483,6 +589,36 @@ export const swaggerSpec = {
                 properties: {
                     success: { type: "boolean", example: false },
                     message: { type: "string", example: "Un compte existe déjà avec cet email" },
+                },
+            },
+
+            EmailChangeRequest: {
+                type: "object",
+                required: ["newEmail", "password"],
+                properties: {
+                    newEmail: {
+                        type: "string",
+                        format: "email",
+                        example: "nouveau@exemple.com",
+                        description: "Nouvelle adresse email souhaitée",
+                    },
+                    password: {
+                        type: "string",
+                        example: "MonMotDePasse123",
+                        description: "Mot de passe actuel (vérification d'identité)",
+                    },
+                },
+            },
+
+            EmailChangeConfirm: {
+                type: "object",
+                required: ["token"],
+                properties: {
+                    token: {
+                        type: "string",
+                        example: "a1b2c3d4e5f6...64chars",
+                        description: "Token reçu dans l'email de confirmation (valide 1h, usage unique)",
+                    },
                 },
             },
         },

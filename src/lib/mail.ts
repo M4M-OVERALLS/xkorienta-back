@@ -604,3 +604,80 @@ export const sendPasswordResetEmail = async (
     html,
   });
 };
+
+/**
+ * A-14: Email envoyé au NOUVEL email pour confirmer le changement
+ */
+export const sendEmailChangeConfirmation = async (
+  newEmail: string,
+  userName: string,
+  confirmUrl: string,
+) => {
+  const content = `
+        <p>Bonjour <strong>${userName}</strong>,</p>
+        <p>Vous avez demandé à changer votre adresse email vers <strong>${newEmail}</strong>. Cliquez sur le bouton ci-dessous pour confirmer ce changement :</p>
+
+        <div style="text-align: center;">
+            <a href="${confirmUrl}" style="${STYLES.button}">Confirmer mon nouvel email</a>
+        </div>
+
+        <div style="${STYLES.infoBox}; background-color: #FFFBEB; border-color: #FCD34D;">
+            <div style="${STYLES.infoBoxTitle}; color: #D97706;">⏰ Expiration</div>
+            <p style="${STYLES.infoBoxText}">Ce lien est valide pendant <strong>1 heure</strong>. Passé ce délai, vous devrez refaire la demande.</p>
+        </div>
+
+        <div style="${STYLES.infoBox}; background-color: #FEF2F2; border-color: #FECACA;">
+            <div style="${STYLES.infoBoxTitle}; color: ${COLORS.error};">🔒 Sécurité</div>
+            <p style="${STYLES.infoBoxText}">Si vous n'avez pas demandé ce changement, ignorez cet email. Votre adresse email restera inchangée.</p>
+        </div>
+
+        <p style="text-align: center; color: ${COLORS.gray}; font-size: 14px;">Si le bouton ne fonctionne pas, copiez ce lien : <br>
+        <a href="${confirmUrl}" style="color: ${COLORS.primary}; word-break: break-all;">${confirmUrl}</a></p>
+    `;
+
+  const html = emailWrapper(
+    "Changement d'adresse email",
+    "Confirmez votre nouvelle adresse",
+    content,
+  );
+  return sendEmail({
+    to: newEmail,
+    subject: "Confirmez votre nouvelle adresse email",
+    html,
+  });
+};
+
+/**
+ * A-14: Notification envoyée à l'ANCIEN email après le changement
+ */
+export const sendEmailChangeNotification = async (
+  oldEmail: string,
+  userName: string,
+  newEmail: string,
+) => {
+  const content = `
+        <p>Bonjour <strong>${userName}</strong>,</p>
+        <p>Nous vous informons que l'adresse email de votre compte a été modifiée.</p>
+
+        <div style="${STYLES.infoBox};">
+            <div style="${STYLES.infoBoxTitle};">📧 Nouvelle adresse</div>
+            <p style="${STYLES.infoBoxText}">Votre compte est désormais associé à : <strong>${newEmail}</strong></p>
+        </div>
+
+        <div style="${STYLES.infoBox}; background-color: #FEF2F2; border-color: #FECACA;">
+            <div style="${STYLES.infoBoxTitle}; color: ${COLORS.error};">⚠️ Ce n'était pas vous ?</div>
+            <p style="${STYLES.infoBoxText}">Si vous n'avez pas effectué ce changement, contactez immédiatement notre support à <strong>support@xkorienta.com</strong> pour sécuriser votre compte.</p>
+        </div>
+    `;
+
+  const html = emailWrapper(
+    "Changement d'adresse email",
+    "Votre adresse email a été modifiée",
+    content,
+  );
+  return sendEmail({
+    to: oldEmail,
+    subject: "Votre adresse email a été modifiée",
+    html,
+  });
+};

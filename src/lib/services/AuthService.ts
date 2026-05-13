@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
-import { sendPasswordResetEmail } from "@/lib/mail";
+import { sendPasswordResetEmail, sendEmailChangeConfirmation, sendEmailChangeNotification } from "@/lib/mail";
 import { getFrontendUrl } from "@/lib/utils/frontendUrl";
 
 type GoogleUserPayload = {
@@ -19,6 +19,7 @@ export class AuthService {
     private readonly MAX_LOGIN_ATTEMPTS = 5;
     private readonly LOCK_TIME_MINUTES = 15;
     private readonly RESET_TOKEN_EXPIRY_MINUTES = 60; // 1 hour
+    private readonly EMAIL_CHANGE_EXPIRY_MINUTES = 60; // 1 hour
 
     constructor() {
         this.authRepository = new AuthRepository();
@@ -156,6 +157,92 @@ export class AuthService {
 
         console.log(`[Auth] Password reset successful for: ${user.email}`);
         return { success: true };
+    }
+
+    /**
+     * A-14: Request an email change (step 1)
+     * Verifies current password, then sends a confirmation link to the NEW email.
+     */
+    async requestEmailChange(userId: string, newEmail: string, password: string, headers?: Headers) {
+        if (!newEmail || !password) {
+            throw new Error("Nouvel email et mot de passe requis");
+        }
+
+        const normalizedEmail = newEmail.toLowerCase().trim();
+
+        // Basic email format check
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+            throw new Error("Format d'email invalide");
+        }
+
+        await connectDB();
+
+        // Verify the user exists and check password
+        const user = await User.findById(userId).select("+password");
+        if (!user) throw new Error("Utilisateur non trouvé");
+
+        if (!user.password) {
+            throw new Error("Changement d'email impossible pour les comptes OAuth. Utilisez votre fournisseur d'identité.");
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) throw new Error("Mot de passe incorrect");
+
+        // Check the new email is not already taken
+        if (normalizedEmail === user.email?.toLowerCase()) {
+            throw new Error("Le nouvel email est identique à l'email actuel");
+        }
+
+        const existing = await User.findOne({ email: normalizedEmail });
+        if (existing) throw new Error("Cet email est déjà utilisé par un autre compte");
+
+        // Generate token (same pattern as password reset)
+        const rawToken = crypto.randomBytes(32).toString('hex');
+        const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+        const expires = new Date(Date.now() + this.EMAIL_CHANGE_EXPIRY_MINUTES * 60 * 1000);
+
+        // Save to DB
+        await this.authRepository.saveEmailChangeToken(userId, hashedToken, normalizedEmail, expires);
+
+        // Build confirmation URL and send email to the NEW address
+        const appUrl = getFrontendUrl(headers);
+        const confirmUrl = `${appUrl}/confirm-email-change?token=${rawToken}`;
+        await sendEmailChangeConfirmation(normalizedEmail, user.name || 'Utilisateur', confirmUrl);
+
+        console.log(`[Auth] Email change confirmation sent to: ${normalizedEmail}`);
+        return { success: true };
+    }
+
+    /**
+     * A-14: Confirm the email change (step 2)
+     * Validates the token, applies the new email, notifies the old email.
+     */
+    async confirmEmailChange(token: string) {
+        if (!token) throw new Error("Token requis");
+
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+        const user = await this.authRepository.findByEmailChangeToken(hashedToken);
+        if (!user) {
+            throw new Error("Lien de confirmation invalide ou expiré");
+        }
+
+        const oldEmail = user.email as string;
+        const newEmail = user.emailChangePending as string;
+        const userName = (user.name as string) || 'Utilisateur';
+
+        if (!newEmail) throw new Error("Aucun changement d'email en attente");
+
+        // Apply the change
+        await this.authRepository.applyEmailChange(user._id.toString(), newEmail);
+
+        // Notify the OLD email
+        if (oldEmail) {
+            await sendEmailChangeNotification(oldEmail, userName, newEmail);
+        }
+
+        console.log(`[Auth] Email changed for user ${user._id}: ${oldEmail} → ${newEmail}`);
+        return { success: true, newEmail };
     }
 
     async verifyGoogle(idToken?: string, userPayload?: GoogleUserPayload) {
