@@ -7,7 +7,7 @@ import Class from "@/models/Class"
 import { hash } from "bcryptjs"
 import { UserRole } from "@/models/enums"
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
     try {
         const session = await getServerSession(authOptions)
 
@@ -92,8 +92,13 @@ export async function PUT(req: Request) {
 
         // Update basic info
         if (name) user.name = name
-        // Email update might require verification in a real app, keeping it simple here
-        if (email) user.email = email
+        // A-14: Block direct email change — must use /api/user/email/change
+        if (email && email !== user.email) {
+            return NextResponse.json(
+                { success: false, message: "Pour changer d'email, utilisez /api/user/email/change avec votre mot de passe" },
+                { status: 400 }
+            )
+        }
 
         // Legacy fallback: image update now lives on /api/user/profile/avatar
         if (typeof image === "string" && image.length > 0) {

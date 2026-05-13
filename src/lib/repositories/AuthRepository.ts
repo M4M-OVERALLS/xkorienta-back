@@ -84,6 +84,78 @@ export class AuthRepository {
         );
     }
 
+    // ── Email Change (A-14) ──────────────────────────────────────────
+
+    async saveEmailChangeToken(
+        userId: string,
+        hashedToken: string,
+        newEmail: string,
+        expires: Date
+    ) {
+        await connectDB();
+        const db = mongoose.connection.db;
+        if (!db) throw new Error("Database connection not available");
+
+        await db.collection('users').updateOne(
+            { _id: new mongoose.Types.ObjectId(userId) },
+            {
+                $set: {
+                    emailChangeToken: hashedToken,
+                    emailChangeExpires: expires,
+                    emailChangePending: newEmail,
+                }
+            }
+        );
+    }
+
+    async findByEmailChangeToken(hashedToken: string) {
+        await connectDB();
+        const db = mongoose.connection.db;
+        if (!db) throw new Error("Database connection not available");
+
+        return db.collection('users').findOne({
+            emailChangeToken: hashedToken,
+            emailChangeExpires: { $gt: new Date() },
+        });
+    }
+
+    async applyEmailChange(userId: string, newEmail: string) {
+        await connectDB();
+        const db = mongoose.connection.db;
+        if (!db) throw new Error("Database connection not available");
+
+        await db.collection('users').updateOne(
+            { _id: new mongoose.Types.ObjectId(userId) },
+            {
+                $set: { email: newEmail, emailVerified: true },
+                $unset: {
+                    emailChangeToken: 1,
+                    emailChangeExpires: 1,
+                    emailChangePending: 1,
+                }
+            }
+        );
+    }
+
+    async clearEmailChangeToken(userId: string) {
+        await connectDB();
+        const db = mongoose.connection.db;
+        if (!db) throw new Error("Database connection not available");
+
+        await db.collection('users').updateOne(
+            { _id: new mongoose.Types.ObjectId(userId) },
+            {
+                $unset: {
+                    emailChangeToken: 1,
+                    emailChangeExpires: 1,
+                    emailChangePending: 1,
+                }
+            }
+        );
+    }
+
+    // ── Password ───────────────────────────────────────────────────
+
     async updatePassword(userId: string, hashedPassword: string) {
         await connectDB();
         const db = mongoose.connection.db;

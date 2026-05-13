@@ -69,6 +69,11 @@ export interface IUser extends Document {
     resetPasswordToken?: string
     resetPasswordExpires?: Date
 
+    // Email Change (A-14)
+    emailChangeToken?: string
+    emailChangeExpires?: Date
+    emailChangePending?: string // New email awaiting confirmation
+
     // Legacy fields (kept for compatibility during migration)
     studentCode?: string
     image?: string
@@ -136,6 +141,11 @@ const UserSchema = new Schema<IUser>(
         // Password Reset
         resetPasswordToken: { type: String, select: false },
         resetPasswordExpires: { type: Date, select: false },
+
+        // Email Change (A-14)
+        emailChangeToken: { type: String, select: false },
+        emailChangeExpires: { type: Date, select: false },
+        emailChangePending: { type: String, select: false },
 
         // Legacy
         studentCode: { type: String, unique: true, sparse: true },
