@@ -203,10 +203,11 @@ const QuestionSchema = new Schema<IQuestion>(
 // so this only affects responses sent to clients.
 QuestionSchema.set('toJSON', {
   transform(_doc, ret) {
-    delete ret.correctAnswer
-    delete ret.modelAnswer
-    delete ret.openQuestionConfig
-    return ret
+    const obj = ret as unknown as Record<string, unknown>
+    delete obj.correctAnswer
+    delete obj.modelAnswer
+    delete obj.openQuestionConfig
+    return obj
   }
 })
 

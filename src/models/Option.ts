@@ -100,8 +100,9 @@ const OptionSchema = new Schema<IOption>(
 // so this only affects responses sent to clients.
 OptionSchema.set('toJSON', {
   transform(_doc, ret) {
-    delete ret.isCorrect
-    return ret
+    const obj = ret as unknown as Record<string, unknown>
+    delete obj.isCorrect
+    return obj
   }
 })
 
