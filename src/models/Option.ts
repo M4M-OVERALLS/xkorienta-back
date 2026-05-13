@@ -95,6 +95,16 @@ const OptionSchema = new Schema<IOption>(
   }
 )
 
+// SECURITY (A-10): Strip isCorrect from JSON serialization by default.
+// Server-side scoring (AttemptService) uses .lean() which bypasses toJSON,
+// so this only affects responses sent to clients.
+OptionSchema.set('toJSON', {
+  transform(_doc, ret) {
+    delete ret.isCorrect
+    return ret
+  }
+})
+
 // Indexes
 OptionSchema.index({ questionId: 1, order: 1 }) // Pour récupérer les options triées
 OptionSchema.index({ questionId: 1, isCorrect: 1 }) // Pour trouver la bonne réponse rapidement

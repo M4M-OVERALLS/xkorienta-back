@@ -49,6 +49,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             .lean();
 
         // Build base questions array
+        // SECURITY (A-10): Never expose correctAnswer, modelAnswer or openQuestionConfig
+        // to the student during exam take — scoring is done server-side in AttemptService.
         let examQuestions = questionsDoc.map(q => ({
             id: q._id.toString(),
             examId: q.examId.toString(),
@@ -56,9 +58,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             type: q.type || 'QCM',
             imageUrl: q.imageUrl,
             points: q.points,
-            correctAnswer: q.correctAnswer,
-            modelAnswer: q.modelAnswer,
-            openQuestionConfig: q.openQuestionConfig,
             options: optionsDoc
                 .filter(o => o.questionId.toString() === q._id.toString())
                 .map(o => ({
