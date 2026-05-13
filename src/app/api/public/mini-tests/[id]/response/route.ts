@@ -1,16 +1,20 @@
 import { NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import { GuestAttemptService } from '@/lib/services/GuestAttemptService'
+import logger from '@/lib/utils/logger'
 
 /**
  * POST /api/public/mini-tests/[id]/response
- * Soumet une réponse individuelle pour un guest
+ * Soumet une réponse individuelle pour un guest.
+ *
+ * SECURITY (A-01): Ne retourne JAMAIS isCorrect dans la réponse.
+ * L'évaluation est différée au /submit pour empêcher l'oracle de réponse.
  */
 export async function POST(
     req: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    await params // Consume params even if unused to satisfy Next.js 16
+    await params
     try {
         await connectDB()
 
@@ -24,20 +28,22 @@ export async function POST(
             )
         }
 
-        const result = await GuestAttemptService.submitGuestResponse(
+        await GuestAttemptService.submitGuestResponse(
             attemptId,
             questionId,
             selectedOptionId || null,
             textResponse || null,
-            guestSessionId
+            guestSessionId,
+            req.headers
         )
 
+        // A-01: Only return confirmation, never isCorrect
         return NextResponse.json({
             success: true,
-            data: result
+            data: { recorded: true }
         })
     } catch (error: any) {
-        console.error('[Guest Response] Error:', error)
+        logger.error('[Guest Response] Error:', error)
         return NextResponse.json(
             { success: false, message: error.message || 'Failed to submit response' },
             { status: 400 }

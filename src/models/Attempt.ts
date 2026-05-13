@@ -49,6 +49,7 @@ export interface IAttempt extends Document {
   examId: mongoose.Types.ObjectId
   userId?: mongoose.Types.ObjectId // Optional for guest users
   guestSessionId?: string // UUID for anonymous guest sessions (Freemium-Direct)
+  clientFingerprint?: string // A-09: IP+UA hash to bind session to device
 
   // Temporalité
   startedAt: Date
@@ -102,6 +103,10 @@ const AttemptSchema = new Schema<IAttempt>(
       type: String,
       required: false, // UUID for anonymous guest sessions
       index: true
+    },
+    clientFingerprint: {
+      type: String,
+      required: false, // A-09: IP+UA hash bound on first response
     },
 
     // Temporalité

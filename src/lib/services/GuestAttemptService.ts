@@ -165,21 +165,47 @@ export class GuestAttemptService {
     }
 
     /**
-     * Soumet une réponse pour un guest
+     * Soumet une réponse pour un guest.
+     *
+     * SECURITY (A-01): N'évalue PAS isCorrect ici — l'évaluation est
+     * différée au submitGuestAttempt() pour empêcher l'oracle de réponse.
+     *
+     * Le guestSessionId est lié à l'empreinte IP + User-Agent (A-09)
+     * pour limiter la réutilisation de sessions entre appareils.
      */
     static async submitGuestResponse(
         attemptId: string,
         questionId: string,
         selectedOptionId: string | null,
         textResponse: string | null,
-        guestSessionId: string
+        guestSessionId: string,
+        headers?: Headers
     ) {
         const attempt = await Attempt.findById(attemptId)
         if (!attempt) throw new Error("Attempt not found")
 
-        // Vérifier que c'est bien une tentative guest de cette session
         if (attempt.guestSessionId !== guestSessionId) {
             throw new Error("Unauthorized")
+        }
+
+        // A-09: Bind guestSessionId to IP + User-Agent fingerprint
+        if (headers) {
+            const ip = headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+                || headers.get('x-real-ip')
+                || 'unknown'
+            const ua = headers.get('user-agent') || 'unknown'
+            const fingerprint = crypto
+                .createHash('sha256')
+                .update(`${guestSessionId}:${ip}:${ua}`)
+                .digest('hex')
+                .substring(0, 16)
+
+            // Store fingerprint on first request, reject mismatches after
+            if (!attempt.clientFingerprint) {
+                await Attempt.findByIdAndUpdate(attemptId, { clientFingerprint: fingerprint })
+            } else if (attempt.clientFingerprint !== fingerprint) {
+                throw new Error("Session mismatch — please restart the test")
+            }
         }
 
         if (attempt.status !== AttemptStatus.STARTED) {
@@ -189,18 +215,7 @@ export class GuestAttemptService {
         const question = await Question.findById(questionId)
         if (!question) throw new Error("Question not found")
 
-        // Vérifier la réponse (logique simplifiée pour guests)
-        let isCorrect = false
-        if (question.type === 'QCM' && selectedOptionId) {
-            const Option = mongoose.model('Option')
-            const option = await Option.findById(selectedOptionId)
-            isCorrect = option?.isCorrect || false
-        } else if (question.type === 'TRUE_FALSE') {
-            // Pour TRUE_FALSE, selectedOptionId contient "true" ou "false"
-            isCorrect = selectedOptionId === String(question.correctAnswer)
-        }
-
-        // Créer ou mettre à jour la réponse
+        // A-01: Record the answer WITHOUT evaluating correctness
         await Response.findOneAndUpdate(
             { attemptId: attempt._id, questionId: question._id },
             {
@@ -208,17 +223,19 @@ export class GuestAttemptService {
                 questionId: question._id,
                 selectedOptionId: selectedOptionId ? new mongoose.Types.ObjectId(selectedOptionId) : undefined,
                 textResponse,
-                isCorrect,
                 answeredAt: new Date()
             },
             { upsert: true, new: true }
         )
 
-        return { success: true, isCorrect }
+        return { recorded: true }
     }
 
     /**
-     * Soumet la tentative guest et calcule le score
+     * Soumet la tentative guest et calcule le score.
+     *
+     * SECURITY (A-01): L'évaluation de isCorrect se fait ICI (au submit),
+     * pas dans submitGuestResponse(). Cela empêche l'oracle de réponse.
      */
     static async submitGuestAttempt(attemptId: string, guestSessionId: string) {
         const attempt = await Attempt.findById(attemptId)
@@ -232,18 +249,40 @@ export class GuestAttemptService {
             throw new Error("Attempt already submitted")
         }
 
-        // Récupérer toutes les réponses
+        // Récupérer toutes les réponses et questions
         const responses = await Response.find({ attemptId: attempt._id })
         const questions = await Question.find({ examId: attempt.examId })
+        const questionIds = questions.map(q => q._id)
+        const options = await Option.find({ questionId: { $in: questionIds } })
 
-        // Calculer le score
+        // A-01: Evaluate correctness NOW (server-side, at submit time)
+        const optionMap = new Map(options.map(o => [o._id.toString(), o.isCorrect]))
+
+        let earnedPoints = 0
         const totalPoints = questions.reduce((sum, q) => sum + (q.points || 1), 0)
-        const earnedPoints = responses
-            .filter(r => r.isCorrect)
-            .reduce((sum, r) => {
-                const question = questions.find(q => q._id.toString() === r.questionId.toString())
-                return sum + (question?.points || 1)
-            }, 0)
+        let correctCount = 0
+
+        for (const response of responses) {
+            const question = questions.find(q => q._id.toString() === response.questionId.toString())
+            if (!question) continue
+
+            let isCorrect = false
+
+            if (question.type === 'QCM' && response.selectedOptionId) {
+                isCorrect = optionMap.get(response.selectedOptionId.toString()) || false
+            } else if (question.type === 'TRUE_FALSE') {
+                const studentAnswer = response.textResponse ?? response.selectedOptionId?.toString()
+                isCorrect = studentAnswer === String(question.correctAnswer)
+            }
+
+            // Update the response with the evaluated isCorrect
+            await Response.findByIdAndUpdate(response._id, { isCorrect })
+
+            if (isCorrect) {
+                earnedPoints += question.points || 1
+                correctCount++
+            }
+        }
 
         const percentage = totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0
 
@@ -255,7 +294,7 @@ export class GuestAttemptService {
             score: earnedPoints,
             maxScore: totalPoints,
             percentage: Math.round(percentage * 10) / 10,
-            timeSpent: Math.round((now.getTime() - attempt.startedAt.getTime()) / 60000) // minutes
+            timeSpent: Math.round((now.getTime() - attempt.startedAt.getTime()) / 60000)
         })
 
         // Mettre à jour les stats de l'examen
@@ -268,7 +307,7 @@ export class GuestAttemptService {
             maxScore: totalPoints,
             percentage: Math.round(percentage * 10) / 10,
             totalQuestions: questions.length,
-            correctAnswers: responses.filter(r => r.isCorrect).length
+            correctAnswers: correctCount
         }
     }
 
