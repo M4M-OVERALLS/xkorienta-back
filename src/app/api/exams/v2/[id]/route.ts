@@ -3,44 +3,40 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import connectDB from "@/lib/mongodb"
 import { ExamServiceV2 } from "@/lib/services/ExamServiceV2"
+import { requireExamRead } from "@/lib/middleware/requireExamRead"
 
 /**
  * GET /api/exams/v2/[id]
  * Récupère un examen par ID avec toutes ses relations
  * Query param: includeQuestions=true pour inclure les questions
+ *
+ * SECURITY: Protected by requireExamRead — only creator,
+ * same-school admins/inspectors, platform admins, or public-demo access.
  */
-export async function GET(
-    req: Request,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    try {
-        await connectDB()
-        const { id } = await params
+export const GET = requireExamRead(
+    async (req, { exam }) => {
+        try {
+            const { searchParams } = new URL(req.url)
+            const includeQuestions = searchParams.get('includeQuestions') === 'true'
 
-        const { searchParams } = new URL(req.url)
-        const includeQuestions = searchParams.get('includeQuestions') === 'true'
+            const fullExam = await ExamServiceV2.getExamById(
+                exam._id.toString(),
+                includeQuestions
+            )
 
-        const exam = await ExamServiceV2.getExamById(id, includeQuestions)
-
-        if (!exam) {
+            return NextResponse.json({
+                success: true,
+                data: fullExam
+            })
+        } catch (error) {
+            console.error("[ExamV2 API] Error:", error)
             return NextResponse.json(
-                { success: false, message: "Exam not found" },
-                { status: 404 }
+                { success: false, message: "Internal server error" },
+                { status: 500 }
             )
         }
-
-        return NextResponse.json({
-            success: true,
-            data: exam
-        })
-    } catch (error) {
-        console.error("[ExamV2 API] Error:", error)
-        return NextResponse.json(
-            { success: false, message: "Internal server error" },
-            { status: 500 }
-        )
     }
-}
+)
 
 /**
  * PUT /api/exams/v2/[id]
@@ -103,7 +99,7 @@ export async function PUT(
  * Suppression douce (archive) d'un examen
  */
 export async function DELETE(
-    req: Request,
+    _req: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
