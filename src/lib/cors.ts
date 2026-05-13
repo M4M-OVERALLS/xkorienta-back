@@ -1,23 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// CORS Configuration
-const ALLOWED_ORIGINS = [
+// CORS Configuration — strict whitelist of exact origins (A-02 fix)
+const ALLOWED_ORIGINS = new Set([
     process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://xkorienta.com',
+    'https://www.xkorienta.com',
+    'https://gradeforcast.com',
+    'https://www.gradeforcast.com',
     'http://localhost:3000',
     'http://localhost:3002',
-];
+]);
 
 const ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
 const ALLOWED_HEADERS = ['Content-Type', 'Authorization', 'X-Requested-With'];
 
 /**
  * Add CORS headers to a response
+ * Only reflects origins present in the exact ALLOWED_ORIGINS set (A-02)
  */
 export function addCorsHeaders(response: NextResponse, origin: string | null): NextResponse {
-    const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+    if (origin && ALLOWED_ORIGINS.has(origin)) {
+        response.headers.set('Access-Control-Allow-Origin', origin);
+        response.headers.set('Access-Control-Allow-Credentials', 'true');
+    }
 
-    response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
-    response.headers.set('Access-Control-Allow-Credentials', 'true');
     response.headers.set('Access-Control-Allow-Methods', ALLOWED_METHODS.join(', '));
     response.headers.set('Access-Control-Allow-Headers', ALLOWED_HEADERS.join(', '));
     response.headers.set('Access-Control-Max-Age', '86400'); // 24 hours
