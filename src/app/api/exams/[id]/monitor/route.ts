@@ -62,7 +62,6 @@ export async function GET(
             status: a.status,
             score: a.score,
             percentage: a.percentage,
-            resumeToken: a.resumeToken,
             tabSwitchCount: a.tabSwitchCount,
             user: a.userId ? {
                 id: a.userId._id.toString(),
