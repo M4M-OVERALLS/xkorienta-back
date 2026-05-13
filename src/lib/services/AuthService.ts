@@ -6,6 +6,7 @@ import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import { sendPasswordResetEmail, sendEmailChangeConfirmation, sendEmailChangeNotification } from "@/lib/mail";
 import { getFrontendUrl } from "@/lib/utils/frontendUrl";
+import logger from "@/lib/utils/logger";
 
 type GoogleUserPayload = {
     email?: string;
@@ -209,7 +210,7 @@ export class AuthService {
         const confirmUrl = `${appUrl}/confirm-email-change?token=${rawToken}`;
         await sendEmailChangeConfirmation(normalizedEmail, user.name || 'Utilisateur', confirmUrl);
 
-        console.log(`[Auth] Email change confirmation sent to: ${normalizedEmail}`);
+        logger.info(`[Auth] Email change confirmation sent to: ${normalizedEmail}`);
         return { success: true };
     }
 
@@ -241,7 +242,7 @@ export class AuthService {
             await sendEmailChangeNotification(oldEmail, userName, newEmail);
         }
 
-        console.log(`[Auth] Email changed for user ${user._id}: ${oldEmail} → ${newEmail}`);
+        logger.info(`[Auth] Email changed for user ${user._id}: ${oldEmail} → ${newEmail}`);
         return { success: true, newEmail };
     }
 

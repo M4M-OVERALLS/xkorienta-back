@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { AuthService } from "@/lib/services/AuthService"
+import logger from "@/lib/utils/logger"
 
 const authService = new AuthService()
 
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
         })
 
     } catch (error: any) {
-        console.error("[Email Confirm] Error:", error)
+        logger.error("[Email Confirm] Error:", error)
 
         const isExpired = error.message.includes("invalide") || error.message.includes("expiré")
 

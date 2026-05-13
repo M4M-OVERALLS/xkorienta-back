@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { AuthService } from "@/lib/services/AuthService"
+import logger from "@/lib/utils/logger"
 
 const authService = new AuthService()
 
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
         })
 
     } catch (error: any) {
-        console.error("[Email Change] Error:", error)
+        logger.error("[Email Change] Error:", error)
 
         const status =
             error.message.includes("Mot de passe incorrect") ? 403 :
