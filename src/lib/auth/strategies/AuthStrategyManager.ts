@@ -1,6 +1,6 @@
 import { IAuthStrategy } from "./AuthStrategy"
 import { CredentialsAuthStrategy } from "./CredentialsStrategy"
-import { GoogleAuthStrategy } from "./GoogleStrategy"
+// import { GoogleAuthStrategy } from "./GoogleStrategy" // A-07/A-18: disabled
 import { GitHubAuthStrategy } from "./GitHubStrategy"
 import { Provider } from "next-auth/providers/index"
 
@@ -42,7 +42,12 @@ export class AuthStrategyManager {
     private registerStrategies() {
         // Register all strategies
         this.registerStrategy(new CredentialsAuthStrategy())
-        this.registerStrategy(new GoogleAuthStrategy())
+
+        // A-07/A-18: Google OAuth disabled until full frontend/backend alignment is deployed
+        // Re-enable when GOOGLE_CLIENT_ID/SECRET are properly configured on both sides
+        // and allowDangerousEmailAccountLinking is set to false
+        // this.registerStrategy(new GoogleAuthStrategy())
+
         this.registerStrategy(new GitHubAuthStrategy())
 
         // Add more strategies here:
