@@ -88,7 +88,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             submittedAt: attemptDoc.submittedAt?.toISOString(),
             status: attemptDoc.status,
             score: attemptDoc.score,
-            resumeToken: attemptDoc.resumeToken,
         };
 
         const exam = {

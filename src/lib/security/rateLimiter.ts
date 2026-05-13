@@ -86,6 +86,49 @@ export const registrationLimiter = rateLimit({
 })
 
 /**
+ * Rate limiter for late-code generation — 20 per hour per user (A-17)
+ */
+export const lateCodeGenerateLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 20 // 20 generations per hour per user
+})
+
+
+/**
+ * Check rate limit without incrementing — use with rateLimitConsume for fail-only counting
+ */
+export function rateLimitCheck(config: RateLimitConfig, identifier: string): { allowed: boolean; resetTime: number } {
+    const now = Date.now()
+    const key = `ratelimit:${identifier}`
+
+    if (!store[key] || store[key].resetTime < now) {
+        return { allowed: true, resetTime: now + config.windowMs }
+    }
+
+    return {
+        allowed: store[key].count < config.maxRequests,
+        resetTime: store[key].resetTime
+    }
+}
+
+/**
+ * Consume one rate limit token — call only on failure
+ */
+export function rateLimitConsume(config: RateLimitConfig, identifier: string): void {
+    const now = Date.now()
+    const key = `ratelimit:${identifier}`
+
+    if (!store[key] || store[key].resetTime < now) {
+        store[key] = {
+            count: 0,
+            resetTime: now + config.windowMs
+        }
+    }
+
+    store[key].count++
+}
+
+/**
  * Helper to get client identifier (IP address)
  */
 export function getClientIdentifier(request: Request): string {

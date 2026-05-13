@@ -71,7 +71,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             startedAt: a.startedAt?.toISOString(),
             submittedAt: a.submittedAt?.toISOString(),
             expiresAt: a.expiresAt.toISOString(),
-            resumeToken: a.resumeToken,
         }));
 
         return NextResponse.json({
