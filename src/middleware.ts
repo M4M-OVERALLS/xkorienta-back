@@ -1,36 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// CORS Configuration - Production domains + localhost for development
-const ALLOWED_ORIGINS = [
+// CORS Configuration — strict whitelist of exact origins (A-02 fix)
+// No wildcard subdomain matching — only explicitly listed origins are reflected
+const ALLOWED_ORIGINS = new Set([
     'https://xkorienta.com',
     'https://www.xkorienta.com',
     'https://gradeforcast.com',
     'https://www.gradeforcast.com',
+    // Dev only — safe because these never match in production
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:3002',
-];
+]);
 
 const ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
 const ALLOWED_HEADERS = ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'];
 
 /**
  * Add CORS headers to a response
- * Accepts requests from gradeforcast.com, xkorin.com and localhost
+ * Only reflects origins present in the exact ALLOWED_ORIGINS set (A-02)
  */
 function addCorsHeaders(response: NextResponse, origin: string | null): NextResponse {
-    // Check if origin matches any allowed domain (including subdomains)
-    const isAllowed = origin && (
-        ALLOWED_ORIGINS.includes(origin) ||
-        origin.endsWith('.xkorienta.com') ||
-        origin.endsWith('.gradeforcast.com') ||
-        origin.endsWith('.xkorin.com')
-    );
+    if (origin && ALLOWED_ORIGINS.has(origin)) {
+        response.headers.set('Access-Control-Allow-Origin', origin);
+        response.headers.set('Access-Control-Allow-Credentials', 'true');
+    }
+    // If origin is not allowed, no Access-Control-Allow-Origin header is set — browser blocks the request
 
-    const allowedOrigin = isAllowed ? origin : ALLOWED_ORIGINS[0];
-
-    response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
-    response.headers.set('Access-Control-Allow-Credentials', 'true');
     response.headers.set('Access-Control-Allow-Methods', ALLOWED_METHODS.join(', '));
     response.headers.set('Access-Control-Allow-Headers', ALLOWED_HEADERS.join(', '));
     response.headers.set('Access-Control-Max-Age', '86400'); // 24 hours
