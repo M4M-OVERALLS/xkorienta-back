@@ -678,7 +678,6 @@ export class SchoolService {
             admins: [],
             applicants: [],
             specialties: [],
-            accreditation: null,
             tuitionFee: { min: 0, max: 0, currency: "XAF" },
             modality: "PRESENTIEL",
             Languages: [],

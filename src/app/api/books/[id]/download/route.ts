@@ -1,7 +1,7 @@
 import { authOptions } from "@/lib/auth";
 import { BookPurchaseService } from "@/lib/services/BookPurchaseService";
 import { BookService } from "@/lib/services/BookService";
-import { BookScope } from "@/models/enums";
+import { MediaScope } from "@/models/enums";
 import fs from "fs/promises";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -25,7 +25,7 @@ export async function GET(_req: Request, { params }: Params) {
     if (!session?.user?.id) {
       // Public anonymous download: only for approved GLOBAL free books.
       const publicBook = await BookService.getPublicBookById(id);
-      if (publicBook.scope !== BookScope.GLOBAL || publicBook.price > 0) {
+      if (publicBook.scope !== MediaScope.GLOBAL || publicBook.price > 0) {
         return NextResponse.json(
           { success: false, message: "Login required for this download" },
           { status: 401 },

@@ -6,7 +6,7 @@ import { bookRepository } from '@/lib/repositories/BookRepository'
 import { mediaRepository } from '@/lib/repositories/MediaRepository'
 import { planRepository } from '@/lib/repositories/PlanRepository'
 import { transactionRepository } from '@/lib/repositories/TransactionRepository'
-import { TransactionType, TransactionStatus, BookStatus, MediaStatus, SubscriptionInterval } from '@/models/enums'
+import { TransactionType, TransactionStatus, MediaStatus, SubscriptionInterval } from '@/models/enums'
 import { BookConfigService } from '@/lib/services/BookConfigService'
 import { bookConfigRepository } from '@/lib/repositories/BookConfigRepository'
 
@@ -79,7 +79,7 @@ export class PaymentController {
             case TransactionType.BOOK_PURCHASE: {
                 const book = await bookRepository.findById(productId)
                 if (!book) throw new Error('Book not found')
-                if (book.status !== BookStatus.APPROVED) throw new Error('Book is not available for purchase')
+                if (book.status !== MediaStatus.APPROVED) throw new Error('Book is not available for purchase')
                 if (book.price === 0) throw new Error('This book is free, no purchase needed')
                 const submittedById = book.submittedBy as unknown
                 const sellerId = submittedById

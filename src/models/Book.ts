@@ -6,16 +6,15 @@
  * BookPurchase.bookId et GuestPurchase.bookId référencent désormais Media._id.
  */
 import { IMedia } from "./Media";
-import { BookFormat, BookScope, BookStatus, MediaType } from "./enums";
+import { BookFormat, MediaScope, MediaStatus, MediaType } from "./enums";
 
 /**
  * Sous-type d'IMedia représentant un livre.
- * status et scope utilisent les types Book (mêmes valeurs string que Media).
  */
-export interface IBook extends Omit<IMedia, "status" | "scope"> {
+export interface IBook extends Omit<IMedia, "mediaType"> {
   mediaType: MediaType.BOOK;
-  status: BookStatus;
-  scope: BookScope;
+  status: MediaStatus;
+  scope: MediaScope;
   bookFormat: BookFormat;
   downloadCount: number;
 }

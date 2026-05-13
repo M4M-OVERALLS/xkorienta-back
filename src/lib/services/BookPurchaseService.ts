@@ -1,5 +1,5 @@
 import { IBookPurchase } from '@/models/BookPurchase'
-import { BookPurchaseStatus, BookStatus, TransactionType } from '@/models/enums'
+import { BookPurchaseStatus, MediaStatus, TransactionType } from '@/models/enums'
 import { bookRepository } from '@/lib/repositories/BookRepository'
 import { bookPurchaseRepository } from '@/lib/repositories/BookPurchaseRepository'
 import { bookConfigRepository } from '@/lib/repositories/BookConfigRepository'
@@ -40,7 +40,7 @@ export class BookPurchaseService {
     static async initiatePurchase(input: InitiatePurchaseInput): Promise<PurchaseResult> {
         const book = await bookRepository.findById(input.bookId)
         if (!book) throw new Error('Book not found')
-        if (book.status !== BookStatus.APPROVED) throw new Error('Book is not available for purchase')
+        if (book.status !== MediaStatus.APPROVED) throw new Error('Book is not available for purchase')
         if (book.price === 0) throw new Error('This book is free, no purchase needed')
 
         // Prevent duplicate purchases - check both old and new tables
@@ -181,7 +181,7 @@ export class BookPurchaseService {
     static async hasAccess(userId: string, bookId: string): Promise<boolean> {
         const book = await bookRepository.findById(bookId)
         if (!book) return false
-        if (book.status !== BookStatus.APPROVED) return false
+        if (book.status !== MediaStatus.APPROVED) return false
         if (book.price === 0) return true
 
         // Check legacy table first
