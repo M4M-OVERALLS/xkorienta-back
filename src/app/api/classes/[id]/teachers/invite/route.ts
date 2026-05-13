@@ -122,6 +122,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         const { id: classId } = await params;
         const body = await request.json();
         const { teachers, subjectIds, role, permissions } = body;
+        // Chaque enseignant peut avoir ses propres subjectIds (import Excel intelligent)
+        // Sinon on utilise subjectIds global comme fallback
 
         if (!teachers || !Array.isArray(teachers) || teachers.length === 0) {
             return NextResponse.json(

@@ -1,6 +1,6 @@
 import { fileTypeFromBuffer } from 'file-type'
 import { IBook } from '@/models/Book'
-import { BookFormat, BookScope, BookStatus, UserRole } from '@/models/enums'
+import { BookFormat, MediaScope, MediaStatus, MediaType, UserRole, DifficultyLevel } from '@/models/enums'
 import { bookRepository, BookFilters, PaginatedBooks } from '@/lib/repositories/BookRepository'
 import { bookConfigRepository } from '@/lib/repositories/BookConfigRepository'
 import { StorageStrategyFactory } from '@/lib/strategies/storage/StorageStrategyFactory'
@@ -19,15 +19,19 @@ export interface SubmitBookInput {
     description: string
     fileBuffer: Buffer
     fileOriginalName: string
-    /** Image de couverture optionnelle (JPEG, PNG, WebP) */
     coverBuffer?: Buffer
     coverOriginalName?: string
     price: number
     currency?: string
-    scope: BookScope
+    scope: MediaScope
     schoolId?: string
     copyrightAccepted: boolean
     teacherId: string
+    targetLevels?: string[]
+    targetFields?: string[]
+    subjects?: string[]
+    difficulty?: DifficultyLevel
+    tags?: string[]
 }
 
 export interface UpdateBookInput {
@@ -45,11 +49,6 @@ export interface ValidateBookInput {
 }
 
 export class BookService {
-    /**
-     * Platform admins (DG_M4M, TECH_SUPPORT) have super-admin powers:
-     * ils peuvent valider n'importe quel livre (GLOBAL ou SCHOOL, toutes écoles).
-     * SCHOOL_ADMIN reste restreint à son/ses propres école(s).
-     */
     private static isPlatformAdmin(role: UserRole): boolean {
         return role === UserRole.DG_M4M || role === UserRole.TECH_SUPPORT
     }
@@ -67,8 +66,9 @@ export class BookService {
         }
         return undefined
     }
+
     /**
-     * Validates and stores a book file, then creates the DB record.
+     * Validates and stores a book file, then creates the Media record with mediaType=BOOK.
      * Book is immediately set to PENDING for admin review.
      */
     static async submitBook(input: SubmitBookInput): Promise<IBook> {
@@ -88,9 +88,9 @@ export class BookService {
             throw new Error('Invalid file type. Only PDF and EPUB files are accepted')
         }
 
-        const format = ALLOWED_MIME_TYPES[detected.mime]
+        const bookFormat = ALLOWED_MIME_TYPES[detected.mime]
 
-        if (input.scope === BookScope.SCHOOL && !input.schoolId) {
+        if (input.scope === MediaScope.SCHOOL && !input.schoolId) {
             throw new Error('schoolId is required when scope is SCHOOL')
         }
 
@@ -101,32 +101,35 @@ export class BookService {
         const storage = StorageStrategyFactory.create(config.storageProvider)
         const fileKey = await storage.upload(input.fileBuffer, input.fileOriginalName, detected.mime)
 
-        // Sauvegarde optionnelle de l'image de couverture dans public/uploads/covers/
         let coverImageKey: string | undefined
         if (input.coverBuffer && input.coverOriginalName) {
             coverImageKey = await BookService.saveCoverImage(input.coverBuffer, input.coverOriginalName)
         }
 
         return bookRepository.create({
+            mediaType: MediaType.BOOK,
             title: input.title.trim(),
             description: input.description.trim(),
-            format,
+            bookFormat,
             fileKey,
+            mimeType: detected.mime,
+            fileSize: input.fileBuffer.byteLength,
             coverImageKey,
             price: input.price,
             currency: (input.currency ?? 'XAF').toUpperCase(),
             scope: input.scope,
             schoolId: input.schoolId ? new mongoose.Types.ObjectId(input.schoolId) : undefined,
             submittedBy: new mongoose.Types.ObjectId(input.teacherId),
-            status: BookStatus.PENDING,
+            status: MediaStatus.PENDING,
             copyrightAccepted: true,
+            targetLevels: input.targetLevels?.map((id) => new mongoose.Types.ObjectId(id)),
+            targetFields: input.targetFields?.map((id) => new mongoose.Types.ObjectId(id)),
+            subjects: input.subjects?.map((id) => new mongoose.Types.ObjectId(id)),
+            difficulty: input.difficulty,
+            tags: input.tags,
         })
     }
 
-    /**
-     * Sauvegarde l'image de couverture dans public/uploads/covers/ et retourne la clé.
-     * Les images de couverture sont publiques (simples miniatures).
-     */
     private static async saveCoverImage(buffer: Buffer, originalName: string): Promise<string> {
         const COVERS_DIR = path.join(process.cwd(), 'public', 'uploads', 'covers')
         await mkdir(COVERS_DIR, { recursive: true })
@@ -136,7 +139,6 @@ export class BookService {
         return key
     }
 
-    /** Construit l'URL publique d'une image de couverture. */
     static buildCoverUrl(coverImageKey: string | undefined): string | undefined {
         if (!coverImageKey) return undefined
         const base = (
@@ -148,12 +150,10 @@ export class BookService {
         return `${base}/uploads/covers/${coverImageKey}`
     }
 
-    /** Returns the public book catalogue. Only APPROVED books visible to end users. */
     static async getCatalogue(filters: Omit<BookFilters, 'status'>): Promise<PaginatedBooks> {
-        return bookRepository.findPaginated({ ...filters, status: BookStatus.APPROVED })
+        return bookRepository.findPaginated({ ...filters, status: MediaStatus.APPROVED })
     }
 
-    /** Returns a single book by ID. Non-approved only visible to owner or admin. */
     static async getBookById(id: string, requesterId: string, requesterRole: UserRole): Promise<IBook> {
         const book = await bookRepository.findById(id)
         if (!book) throw new Error('Book not found')
@@ -164,29 +164,27 @@ export class BookService {
             requesterRole === UserRole.SCHOOL_ADMIN ||
             BookService.isPlatformAdmin(requesterRole)
 
-        if (book.status !== BookStatus.APPROVED && !isOwner && !isAdmin) {
+        if (book.status !== MediaStatus.APPROVED && !isOwner && !isAdmin) {
             throw new Error('Book not found')
         }
 
         return book
     }
 
-    /** Returns a single APPROVED book for public access (no session required). */
     static async getPublicBookById(id: string): Promise<IBook> {
         const book = await bookRepository.findById(id)
-        if (!book || book.status !== BookStatus.APPROVED) {
+        if (!book || book.status !== MediaStatus.APPROVED) {
             throw new Error('Book not found')
         }
         return book
     }
 
-    /** Updates a book. Only owner can update, only while DRAFT. */
     static async updateBook(bookId: string, requesterId: string, data: UpdateBookInput): Promise<IBook> {
         const book = await bookRepository.findById(bookId)
         if (!book) throw new Error('Book not found')
         const submittedById = BookService.extractObjectId(book.submittedBy)
         if (submittedById !== requesterId) throw new Error('Forbidden: you can only edit your own books')
-        if (book.status !== BookStatus.DRAFT) throw new Error('Only books in DRAFT status can be edited')
+        if (book.status !== MediaStatus.DRAFT) throw new Error('Only books in DRAFT status can be edited')
         if (data.price !== undefined && data.price < 0) throw new Error('Price cannot be negative')
 
         return bookRepository.updateById(bookId, {
@@ -195,13 +193,12 @@ export class BookService {
         }) as Promise<IBook>
     }
 
-    /** Deletes a book (owner only, DRAFT only). Also removes stored file. */
     static async deleteBook(bookId: string, requesterId: string): Promise<void> {
         const book = await bookRepository.findById(bookId)
         if (!book) throw new Error('Book not found')
         const submittedById = BookService.extractObjectId(book.submittedBy)
         if (submittedById !== requesterId) throw new Error('Forbidden: you can only delete your own books')
-        if (book.status !== BookStatus.DRAFT) throw new Error('Only books in DRAFT status can be deleted')
+        if (book.status !== MediaStatus.DRAFT) throw new Error('Only books in DRAFT status can be deleted')
 
         const config = await bookConfigRepository.getOrCreate()
         const storage = StorageStrategyFactory.create(config.storageProvider)
@@ -209,55 +206,50 @@ export class BookService {
         await bookRepository.deleteById(bookId)
     }
 
-    /** Approves a pending book submission. */
     static async approveBook(input: ValidateBookInput): Promise<IBook> {
         const book = await bookRepository.findById(input.bookId)
         if (!book) throw new Error('Book not found')
-        if (book.status !== BookStatus.PENDING) throw new Error('Only PENDING books can be approved')
+        if (book.status !== MediaStatus.PENDING) throw new Error('Only PENDING books can be approved')
 
         BookService.checkValidationPermission(book, input)
 
         return bookRepository.updateById(input.bookId, {
-            status: BookStatus.APPROVED,
+            status: MediaStatus.APPROVED,
             validatedBy: new mongoose.Types.ObjectId(input.adminId),
             validatedAt: new Date(),
         }) as Promise<IBook>
     }
 
-    /** Rejects a pending book submission with a mandatory comment. */
     static async rejectBook(input: ValidateBookInput & { comment: string }): Promise<IBook> {
         if (!input.comment?.trim()) throw new Error('A rejection comment is required')
 
         const book = await bookRepository.findById(input.bookId)
         if (!book) throw new Error('Book not found')
-        if (book.status !== BookStatus.PENDING) throw new Error('Only PENDING books can be rejected')
+        if (book.status !== MediaStatus.PENDING) throw new Error('Only PENDING books can be rejected')
 
         BookService.checkValidationPermission(book, input)
 
         return bookRepository.updateById(input.bookId, {
-            status: BookStatus.REJECTED,
+            status: MediaStatus.REJECTED,
             validatedBy: new mongoose.Types.ObjectId(input.adminId),
             validatedAt: new Date(),
             validationComment: input.comment.trim(),
         }) as Promise<IBook>
     }
 
-    /** Returns books pending validation for the given admin. */
     static async getPendingBooks(adminRole: UserRole, adminSchoolIds: string[]): Promise<IBook[]> {
         if (BookService.isPlatformAdmin(adminRole)) {
-            // Admin plateforme : voit tout (GLOBAL + toutes les écoles)
             return bookRepository.findPending()
         }
         if (adminRole === UserRole.SCHOOL_ADMIN && adminSchoolIds.length > 0) {
             const results = await Promise.all(
-                adminSchoolIds.map((sid) => bookRepository.findPending(BookScope.SCHOOL, sid))
+                adminSchoolIds.map((sid) => bookRepository.findPending(MediaScope.SCHOOL, sid))
             )
             return results.flat()
         }
         return []
     }
 
-    /** Returns the download URL (or file key) after access is verified. */
     static async getDownloadUrl(bookId: string): Promise<string> {
         const book = await bookRepository.findById(bookId)
         if (!book) throw new Error('Book not found')
@@ -274,14 +266,12 @@ export class BookService {
     }
 
     private static checkValidationPermission(book: IBook, input: ValidateBookInput): void {
-        // Admin plateforme : peut tout valider (GLOBAL ou SCHOOL, quelle que soit l'école)
         if (BookService.isPlatformAdmin(input.adminRole)) return
 
-        if (book.scope === BookScope.GLOBAL) {
+        if (book.scope === MediaScope.GLOBAL) {
             throw new Error('Only platform administrators can validate global books')
         }
 
-        // SCHOOL : seul le SCHOOL_ADMIN de l'école concernée peut valider
         if (input.adminRole !== UserRole.SCHOOL_ADMIN) {
             throw new Error('Only school administrators can validate school books')
         }
