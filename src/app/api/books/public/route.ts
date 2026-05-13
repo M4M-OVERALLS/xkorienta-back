@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { bookRepository } from '@/lib/repositories/BookRepository'
 import { BookService } from '@/lib/services/BookService'
-import { BookStatus, BookScope } from '@/models/enums'
+import { MediaStatus, MediaScope } from '@/models/enums'
 
 /**
  * GET /api/books/public
@@ -14,8 +14,8 @@ export async function GET(req: Request) {
         const { searchParams } = new URL(req.url)
 
         const result = await bookRepository.findPaginated({
-            status: BookStatus.APPROVED,
-            scope: BookScope.GLOBAL,
+            status: MediaStatus.APPROVED,
+            scope: MediaScope.GLOBAL,
             format: searchParams.get('format') ?? undefined,
             minPrice: searchParams.get('free') === '1' ? 0 : undefined,
             maxPrice: searchParams.get('free') === '1' ? 0 : undefined,

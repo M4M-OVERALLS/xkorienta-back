@@ -4,7 +4,7 @@ import { bookRepository } from '@/lib/repositories/BookRepository'
 import { bookConfigRepository } from '@/lib/repositories/BookConfigRepository'
 import { guestPurchaseRepository } from '@/lib/repositories/GuestPurchaseRepository'
 import { paymentSDK } from '@/lib/payment'
-import { BookStatus, Currency } from '@/models/enums'
+import { MediaStatus, Currency } from '@/models/enums'
 import { IGuestPurchase } from '@/models/GuestPurchase'
 import { sendEmail } from '@/lib/mail'
 import { BookConfigService } from '@/lib/services/BookConfigService'
@@ -44,7 +44,7 @@ export class GuestBookPurchaseService {
     ): Promise<GuestPurchaseResult> {
         const book = await bookRepository.findById(bookId)
         if (!book) throw new Error('Book not found')
-        if (book.status !== BookStatus.APPROVED) throw new Error('Book not available for purchase')
+        if (book.status !== MediaStatus.APPROVED) throw new Error('Book not available for purchase')
         if (book.price === 0) throw new Error('This book is free, no purchase needed')
 
         // Prevent re-purchase if already completed for same email

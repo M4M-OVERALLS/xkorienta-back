@@ -16,6 +16,7 @@ const MAX_FILE_SIZE_BY_TYPE: Record<MediaType, number> = {
     [MediaType.VIDEO]:   500 * 1024 * 1024, // 500 Mo
     [MediaType.PODCAST]: 200 * 1024 * 1024, // 200 Mo
     [MediaType.AUDIO]:   100 * 1024 * 1024, // 100 Mo
+    [MediaType.BOOK]:    100 * 1024 * 1024, // 100 Mo (géré par BookService/BookConfig)
 }
 
 /** MIME types autorisés par type de média */
@@ -23,6 +24,7 @@ const ALLOWED_MIMES_BY_TYPE: Record<MediaType, string[]> = {
     [MediaType.VIDEO]:   ['video/mp4', 'video/webm', 'video/ogg'],
     [MediaType.PODCAST]: ['audio/mpeg', 'audio/mp4', 'audio/ogg', 'audio/wav', 'audio/aac', 'audio/webm'],
     [MediaType.AUDIO]:   ['audio/mpeg', 'audio/mp4', 'audio/ogg', 'audio/wav', 'audio/aac', 'audio/webm'],
+    [MediaType.BOOK]:    ['application/pdf', 'application/epub+zip'],
 }
 
 export interface SubmitMediaInput {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { BookService } from '@/lib/services/BookService'
 import { BookPurchaseService } from '@/lib/services/BookPurchaseService'
-import { BookScope, DifficultyLevel, UserRole } from '@/models/enums'
+import { MediaScope, DifficultyLevel, UserRole, MediaStatus } from '@/models/enums'
 
 export class BookController {
     /** Construit l'URL absolue de l'image de couverture à partir de la clé. */
@@ -17,7 +17,7 @@ export class BookController {
         const { searchParams } = new URL(req.url)
 
         const result = await BookService.getCatalogue({
-            scope: (searchParams.get('scope') as BookScope) ?? undefined,
+            scope: (searchParams.get('scope') as MediaScope) ?? undefined,
             schoolId: searchParams.get('schoolId') ?? undefined,
             format: searchParams.get('format') ?? undefined,
             minPrice: searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : undefined,
@@ -61,9 +61,9 @@ export class BookController {
         const currency = (formData.get('currency') as string) ?? 'XAF'
         const scopeRaw = formData.get('scope') as string | null
         const scope =
-            scopeRaw && Object.values(BookScope).includes(scopeRaw as BookScope)
-                ? (scopeRaw as BookScope)
-                : BookScope.GLOBAL
+            scopeRaw && Object.values(MediaScope).includes(scopeRaw as MediaScope)
+                ? (scopeRaw as MediaScope)
+                : MediaScope.GLOBAL
         const schoolIdRaw = (formData.get('schoolId') as string) ?? ''
         const schoolId = schoolIdRaw.trim() || undefined
         const copyrightAccepted = formData.get('copyrightAccepted') === 'true'
