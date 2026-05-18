@@ -26,11 +26,25 @@ export const authOptions: NextAuthOptions = {
     secret: process.env.NEXTAUTH_SECRET,
     session: {
         strategy: "jwt",
-        maxAge: 30 * 24 * 60 * 60, // 30 days
+        maxAge: 2 * 60 * 60, // 2 heures (A-13: réduit depuis 30 jours)
+        updateAge: 5 * 60,  // Renouvelle le JWT toutes les 5 min d'activité
     },
     pages: {
         signIn: "/login",
         error: "/login", // Redirect to login page on error
+    },
+    cookies: {
+        sessionToken: {
+            name: process.env.NODE_ENV === "production"
+                ? "__Secure-next-auth.session-token"
+                : "next-auth.session-token",
+            options: {
+                httpOnly: true,
+                sameSite: "lax",
+                path: "/",
+                secure: process.env.NODE_ENV === "production",
+            },
+        },
     },
     debug: process.env.NODE_ENV === "development",
 

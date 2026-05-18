@@ -2,22 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
-import Attempt from "@/models/Attempt";
-import Exam from "@/models/Exam";
-import Question from "@/models/Question";
+import Exam, { ExamConfig } from "@/models/Exam";
+import Question, { IQuestion } from "@/models/Question";
 import Option from "@/models/Option";
-import Response from "@/models/Response";
-import { isPast, addMinutes, isAfter } from "date-fns";
+import Attempt from "@/models/Attempt";
+import Response, { IResponse } from "@/models/Response";
+import { addMinutes, isAfter, isPast } from "date-fns";
 
 interface RouteParams {
-    params: Promise<{ attemptId: string }>
+    params: Promise<{ id: string }>
 }
 
 /**
- * GET /api/student/attempts/[attemptId]
- * Get detailed attempt data for review
+ * GET /api/student/exams/[id]/review
+ * Get exam review data for a student (questions, options, and their responses)
+ * Only accessible after exam completion and when review is allowed
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
@@ -28,27 +29,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         }
 
         await connectDB();
-        const { attemptId } = await params;
-
-        // Fetch the attempt
-        const attemptDoc = await Attempt.findById(attemptId).lean();
-        if (!attemptDoc) {
-            return NextResponse.json(
-                { success: false, message: "Tentative non trouvée" },
-                { status: 404 }
-            );
-        }
-
-        // Verify this attempt belongs to the current user
-        if (!attemptDoc.userId || attemptDoc.userId.toString() !== session.user.id) {
-            return NextResponse.json(
-                { success: false, message: "Accès refusé" },
-                { status: 403 }
-            );
-        }
+        const { id } = await params;
 
         // Fetch the exam
-        const examDoc = await Exam.findById(attemptDoc.examId).lean();
+        const examDoc = await Exam.findById(id).lean();
         if (!examDoc) {
             return NextResponse.json(
                 { success: false, message: "Examen non trouvé" },
@@ -56,38 +40,49 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             );
         }
 
-        // Calculate late exam period
+        // Fetch student's completed attempt
+        const attemptDoc = await Attempt.findOne({
+            examId: id,
+            userId: session.user.id,
+            status: "COMPLETED",
+        }).lean();
+
+        if (!attemptDoc) {
+            return NextResponse.json(
+                { success: false, message: "Aucune tentative complétée pour cet examen" },
+                { status: 404 }
+            );
+        }
+
+        // Check if results are blocked (late exam period)
         const now = new Date();
-        const lateDuration = (examDoc.config as any)?.lateDuration || 0;
-        const delayResultsUntilLateEnd = (examDoc.config as any)?.delayResultsUntilLateEnd ?? false;
+        const config = examDoc.config as ExamConfig;
+        const lateDuration = config?.lateDuration || 0;
+        const delayResultsUntilLateEnd = config?.delayResultsUntilLateEnd ?? false;
         const examEndTime = new Date(examDoc.endTime);
         const lateEndTime = addMinutes(examEndTime, lateDuration);
 
-        // Check access conditions
         const examEnded = isPast(examEndTime);
         const inLatePeriod = examEnded && isAfter(lateEndTime, now) && lateDuration > 0;
         const resultsBlocked = !examEnded || (delayResultsUntilLateEnd && inLatePeriod);
 
-        // Time remaining until results
-        const timeUntilResults = inLatePeriod
-            ? Math.ceil((lateEndTime.getTime() - now.getTime()) / 1000 / 60)
-            : 0;
-
-        // Teachers can always review, students follow late exam rules
         if (session.user.role !== "TEACHER" && resultsBlocked) {
+            const timeUntilResults = inLatePeriod
+                ? Math.ceil((lateEndTime.getTime() - now.getTime()) / 1000 / 60)
+                : 0;
             return NextResponse.json({
                 success: false,
                 blocked: true,
                 inLatePeriod,
                 timeUntilResults,
-                message: inLatePeriod 
+                message: inLatePeriod
                     ? "Les résultats seront disponibles après la fin de la période retardataires."
                     : "Les résultats seront disponibles après la fin de l'examen."
             }, { status: 403 });
         }
 
-        // Fetch questions and options
-        const questionsDoc = await Question.find({ examId: examDoc._id }).lean();
+        // Fetch questions and their options
+        const questionsDoc = await Question.find({ examId: id }).lean();
         const questionIds = questionsDoc.map(q => q._id);
         const optionsDoc = await Option.find({ questionId: { $in: questionIds } }).lean();
 
@@ -101,16 +96,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             startTime: examDoc.startTime.toISOString(),
             endTime: examDoc.endTime.toISOString(),
             duration: examDoc.duration,
-            closeMode: examDoc.closeMode,
-            createdById: examDoc.createdById.toString(),
-            createdAt: examDoc.createdAt.toISOString(),
-            updatedAt: examDoc.updatedAt.toISOString(),
-            questions: questionsDoc.map(q => ({
+            config: examDoc.config,
+            questions: questionsDoc.map((q: IQuestion) => ({
                 id: q._id.toString(),
                 examId: q.examId.toString(),
                 text: q.text,
                 imageUrl: q.imageUrl,
-                type: q.type || 'QCM',
+                type: q.type || "QCM",
                 correctAnswer: q.correctAnswer,
                 modelAnswer: q.modelAnswer,
                 explanation: q.explanation,
@@ -129,13 +121,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         const attempt = {
             id: attemptDoc._id.toString(),
             examId: attemptDoc.examId.toString(),
-            userId: attemptDoc.userId?.toString() || '',
+            userId: attemptDoc.userId?.toString() || "",
             startedAt: attemptDoc.startedAt.toISOString(),
             expiresAt: attemptDoc.expiresAt.toISOString(),
             submittedAt: attemptDoc.submittedAt?.toISOString(),
             status: attemptDoc.status,
             score: attemptDoc.score,
-            responses: responsesDoc.map(r => ({
+            responses: responsesDoc.map((r: IResponse) => ({
                 id: r._id.toString(),
                 attemptId: r.attemptId.toString(),
                 questionId: r.questionId.toString(),
@@ -145,16 +137,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             }))
         };
 
-        return NextResponse.json({
-            success: true,
-            exam,
-            attempt
-        });
+        return NextResponse.json({ success: true, exam, attempt });
 
-    } catch (error: any) {
-        console.error("[Get Attempt Detail] Error:", error);
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Erreur serveur";
+        console.error("[Get Exam Review] Error:", error);
         return NextResponse.json(
-            { success: false, message: error.message || "Erreur serveur" },
+            { success: false, message },
             { status: 500 }
         );
     }

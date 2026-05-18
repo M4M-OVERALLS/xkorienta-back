@@ -1,12 +1,15 @@
 /**
  * Utility to determine the frontend URL based on request context
- * Supports multi-domain setup (gradeforcast.com & xkorin.com)
+ * Strict origin matching — no substring/wildcard (A-02 hardening)
  */
 
-const ALLOWED_DOMAINS = [
-    'gradeforcast.com',
-    'xkorin.com',
-];
+const ALLOWED_ORIGINS = new Set([
+    'https://xkorienta.com',
+    'https://www.xkorienta.com',
+    'https://gradeforcast.com',
+    'https://www.gradeforcast.com',
+    'http://localhost:3000',
+]);
 
 /**
  * Get the frontend URL from the request headers
@@ -20,32 +23,23 @@ export function getFrontendUrl(headers?: Headers | { get: (key: string) => strin
         return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     }
 
-    // Try to get origin from headers
+    // Try to get origin from headers — exact match only
     const origin = headers.get('origin');
-    const referer = headers.get('referer');
-
-    // Check if origin matches one of our allowed domains
-    if (origin) {
-        const isAllowed = ALLOWED_DOMAINS.some(domain =>
-            origin.includes(domain)
-        );
-        if (isAllowed) {
-            return origin;
-        }
+    if (origin && ALLOWED_ORIGINS.has(origin)) {
+        return origin;
     }
 
-    // Check referer as fallback
+    // Check referer as fallback — extract origin and match exactly
+    const referer = headers.get('referer');
     if (referer) {
-        const isAllowed = ALLOWED_DOMAINS.some(domain =>
-            referer.includes(domain)
-        );
-        if (isAllowed) {
-            try {
-                const url = new URL(referer);
-                return `${url.protocol}//${url.host}`;
-            } catch {
-                // Invalid URL, continue to fallback
+        try {
+            const url = new URL(referer);
+            const refererOrigin = `${url.protocol}//${url.host}`;
+            if (ALLOWED_ORIGINS.has(refererOrigin)) {
+                return refererOrigin;
             }
+        } catch {
+            // Invalid URL, continue to fallback
         }
     }
 

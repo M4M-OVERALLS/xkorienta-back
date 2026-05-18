@@ -198,6 +198,19 @@ const QuestionSchema = new Schema<IQuestion>(
   }
 )
 
+// SECURITY (A-10): Strip answer fields from JSON serialization by default.
+// Server-side scoring (AttemptService) uses .lean() which bypasses toJSON,
+// so this only affects responses sent to clients.
+QuestionSchema.set('toJSON', {
+  transform(_doc, ret) {
+    const obj = ret as unknown as Record<string, unknown>
+    delete obj.correctAnswer
+    delete obj.modelAnswer
+    delete obj.openQuestionConfig
+    return obj
+  }
+})
+
 // Indexes
 QuestionSchema.index({ examId: 1, order: 1 }) // Pour récupérer les questions triées
 QuestionSchema.index({ tags: 1 }) // Pour filtrage par tags
