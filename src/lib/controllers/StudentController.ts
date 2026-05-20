@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { StudentService } from "@/lib/services/StudentService";
+import { ShortlistItemType, StudentService } from "@/lib/services/StudentService";
 import { LeaderboardType, LeaderboardMetric } from "@/lib/services/LeaderboardService";
 
 export class StudentController {
@@ -91,6 +91,146 @@ export class StudentController {
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : "Internal server error";
             console.error("[Student Controller] Get Orientation Schools Error:", error);
+            return NextResponse.json(
+                { success: false, message: errorMessage },
+                { status: 500 }
+            );
+        }
+    }
+
+    /**
+     * GET /api/student/specialties
+     * Liste des specialites pour l'apprenant
+     */
+    static async getStudentSpecialties(studentId: string) {
+        try {
+            if (!studentId) {
+                return NextResponse.json(
+                    { success: false, message: "Unauthorized" },
+                    { status: 401 }
+                );
+            }
+
+            const specialties = await StudentService.getStudentSpecialties(studentId);
+
+            return NextResponse.json({
+                success: true,
+                data: specialties
+            });
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "Internal server error";
+            console.error("[Student Controller] Get Student Specialties Error:", error);
+            return NextResponse.json(
+                { success: false, message: errorMessage },
+                { status: 500 }
+            );
+        }
+    }
+
+    /**
+     * GET /api/student/shortlist
+     * Lire la shortlist de l'apprenant
+     */
+    static async getStudentShortlist(studentId: string) {
+        try {
+            if (!studentId) {
+                return NextResponse.json(
+                    { success: false, message: "Unauthorized" },
+                    { status: 401 }
+                );
+            }
+
+            const shortlist = await StudentService.getStudentShortlist(studentId);
+            return NextResponse.json({ success: true, data: shortlist });
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "Internal server error";
+            
+            return NextResponse.json(
+                { success: false, message: errorMessage },
+                { status: 500 }
+            );
+        }
+    }
+
+    /**
+     * POST /api/student/shortlist
+     * Ajouter un item (school/specialty) a la shortlist
+     */
+    static async addToStudentShortlist(req: Request, studentId: string) {
+        try {
+            if (!studentId) {
+                return NextResponse.json(
+                    { success: false, message: "Unauthorized" },
+                    { status: 401 }
+                );
+            }
+
+            const body = await req.json();
+            const itemType = body?.itemType as ShortlistItemType | undefined;
+            const itemId = body?.itemId as string | undefined;
+
+            if (!itemType || !itemId) {
+                return NextResponse.json(
+                    { success: false, message: "itemType and itemId are required" },
+                    { status: 400 }
+                );
+            }
+
+            if (itemType !== "school" && itemType !== "specialty") {
+                return NextResponse.json(
+                    { success: false, message: "itemType must be 'school' or 'specialty'" },
+                    { status: 400 }
+                );
+            }
+
+            const shortlist = await StudentService.addToStudentShortlist(studentId, itemType, itemId);
+            return NextResponse.json({ success: true, data: shortlist });
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "Internal server error";
+            console.error("[Student Controller] Add Student Shortlist Error:", error);
+            return NextResponse.json(
+                { success: false, message: errorMessage },
+                { status: 500 }
+            );
+        }
+    }
+
+    /**
+     * DELETE /api/student/shortlist
+     * Retirer un item (school/specialty) de la shortlist
+     */
+    static async removeFromStudentShortlist(req: Request, studentId: string) {
+        try {
+            if (!studentId) {
+                return NextResponse.json(
+                    { success: false, message: "Unauthorized" },
+                    { status: 401 }
+                );
+            }
+
+            const body = await req.json();
+            const itemType = body?.itemType as ShortlistItemType | undefined;
+            const itemId = body?.itemId as string | undefined;
+
+            if (!itemType || !itemId) {
+                return NextResponse.json(
+                    { success: false, message: "itemType and itemId are required" },
+                    { status: 400 }
+                );
+            }
+
+            if (itemType !== "school" && itemType !== "specialty") {
+                return NextResponse.json(
+                    { success: false, message: "itemType must be 'school' or 'specialty'" },
+                    { status: 400 }
+                );
+            }
+
+            const shortlist = await StudentService.removeFromStudentShortlist(studentId, itemType, itemId);
+            return NextResponse.json({ success: true, data: shortlist });
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : "Internal server error";
+            
             return NextResponse.json(
                 { success: false, message: errorMessage },
                 { status: 500 }
