@@ -298,7 +298,8 @@ export class ClassTeacherService {
                 })
             )
 
-            return populatedTeachers
+            // Filter out entries where the teacher user no longer exists
+            return populatedTeachers.filter(entry => entry.teacher != null)
 
         } catch (error) {
             console.error('[ClassTeacherService.getClassTeachers] Error:', error)
