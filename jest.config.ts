@@ -29,6 +29,8 @@ const config: Config = {
   testMatch: [
     "**/__tests__/**/*.test.ts",
     "**/__tests__/**/*.test.tsx",
+    "**/__tests__/**/*.spec.ts",
+    "**/__tests__/**/*.spec.tsx",
     "**/*.test.ts",
     "**/*.test.tsx",
   ],
