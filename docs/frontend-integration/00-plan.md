@@ -28,6 +28,8 @@
 | **16** | **Forum / Conversations** | **Tous** | **🟢 Basse** | **✅** | **✅** |
 | 17 | Admin (validation) | Admin | 🔴 Haute | ⏳ | ⏳ |
 | 18 | Orientation (étudiant) | Student | 🟢 Basse | ⏳ | ⏳ |
+| **23** | **Messages Hub (Messagerie + Forums + Demandes)** | **Teacher, Student** | **🔴 Haute** | **✅** | **✅** |
+| **24** | **Paramètres & Reset Password** | **Tous** | **🔴 Haute** | **✅** | **✅** |
 | **19** | **Education Structure** | **Tous** | **🟢 Basse** | **✅** | **✅** |
 | 20 | Public Mini-Tests | Public | 🟢 Basse | ✅ | ✅ |
 
@@ -51,7 +53,7 @@
 | `/teacher/syllabus/:id/edit` | 06-Syllabus |
 | `/teacher/exams` | **07-Exams** |
 | `/teacher/exams/create` | **07-Exams**, Syllabus, Education Structure |
-| `/teacher/messages` | 16-Forum/Conversations |
+| `/teacher/messages` | **23-Messages Hub** (Conversations + Forums + Demandes) |
 | `/teacher/students` | 09-Students |
 | `/teacher/notifications` | 14-Notifications |
 
@@ -66,7 +68,7 @@
 | `/student/analytics` | 12-Analytics |
 | `/student/challenges` | 09-Students (challenges) |
 | `/student/assistance` | 15-Assistance/AI |
-| `/student/messages` | 16-Forum/Conversations |
+| `/student/messages` | **23-Messages Hub** (Conversations + Forums + Demandes) |
 | `/student/notifications` | 14-Notifications |
 | `/student/history` | 08-Attempts |
 | `/student/orientation/*` | 18-Orientation |
@@ -80,7 +82,8 @@
 | `/admin/classes` | 05-Classes, 17-Admin |
 | `/admin/compose` | 17-Admin |
 | `/admin/notifications` | 14-Notifications |
-| `/settings` | 03-User Profile |
+| `/settings` | **24-Paramètres & Reset Password** (Profil + Sécurité + Achats + Gains) |
+| `/reset-password` | **24-Paramètres & Reset Password** |
 
 ---
 

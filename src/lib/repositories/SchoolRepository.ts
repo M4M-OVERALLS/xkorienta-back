@@ -83,13 +83,17 @@ export class SchoolRepository {
      * List schools by status for the admin panel (paginated)
      */
     async findByStatus(
-        status: SchoolStatus,
+        status: SchoolStatus | "ALL",
         page = 1,
         limit = 20,
         search?: string
     ): Promise<{ schools: ISchool[]; total: number }> {
         await connectDB();
-        const query: Record<string, unknown> = { status };
+        const query: Record<string, unknown> = {};
+
+        if (status !== "ALL") {
+            query.status = status;
+        }
 
         if (search) {
             query.name = { $regex: search, $options: 'i' };
@@ -100,7 +104,7 @@ export class SchoolRepository {
             School.find(query)
                 .populate('owner', 'name email')
                 .populate('verifiedBy', 'name email')
-                .select('name type address status owner verifiedBy verifiedAt rejectionNotes createdAt')
+                .select('name type address city status owner verifiedBy verifiedAt rejectionNotes createdAt logoUrl')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)

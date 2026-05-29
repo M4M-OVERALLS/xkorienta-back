@@ -119,10 +119,16 @@ export class ClassController {
             const isMainTeacherForCurrentUser =
                 mainRaw != null && String(mainRaw) === String(userId);
 
+            // Filter students to exclude teacher users accidentally added via invitation flow
+            const students = Array.isArray(plain.students)
+                ? (plain.students as any[]).filter(s => s != null && s.role !== 'TEACHER')
+                : plain.students;
+
             return NextResponse.json({
                 success: true,
                 data: {
                     ...plain,
+                    students,
                     isMainTeacherForCurrentUser,
                 },
             });

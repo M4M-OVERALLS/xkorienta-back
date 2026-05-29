@@ -1,0 +1,416 @@
+{
+  "info": {
+    "_postman_id": "23-messages-hub-xkorienta-frontend-integration",
+    "name": "Xkorienta API — 23. Messages Hub (Messagerie, Forums, Demandes)",
+    "description": "Module 23 — Centre de Communication\n\nCouvre les 3 onglets actifs de la page /teacher/messages et /student/messages :\n1. Messagerie directe (conversations)\n2. Forums de discussion\n3. Demandes d'assistance (teacher: accepter/refuser | student: créer/annuler)\n\n**Auth** : Cookie next-auth.session-token (login requis)\n**Base URL** : {{baseUrl}} (défaut: http://localhost:3001)\n**Real-Time** : Pusher — channels 'presence-conversation-{id}' et 'requests-{userId}'",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string",
+      "description": "URL de base de l'API"
+    },
+    {
+      "key": "conversationId",
+      "value": "",
+      "type": "string",
+      "description": "ID d'une conversation existante — à remplir manuellement"
+    },
+    {
+      "key": "forumId",
+      "value": "",
+      "type": "string",
+      "description": "ID d'un forum existant — à remplir manuellement"
+    },
+    {
+      "key": "postId",
+      "value": "",
+      "type": "string",
+      "description": "ID d'un post dans un forum — à remplir après création"
+    },
+    {
+      "key": "requestId",
+      "value": "",
+      "type": "string",
+      "description": "ID d'une demande d'assistance — à remplir manuellement"
+    },
+    {
+      "key": "teacherId",
+      "value": "",
+      "type": "string",
+      "description": "ID d'un enseignant — à remplir manuellement (pour les étudiants)"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Conversations (Messagerie Directe)",
+      "item": [
+        {
+          "name": "1.1 Lister ses conversations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations?limit=20&page=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "page", "value": "1" }
+              ]
+            },
+            "description": "Retourne la liste des conversations où l'utilisateur connecté est participant. Inclut le dernier message pour affichage sidebar."
+          }
+        },
+        {
+          "name": "1.2 Créer / Récupérer une conversation directe",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participantIds\": [\"{{teacherId}}\"],\n  \"type\": \"DIRECT\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations"]
+            },
+            "description": "Crée une conversation DIRECT. Si elle existe déjà entre les deux participants, retourne l'existante sans doublon."
+          }
+        },
+        {
+          "name": "1.3 Lire les messages d'une conversation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations/{{conversationId}}/messages?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations", "{{conversationId}}", "messages"],
+              "query": [
+                { "key": "limit", "value": "50" },
+                { "key": "before", "value": "", "disabled": true, "description": "ISO date pour pagination curseur (charger messages plus anciens)" }
+              ]
+            },
+            "description": "Retourne les messages et marque les non-lus comme lus. Pagination par curseur avec ?before={date ISO}."
+          }
+        },
+        {
+          "name": "1.4 Envoyer un message",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Bonjour, avez-vous vu le cours d'aujourd'hui ?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/conversations/{{conversationId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "conversations", "{{conversationId}}", "messages"]
+            },
+            "description": "Envoie un message. Déclenche un événement Pusher 'new-message' sur le channel 'presence-conversation-{id}'."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Forums",
+      "item": [
+        {
+          "name": "2.1 Lister les forums",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums"],
+              "query": [
+                { "key": "classId", "value": "", "disabled": true, "description": "Filtrer par classe" },
+                { "key": "type", "value": "", "disabled": true, "description": "CLASS | SUBJECT | GENERAL" }
+              ]
+            },
+            "description": "Liste les forums accessibles à l'utilisateur connecté. Les étudiants voient les forums de leurs classes uniquement."
+          }
+        },
+        {
+          "name": "2.2 Détails d'un forum",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}"]
+            },
+            "description": "Retourne toutes les métadonnées d'un forum (stats, membres, dates). Utilisé dans la modale 'Détails' côté enseignant."
+          }
+        },
+        {
+          "name": "2.3 Modifier un forum (enseignant — créateur)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nouveau nom du forum\",\n  \"description\": \"Nouvelle description\",\n  \"isPrivate\": false,\n  \"allowStudentPosts\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}"]
+            },
+            "description": "Modifie les propriétés d'un forum. Réservé au créateur (403 sinon)."
+          }
+        },
+        {
+          "name": "2.4 Archiver un forum (enseignant — créateur)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}"]
+            },
+            "description": "Soft-delete du forum. Les contenus sont conservés côté serveur mais le forum disparaît des listes."
+          }
+        },
+        {
+          "name": "2.5 Créer un forum (enseignant)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Forum Physique S1\",\n  \"description\": \"Questions et discussions de cours\",\n  \"type\": \"CLASS\",\n  \"classId\": \"class_id_ici\",\n  \"isPrivate\": false,\n  \"allowStudentPosts\": true,\n  \"requireApproval\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/forums",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums"]
+            },
+            "description": "Crée un nouveau forum. Accessible depuis /teacher/forums/create."
+          }
+        },
+        {
+          "name": "2.6 Lister les posts d'un forum",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}/posts?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}", "posts"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.7 Créer un post dans un forum",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Question sur le chapitre 3\",\n  \"content\": \"Je n'ai pas compris la démonstration du théorème de Pythagore.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}", "posts"]
+            }
+          }
+        },
+        {
+          "name": "2.8 Répondre à un post",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"La démonstration se trouve dans le manuel page 42.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/forums/{{forumId}}/posts/{{postId}}/replies",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "forums", "{{forumId}}", "posts", "{{postId}}", "replies"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Demandes d'Assistance",
+      "item": [
+        {
+          "name": "3.1 Lister les demandes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests"],
+              "query": [
+                { "key": "status", "value": "", "disabled": true, "description": "PENDING | ACCEPTED | REJECTED | COMPLETED | CANCELLED | AVAILABLE" },
+                { "key": "type", "value": "", "disabled": true, "description": "TUTORING | EVALUATION | REMEDIATION | ASSISTANCE" }
+              ]
+            },
+            "description": "Enseignant: reçoit les demandes assignées + non assignées (AVAILABLE). Étudiant: reçoit uniquement ses propres demandes."
+          }
+        },
+        {
+          "name": "3.2 Créer une demande (étudiant)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"TUTORING\",\n  \"title\": \"Aide sur les équations du second degré\",\n  \"message\": \"Je bloque sur le calcul du discriminant depuis plusieurs jours.\",\n  \"priority\": \"MEDIUM\",\n  \"teacherId\": \"{{teacherId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests"]
+            },
+            "description": "Crée une demande d'assistance. Déclenche un événement Pusher 'request-created' sur le channel 'requests-{teacherId}'."
+          }
+        },
+        {
+          "name": "3.3 Accepter une demande (enseignant)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACCEPTED\",\n  \"responseMessage\": \"Je serai disponible jeudi à 14h en salle B12.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests", "{{requestId}}"]
+            },
+            "description": "Accepte une demande en attente assignée à l'enseignant connecté."
+          }
+        },
+        {
+          "name": "3.4 Refuser une demande (enseignant)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"REJECTED\",\n  \"responseMessage\": \"Je ne suis pas disponible cette semaine.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests", "{{requestId}}"]
+            }
+          }
+        },
+        {
+          "name": "3.5 Prendre en charge une demande (enseignant)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/claim",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests", "{{requestId}}", "claim"]
+            },
+            "description": "Assigne l'enseignant connecté à une demande AVAILABLE (externe) ou PENDING sans teacherId (école)."
+          }
+        },
+        {
+          "name": "3.6 Annuler une demande (étudiant)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests", "{{requestId}}"]
+            },
+            "description": "Annule une demande PENDING. Disponible uniquement pour le créateur (étudiant)."
+          }
+        },
+        {
+          "name": "3.7 Lire les messages du ticket",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests", "{{requestId}}", "messages"]
+            },
+            "description": "Récupère le fil de discussion lié à une demande d'assistance (composant TicketChat)."
+          }
+        },
+        {
+          "name": "3.8 Envoyer un message dans le ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Merci professeur, à jeudi !\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/requests/{{requestId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "requests", "{{requestId}}", "messages"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Enseignants (pour formulaire étudiant)",
+      "item": [
+        {
+          "name": "4.1 Lister les enseignants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teachers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "teachers"]
+            },
+            "description": "Utilisé par l'étudiant pour peupler le select 'Enseignant' dans le formulaire de nouvelle demande d'assistance."
+          }
+        }
+      ]
+    }
+  ]
+}

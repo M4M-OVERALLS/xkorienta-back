@@ -401,6 +401,7 @@ export enum MediaStatus {
   PENDING = "PENDING",
   APPROVED = "APPROVED",
   REJECTED = "REJECTED",
+  ARCHIVED = "ARCHIVED",
 }
 
 /** @deprecated Utiliser MediaScope. BookScope est conservé pour compatibilité. */
@@ -415,6 +416,7 @@ export enum BookStatus {
   PENDING = "PENDING",
   APPROVED = "APPROVED",
   REJECTED = "REJECTED",
+  ARCHIVED = "ARCHIVED",
 }
 
 /** Statut d'un achat de média */
