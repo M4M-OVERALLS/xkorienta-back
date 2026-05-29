@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
+import * as Sentry from "@sentry/nextjs"
 import { authOptions } from "@/lib/auth"
 import connectDB from "@/lib/mongodb"
 import User from "@/models/User"
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest) {
             data: { users, total, page, limit },
         })
     } catch (error: any) {
-        console.error("[Admin Users GET]", error)
+        Sentry.captureException(error)
         return NextResponse.json({ success: false, message: error.message || "Erreur serveur" }, { status: 500 })
     }
 }

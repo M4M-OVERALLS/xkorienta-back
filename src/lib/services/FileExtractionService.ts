@@ -118,7 +118,8 @@ export class FileExtractionService {
      * Extraction texte PDF via pdf-parse
      */
     private static async extractFromPDF(buffer: Buffer): Promise<ExtractionResult> {
-        const pdfParse = (await import('pdf-parse')).default
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
         const result = await pdfParse(buffer)
         return {
             text: result.text || '',

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
+import * as Sentry from "@sentry/nextjs"
 import { authOptions } from "@/lib/auth"
 import connectDB from "@/lib/mongodb"
 import User from "@/models/User"
@@ -47,7 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
         return NextResponse.json({ success: true, data: user })
     } catch (error: any) {
-        console.error("[Admin Users PATCH status]", error)
+        Sentry.captureException(error)
         return NextResponse.json({ success: false, message: error.message || "Erreur serveur" }, { status: 500 })
     }
 }
