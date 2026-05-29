@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { MediaService } from '@/lib/services/MediaService'
 import { MediaPurchaseService } from '@/lib/services/MediaPurchaseService'
-import { MediaScope, MediaType, UserRole } from '@/models/enums'
+import { mediaRepository } from '@/lib/repositories/MediaRepository'
+import { MediaScope, MediaStatus, MediaType, UserRole } from '@/models/enums'
 
 export class MediaController {
     /** Enrichit un média avec son URL de couverture. */
@@ -232,6 +233,79 @@ export class MediaController {
         })
 
         return NextResponse.json({ success: true, data: result }, { status: 201 })
+    }
+
+    /** POST /api/media/[id]/archive — administrateurs plateforme uniquement */
+    static async archiveMedia(id: string, session: { user: { id: string; role: string; schools?: string[] } }) {
+        const media = await MediaService.archiveMedia({
+            mediaId: id,
+            adminId: session.user.id,
+            adminRole: session.user.role as UserRole,
+            adminSchoolIds: session.user.schools ?? [],
+        })
+        return NextResponse.json({ success: true, data: media })
+    }
+
+    /** DELETE /api/media/[id] — administrateurs plateforme uniquement (suppression définitive) */
+    static async adminDeleteMedia(id: string, session: { user: { id: string; role: string; schools?: string[] } }) {
+        await MediaService.adminDeleteMedia({
+            mediaId: id,
+            adminId: session.user.id,
+            adminRole: session.user.role as UserRole,
+            adminSchoolIds: session.user.schools ?? [],
+        })
+        return NextResponse.json({ success: true, message: 'Média supprimé définitivement' })
+    }
+
+    /** DELETE /api/media/admin/bulk — suppression en masse (administrateurs plateforme) */
+    static async adminBulkDeleteMedia(
+        req: Request,
+        session: { user: { id: string; role: string } }
+    ) {
+        const body = await req.json() as { ids?: unknown }
+        const ids = body.ids
+
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return NextResponse.json({ success: false, message: 'ids doit être un tableau non vide' }, { status: 400 })
+        }
+        if (ids.some((id) => typeof id !== 'string' || !id)) {
+            return NextResponse.json({ success: false, message: 'Tous les ids doivent être des chaînes non vides' }, { status: 400 })
+        }
+
+        const result = await MediaService.adminBulkDeleteMedia(
+            ids as string[],
+            session.user.id,
+            session.user.role as UserRole
+        )
+        return NextResponse.json({ success: true, data: result })
+    }
+
+    /** GET /api/media/admin/all — liste paginée de tous les médias (admin) */
+    static async getAdminMediaList(req: Request) {
+        const { searchParams } = new URL(req.url)
+        const statusParam = searchParams.get('status')
+        const validStatuses = Object.values(MediaStatus)
+        const status = (statusParam && validStatuses.includes(statusParam as MediaStatus))
+            ? statusParam as MediaStatus
+            : undefined
+
+        const result = await mediaRepository.findPaginated({
+            mediaType: (searchParams.get('mediaType') as MediaType) || undefined,
+            status,
+            search: searchParams.get('search') || undefined,
+            page: Number(searchParams.get('page') ?? 1),
+            limit: Number(searchParams.get('limit') ?? 20),
+        })
+
+        return NextResponse.json({
+            success: true,
+            data: {
+                ...result,
+                items: result.items.map((m) =>
+                    MediaController.enrichWithCoverUrl(m as unknown as Record<string, unknown>)
+                ),
+            },
+        })
     }
 
     /** GET /api/media/purchased */

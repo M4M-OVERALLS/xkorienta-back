@@ -278,6 +278,62 @@ export class MediaService {
         }) as Promise<IMedia>
     }
 
+    /** Archive un média (administrateurs plateforme uniquement). */
+    static async archiveMedia(input: ValidateMediaInput): Promise<IMedia> {
+        const media = await mediaRepository.findById(input.mediaId)
+        if (!media) throw new Error('Média introuvable')
+        if (media.status === MediaStatus.ARCHIVED) throw new Error('Ce média est déjà archivé')
+
+        if (!MediaService.isPlatformAdmin(input.adminRole)) {
+            throw new Error('Seuls les administrateurs plateforme peuvent archiver les médias')
+        }
+
+        return mediaRepository.updateById(input.mediaId, {
+            status: MediaStatus.ARCHIVED,
+            validatedBy: new mongoose.Types.ObjectId(input.adminId),
+            validatedAt: new Date(),
+        }) as Promise<IMedia>
+    }
+
+    /** Supprime définitivement un média (administrateurs plateforme uniquement). */
+    static async adminDeleteMedia(input: ValidateMediaInput): Promise<void> {
+        const media = await mediaRepository.findById(input.mediaId)
+        if (!media) throw new Error('Média introuvable')
+
+        if (!MediaService.isPlatformAdmin(input.adminRole)) {
+            throw new Error('Seuls les administrateurs plateforme peuvent supprimer les médias')
+        }
+
+        await localMediaStorageStrategy.delete(media.fileKey)
+        await mediaRepository.deleteById(input.mediaId)
+    }
+
+    /**
+     * Supprime définitivement plusieurs médias en une seule opération batch.
+     * Administrateurs plateforme uniquement.
+     */
+    static async adminBulkDeleteMedia(
+        mediaIds: string[],
+        adminId: string,
+        adminRole: UserRole
+    ): Promise<{ deleted: number; errors: number }> {
+        if (!MediaService.isPlatformAdmin(adminRole)) {
+            throw new Error('Seuls les administrateurs plateforme peuvent effectuer des suppressions en masse')
+        }
+        if (!mediaIds.length) throw new Error('Aucun identifiant fourni')
+        if (mediaIds.length > 100) throw new Error('Maximum 100 médias par opération')
+
+        const records = await mediaRepository.deleteManyByIds(mediaIds)
+
+        // Supprimer les fichiers en parallèle (best-effort)
+        const results = await Promise.allSettled(
+            records.map(({ fileKey }) => localMediaStorageStrategy.delete(fileKey))
+        )
+
+        const errors = results.filter((r) => r.status === 'rejected').length
+        return { deleted: records.length, errors }
+    }
+
     /** Retourne les médias en attente de validation. */
     static async getPendingMedia(adminRole: UserRole, adminSchoolIds: string[]): Promise<IMedia[]> {
         if (MediaService.isPlatformAdmin(adminRole)) {
