@@ -333,7 +333,16 @@ export class InvitationService {
                 ? (invitation.classId as any)._id.toString()
                 : invitation.classId.toString();
 
-            await ClassService.enrollStudent(classIdStr, userId);
+            // Don't enroll as student if user is already a teacher in this class
+            // (teacher invitations also have classId set, but should not enroll teachers as students)
+            const classDoc = await Class.findById(classIdStr).lean() as any;
+            const isTeacherInClass = classDoc?.teachers?.some(
+                (t: any) => t.teacher?.toString() === userId
+            ) || classDoc?.mainTeacher?.toString() === userId;
+
+            if (!isTeacherInClass) {
+                await ClassService.enrollStudent(classIdStr, userId);
+            }
             resourceId = classIdStr;
         } else if (invitation.schoolId) {
             await SchoolService.addTeacherToSchool(invitation.schoolId.toString(), userId);

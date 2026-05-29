@@ -586,7 +586,7 @@ export class SchoolService {
      * PLATFORM ADMIN: List schools by status for the admin panel
      */
     static async getSchoolsByStatus(
-        status: SchoolStatus,
+        status: SchoolStatus | "ALL",
         page = 1,
         limit = 20,
         search?: string

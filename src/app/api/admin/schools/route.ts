@@ -44,9 +44,9 @@ export async function GET(req: Request) {
         const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)))
         const search = searchParams.get("search") || undefined
 
-        if (!Object.values(SchoolStatus).includes(statusParam as SchoolStatus)) {
+        if (statusParam !== "ALL" && !Object.values(SchoolStatus).includes(statusParam as SchoolStatus)) {
             return NextResponse.json(
-                { success: false, message: `Statut invalide. Valeurs: ${Object.values(SchoolStatus).join(", ")}` },
+                { success: false, message: `Statut invalide. Valeurs: ALL, ${Object.values(SchoolStatus).join(", ")}` },
                 { status: 400 }
             )
         }
@@ -54,7 +54,7 @@ export async function GET(req: Request) {
         await connectDB()
 
         const { schools, total, totalPages } = await SchoolService.getSchoolsByStatus(
-            statusParam as SchoolStatus,
+            statusParam as SchoolStatus | "ALL",
             page,
             limit,
             search

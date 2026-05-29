@@ -45,7 +45,15 @@ export async function DELETE(_req: Request, { params }: Params) {
         const { id } = await params
         const session = await getServerSession(authOptions)
         if (!session?.user?.id) return NextResponse.json({ success: false, message: 'Non autorisé' }, { status: 401 })
-        if (session.user.role !== UserRole.TEACHER) return NextResponse.json({ success: false, message: 'Interdit' }, { status: 403 })
+
+        const role = session.user.role as UserRole
+        const platformAdminRoles: UserRole[] = [UserRole.DG_M4M, UserRole.TECH_SUPPORT]
+
+        if (platformAdminRoles.includes(role)) {
+            return await MediaController.adminDeleteMedia(id, session as any)
+        }
+
+        if (role !== UserRole.TEACHER) return NextResponse.json({ success: false, message: 'Interdit' }, { status: 403 })
         return await MediaController.deleteMedia(id, session as any)
     } catch (err) {
         const message = (err as Error).message

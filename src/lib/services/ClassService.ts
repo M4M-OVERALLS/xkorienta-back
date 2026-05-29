@@ -223,7 +223,7 @@ export class ClassService {
             .populate('school', 'name')
             .populate('field', 'name code')
             .populate({ path: 'specialty', select: 'name code', strictPopulate: false })
-            .populate('students', 'name email image isActive')
+            .populate('students', 'name email image isActive role')
             .populate('mainTeacher', 'name')
     }
 
