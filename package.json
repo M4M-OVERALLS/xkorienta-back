@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",
+    "@sentry/nextjs": "^10.55.0",
     "@xkorienta/payment-sdk": "^1.0.0",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
