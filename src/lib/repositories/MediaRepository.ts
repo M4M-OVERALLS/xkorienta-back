@@ -135,6 +135,21 @@ export class MediaRepository {
         await Media.findByIdAndDelete(id)
     }
 
+    /**
+     * Retourne les fileKeys des médias correspondant aux IDs fournis,
+     * puis les supprime en une seule opération batch.
+     */
+    async deleteManyByIds(ids: string[]): Promise<{ fileKey: string; coverImageKey?: string }[]> {
+        await connectDB()
+        const objectIds = ids.map((id) => new mongoose.Types.ObjectId(id))
+        const records = await Media.find(
+            { _id: { $in: objectIds } },
+            { fileKey: 1, coverImageKey: 1 }
+        ).lean()
+        await Media.deleteMany({ _id: { $in: objectIds } })
+        return records.map((r) => ({ fileKey: r.fileKey, coverImageKey: r.coverImageKey }))
+    }
+
     async incrementPlayCount(id: string): Promise<void> {
         await connectDB()
         await Media.findByIdAndUpdate(id, { $inc: { playCount: 1 } })
