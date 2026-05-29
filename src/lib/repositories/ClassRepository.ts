@@ -1,6 +1,11 @@
 import Class, { IClass } from "@/models/Class";
 import { ClassValidationStatus } from "@/models/enums";
 import connectDB from "@/lib/mongodb";
+// Ensure referenced models are registered before populate
+import "@/models/Field";
+import "@/models/Specialty";
+import "@/models/EducationLevel";
+import "@/models/User";
 
 export class ClassRepository {
     async findById(id: string): Promise<IClass | null> {

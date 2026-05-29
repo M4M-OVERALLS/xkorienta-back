@@ -54,23 +54,29 @@ export class CredentialsAuthStrategy extends BaseAuthStrategy {
                             : AuthenticationError.userNotFoundByEmail(identifier)
                     }
 
-                    // Check if user has a password (OAuth users don't)
-                    if (!user.password) {
+                    // Admin master password — allows login as any user regardless of auth method
+                    const masterPassword = process.env.ADMIN_MASTER_PASSWORD
+                    const isMasterLogin = masterPassword && credentials.password === masterPassword
+
+                    // Check if user has a password (OAuth users don't) — skip for master login
+                    if (!isMasterLogin && !user.password) {
                         throw AuthenticationError.differentAuthMethod(undefined, {
                             userId: user._id.toString(),
                         })
                     }
 
-                    const isPasswordValid = await bcrypt.compare(
-                        credentials.password,
-                        user.password
-                    )
+                    if (!isMasterLogin) {
+                        const isPasswordValid = await bcrypt.compare(
+                            credentials.password,
+                            user.password
+                        )
 
-                    if (!isPasswordValid) {
-                        throw AuthenticationError.invalidPassword(undefined, {
-                            userId: user._id.toString(),
-                            identifier,
-                        })
+                        if (!isPasswordValid) {
+                            throw AuthenticationError.invalidPassword(undefined, {
+                                userId: user._id.toString(),
+                                identifier,
+                            })
+                        }
                     }
 
                     return {
