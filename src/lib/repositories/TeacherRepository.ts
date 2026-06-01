@@ -58,7 +58,7 @@ export class TeacherRepository {
     async findTeachersBySchool(schoolId: string) {
         await connectDB();
 
-        // Get school with teachers and applicants
+        // Get school with teachers and applicants arrays
         const school = await School.findById(schoolId)
             .select('teachers applicants')
             .lean();
@@ -67,28 +67,62 @@ export class TeacherRepository {
             return { teachers: [], applicants: [] };
         }
 
-        // Get approved teachers
-        const teacherIds = school.teachers || [];
+        const schoolTeacherIds = (school.teachers || []).map((id: any) => id.toString());
         const applicantIds = school.applicants || [];
 
-        // Fetch teacher details
-        const teachers = teacherIds.length > 0
-            ? await User.find({
-                _id: { $in: teacherIds },
-                isActive: true
-            }).select('name email role isActive metadata.avatar lastLogin createdAt').lean()
-            : [];
+        // Also find users who have this school in their user.schools array
+        // (covers cases where user.schools and school.teachers are out of sync)
+        const usersWithSchool = await User.find({
+            schools: schoolId,
+            _id: { $nin: applicantIds },
+        }).select('name email role isActive metadata.avatar lastLogin createdAt').lean();
+
+        // Merge: school.teachers list + users who have the school in their profile
+        const teacherMap = new Map<string, any>();
+        // First add users found via user.schools
+        for (const u of usersWithSchool) {
+            teacherMap.set(u._id.toString(), { ...u, status: 'APPROVED' });
+        }
+        // Then fetch those explicitly in school.teachers (may overlap)
+        if (schoolTeacherIds.length > 0) {
+            const explicit = await User.find({
+                _id: { $in: schoolTeacherIds },
+            }).select('name email role isActive metadata.avatar lastLogin createdAt').lean();
+            for (const u of explicit) {
+                teacherMap.set(u._id.toString(), { ...u, status: 'APPROVED' });
+            }
+        }
+
+        // Also add mainTeachers of school classes who might not be in either list
+        const classTeachers = await Class.find({ school: schoolId, mainTeacher: { $ne: null } })
+            .select('mainTeacher')
+            .lean();
+        const mainTeacherIds = classTeachers
+            .map((c: any) => c.mainTeacher?.toString())
+            .filter((id: string | undefined): id is string => !!id && !teacherMap.has(id));
+        if (mainTeacherIds.length > 0) {
+            const mts = await User.find({ _id: { $in: mainTeacherIds } })
+                .select('name email role isActive metadata.avatar lastLogin createdAt').lean();
+            for (const u of mts) {
+                teacherMap.set(u._id.toString(), { ...u, status: 'APPROVED' });
+            }
+        }
+
+        // Remove applicants from the teachers map
+        const applicantIdSet = new Set(applicantIds.map((id: any) => id.toString()));
+        for (const id of applicantIdSet) {
+            teacherMap.delete(id);
+        }
 
         // Fetch applicant details
         const applicants = applicantIds.length > 0
             ? await User.find({
                 _id: { $in: applicantIds },
-                isActive: true
             }).select('name email role isActive metadata.avatar lastLogin createdAt').lean()
             : [];
 
         return {
-            teachers: teachers.map(t => ({ ...t, status: 'APPROVED' })),
+            teachers: Array.from(teacherMap.values()),
             applicants: applicants.map(a => ({ ...a, status: 'PENDING' }))
         };
     }

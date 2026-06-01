@@ -1,6 +1,8 @@
 import Exam from "@/models/Exam";
 import connectDB from "@/lib/mongodb";
 import mongoose from "mongoose";
+// Ensure referenced models are registered before populate
+import "@/models/Subject";
 
 export class ExamRepository {
     /**

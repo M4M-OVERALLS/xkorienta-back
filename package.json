@@ -11,7 +11,9 @@
     "seed:web-diagnostic": "node scripts/seed-web-programming-diagnostic.js",
     "seed:plans": "node scripts/seed-plans.js",
     "migrate:book-purchases": "node scripts/migrate-book-purchases.js",
-    "admin:create": "node scripts/create-platform-admin.js"
+    "admin:create": "node scripts/create-platform-admin.js",
+    "migrate:add-subjects": "node scripts/add-missing-subjects.js",
+    "migrate:isimma-s2": "node scripts/add-isimma-s2-subjects.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",
@@ -35,7 +37,7 @@
     "nodemailer": "^7.0.12",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "pdf-parse": "^2.4.5",
+    "pdf-parse": "^1.1.1",
     "pusher": "^5.3.2",
     "qrcode": "^1.5.4",
     "react": "19.2.3",

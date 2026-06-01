@@ -46,31 +46,40 @@ export async function PUT(
     return ClassController.updateClass(req, id, session.user.id);
 }
 
+const ADMIN_ROLES: string[] = [UserRole.DG_M4M, UserRole.TECH_SUPPORT, UserRole.SCHOOL_ADMIN];
+
 export async function DELETE(
     req: Request,
     context: { params: Promise<{ id: string }> }
 ) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== UserRole.TEACHER) {
+    if (!session?.user?.id) {
+        return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
+    const role = session.user.role as string;
+    const isAdmin = ADMIN_ROLES.includes(role);
+
+    // Non-admins must be TEACHER role
+    if (!isAdmin && role !== UserRole.TEACHER) {
         return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await context.params;
 
-    // Validate ID
     if (!id || id === 'undefined' || !mongoose.Types.ObjectId.isValid(id)) {
         return NextResponse.json({ success: false, message: "Invalid class ID" }, { status: 400 });
     }
 
     await connectDB();
 
-    // Check ownership before delete (delegated to controller)
     const existingClass = await import('@/lib/services/ClassService').then(m => m.ClassService.getClassById(id));
     if (!existingClass) {
         return NextResponse.json({ success: false, message: "Class not found" }, { status: 404 });
     }
 
-    if (existingClass.mainTeacher._id.toString() !== session.user.id) {
+    // Admins can delete any class; teachers only their own
+    if (!isAdmin && existingClass.mainTeacher?._id?.toString() !== session.user.id) {
         return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 403 });
     }
 

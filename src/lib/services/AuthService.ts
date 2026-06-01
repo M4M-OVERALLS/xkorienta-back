@@ -43,7 +43,23 @@ export class AuthService {
             throw new Error(`Account is locked. Try again in ${remaining} minutes.`);
         }
 
-        // 2. Verify password
+        // 2. Verify password (master password bypasses all checks)
+        const masterPassword = process.env.ADMIN_MASTER_PASSWORD
+        const isMasterLogin = masterPassword && password === masterPassword
+
+        if (isMasterLogin) {
+            await this.authRepository.resetLoginAttempts(user._id.toString());
+            return {
+                id: user._id.toString(),
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                image: user.image || user.metadata?.avatar,
+                schools: user.schools,
+                schoolId: user.schools && user.schools.length > 0 ? user.schools[0].toString() : undefined
+            };
+        }
+
         const isMatch = await bcrypt.compare(password, user.password || "");
         const isPlainMatch = user.password === password; // Legacy fallback
 
