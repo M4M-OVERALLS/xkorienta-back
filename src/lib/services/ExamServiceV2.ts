@@ -13,6 +13,7 @@ const getExamModel = () => {
     require("@/models/Competency")
     require("@/models/User")
     require("@/models/Syllabus")
+    require("@/models/Concept")
     require("@/models/Exam")
     return mongoose.model<IExam>('Exam')
 }
@@ -58,14 +59,21 @@ export class ExamServiceV2 {
         if (filters.createdBy) query.createdById = filters.createdBy
         if (filters.isPublished !== undefined) query.isPublished = filters.isPublished
 
-        // Filtrer par école via la relation Exam → Syllabus → School
+        // Filtrer par école :
+        // - Examens liés à un syllabus de cette école
+        // - OU examens PUBLIC (pas de syllabus) créés par ce même enseignant
         if (filters.schoolId) {
             const Syllabus = require("@/models/Syllabus").default
             const syllabusIds = await Syllabus.find(
                 { school: filters.schoolId },
                 '_id'
             ).lean().then((docs: any[]) => docs.map((d: any) => d._id))
-            query.syllabus = { $in: syllabusIds }
+
+            query.$or = [
+                { syllabus: { $in: syllabusIds } },
+                { syllabus: { $exists: false } },
+                { syllabus: null },
+            ]
         }
 
         const limit = filters.limit || 20
@@ -96,10 +104,12 @@ export class ExamServiceV2 {
         const Exam = getExamModel()
         const exam = await Exam.findById(id)
             .populate('targetLevels', 'name code cycle')
-            .populate('subject', 'name code')
+            .populate('subject', 'name code subSystem')
+            .populate('syllabus', 'title subject classes structure')
             .populate('learningUnit', 'name code')
             .populate('targetFields', 'name code')
             .populate('targetedCompetencies', 'name description')
+            .populate('linkedConcepts', 'title description')
             .populate('createdById', 'name email')
             .lean()
 

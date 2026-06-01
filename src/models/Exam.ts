@@ -8,7 +8,8 @@ import {
     LearningMode,
     CloseMode,
     ExamType,
-    SelfAssessmentLevel
+    SelfAssessmentLevel,
+    ExamContext
 } from './enums'
 import { SchoolType } from './School'
 
@@ -126,6 +127,9 @@ export interface IExam extends Document {
     evaluationType: EvaluationType
     learningMode: LearningMode // NOUVEAU
     difficultyLevel: DifficultyLevel
+
+    // Contexte de création de l'examen (SYLLABUS_BASED ou PUBLIC)
+    examContext?: ExamContext
 
     // 🆕 V4 - Type d'examen précis et notation
     examType?: ExamType // Type précis d'examen (SELF_ASSESSMENT, FORMATIVE_QUIZ, FINAL_EXAM, etc.)
@@ -280,6 +284,13 @@ const ExamSchema = new Schema<IExam>(
             type: String,
             enum: Object.values(DifficultyLevel),
             required: true
+        },
+
+        // Contexte de création (SYLLABUS_BASED ou PUBLIC)
+        examContext: {
+            type: String,
+            enum: Object.values(ExamContext),
+            required: false
         },
 
         // 🆕 V4 - Type d'examen précis et notation

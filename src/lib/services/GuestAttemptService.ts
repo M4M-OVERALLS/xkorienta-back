@@ -21,23 +21,38 @@ export class GuestAttemptService {
         const exam = await Exam.findById(examId)
         if (!exam) throw new Error("Exam not found")
 
-        // Vérifier que c'est bien un mini-test public
-        if (!exam.isPublicDemo) {
+        // Vérifier que c'est bien un exam accessible sans login :
+        // - isPublicDemo (mini-test manuel)
+        // - OU examContext 'PUBLIC' avec statut PUBLISHED
+        const isGuestAccessible =
+            exam.isPublicDemo ||
+            ((exam as any).examContext === 'PUBLIC' && (exam as any).status === 'PUBLISHED')
+
+        if (!isGuestAccessible) {
             throw new Error("This exam is not available for guest access")
         }
 
-        // Vérifier que l'examen est publié et actif
-        if (!exam.isPublished || !exam.isActive) {
+        // Vérifier que l'examen est actif
+        if (!exam.isActive) {
+            throw new Error("Exam is not available")
+        }
+        // Pour les examens PUBLIC, isPublished est géré via status === PUBLISHED
+        if (!exam.isPublicDemo && !exam.isPublished && (exam as any).status !== 'PUBLISHED') {
             throw new Error("Exam is not available")
         }
 
-        // Vérifier les dates
         const now = new Date()
-        if (exam.startTime && now < exam.startTime) {
-            throw new Error("Exam has not started yet")
-        }
-        if (exam.endTime && now > exam.endTime) {
-            throw new Error("Exam has ended")
+
+        // Vérifier les dates SEULEMENT pour les mini-tests isPublicDemo
+        // Les examens examContext='PUBLIC' sont des mini-tests permanents → pas de fenêtre horaire
+        const isPublicContextExam = (exam as any).examContext === 'PUBLIC'
+        if (!isPublicContextExam) {
+            if (exam.startTime && now < exam.startTime) {
+                throw new Error("Exam has not started yet")
+            }
+            if (exam.endTime && now > exam.endTime) {
+                throw new Error("Exam has ended")
+            }
         }
 
         // Vérifier si une tentative guest existe déjà pour cette session
@@ -102,7 +117,11 @@ export class GuestAttemptService {
         const exam = await Exam.findById(examId)
         if (!exam) throw new Error("Exam not found")
 
-        if (!exam.isPublicDemo) {
+        const isGuestAccessible =
+            exam.isPublicDemo ||
+            ((exam as any).examContext === 'PUBLIC' && (exam as any).status === 'PUBLISHED')
+
+        if (!isGuestAccessible) {
             throw new Error("This exam is not available for guest access")
         }
 
@@ -124,7 +143,7 @@ export class GuestAttemptService {
             .lean()
 
         // Shuffle si configuré
-        if (exam.config.shuffleQuestions) {
+        if (exam.config?.shuffleQuestions) {
             questions = this.shuffleArray(questions)
         }
 
@@ -338,7 +357,11 @@ export class GuestAttemptService {
 
         // Construire les résultats détaillés
         const detailedResults = questions.map(question => {
-            const response = responses.find(r => r.questionId._id.toString() === question._id.toString())
+            // questionId peut être populé (objet) ou un ObjectId brut selon le populate
+            const response = responses.find(r => {
+                const qid = (r.questionId as any)?._id ?? r.questionId
+                return qid?.toString() === question._id.toString()
+            })
             return {
                 questionId: question._id,
                 questionText: question.text,

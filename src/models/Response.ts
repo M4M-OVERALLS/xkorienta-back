@@ -29,6 +29,13 @@ export interface IResponse extends Document {
   timeSpent?: number // Temps passé sur la question en secondes
   answeredAt?: Date // Timestamp de la réponse
 
+  // Correction manuelle (questions ouvertes)
+  gradingStatus?: 'pending' | 'graded'
+  manualScore?: number       // Score donné par l'enseignant (0-100)
+  teacherComment?: string    // Commentaire de l'enseignant
+  gradedBy?: mongoose.Types.ObjectId  // ID de l'enseignant correcteur
+  gradedAt?: Date
+
   // Métadonnées
   isMarkedForReview?: boolean // Étudiant a marqué pour révision
   createdAt: Date
@@ -75,6 +82,29 @@ const ResponseSchema = new Schema<IResponse>(
       min: 0
     },
     answeredAt: {
+      type: Date
+    },
+
+    // Correction manuelle
+    gradingStatus: {
+      type: String,
+      enum: ['pending', 'graded'],
+      default: 'pending'
+    },
+    manualScore: {
+      type: Number,
+      min: 0,
+      max: 100
+    },
+    teacherComment: {
+      type: String,
+      trim: true
+    },
+    gradedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    gradedAt: {
       type: Date
     },
 

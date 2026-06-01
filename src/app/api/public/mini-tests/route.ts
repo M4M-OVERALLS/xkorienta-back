@@ -20,10 +20,15 @@ export async function GET(req: Request) {
         const learningUnitId = searchParams.get('learningUnitId')
         const limit = parseInt(searchParams.get('limit') || '10')
 
+        // Un exam est visible en mini-test s'il est soit :
+        // - marqué isPublicDemo (mini-test manuel)
+        // - OU créé avec examContext 'PUBLIC' et publié
         const query: any = {
-            isPublicDemo: true,
-            isPublished: true,
-            isActive: true
+            $or: [
+                { isPublicDemo: true, isPublished: true },
+                { examContext: 'PUBLIC', status: 'PUBLISHED' },
+            ],
+            isActive: true,
         }
 
         if (subjectId) {
