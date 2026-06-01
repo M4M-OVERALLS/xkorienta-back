@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import * as Sentry from '@sentry/nextjs'
 import { authOptions } from '@/lib/auth'
 import connectDB from '@/lib/mongodb'
 import { ClassTeacherService } from '@/lib/services/ClassTeacherService'
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         })
 
     } catch (error: any) {
-        console.error('[Class Teachers GET] Error:', error)
+        Sentry.captureException(error)
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 }
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }, { status: 201 })
 
     } catch (error: any) {
-        console.error('[Class Teachers POST] Error:', error)
+        Sentry.captureException(error)
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 }
@@ -160,7 +161,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         })
 
     } catch (error: any) {
-        console.error('[Class Teachers PUT] Error:', error)
+        Sentry.captureException(error)
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 }
@@ -226,7 +227,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         })
 
     } catch (error: any) {
-        console.error('[Class Teachers PATCH] Error:', error)
+        Sentry.captureException(error)
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 }
@@ -279,7 +280,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ success: true, message: result.message })
 
     } catch (error: any) {
-        console.error('[Class Teachers DELETE] Error:', error)
+        Sentry.captureException(error)
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 }

@@ -11,7 +11,9 @@
     "seed:web-diagnostic": "node scripts/seed-web-programming-diagnostic.js",
     "seed:plans": "node scripts/seed-plans.js",
     "migrate:book-purchases": "node scripts/migrate-book-purchases.js",
-    "admin:create": "node scripts/create-platform-admin.js"
+    "admin:create": "node scripts/create-platform-admin.js",
+    "migrate:add-subjects": "node scripts/add-missing-subjects.js",
+    "migrate:isimma-s2": "node scripts/add-isimma-s2-subjects.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",
