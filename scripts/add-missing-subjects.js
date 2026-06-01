@@ -6,6 +6,7 @@
  *   - Négociation Commerciale
  *   - Système d'Exploitation
  *   - Installation et Maintenance Matériels et Logiciels
+ *   - Vivre en Ligne
  *
  * Ce script est idempotent (upsert) : peut être relancé sans risque de duplication.
  */
@@ -128,6 +129,22 @@ const NEW_SUBJECTS = [
       description: 'Installation, configuration et maintenance des équipements informatiques',
       color: '#f59e0b',
       coefficient: 4
+    }
+  },
+  {
+    name: 'Vivre en Ligne',
+    code: 'VIVRE_LIGNE_BTS',
+    subSystem: 'BILINGUAL',
+    subjectType: 'UE',
+    cycle_filter: 'BTS_HND',
+    metadata: {
+      displayName: {
+        fr: 'Vivre en Ligne',
+        en: 'Living Online'
+      },
+      description: 'Compétences numériques, citoyenneté en ligne et usage responsable d\'Internet',
+      color: '#0ea5e9',
+      coefficient: 2
     }
   }
 ]
