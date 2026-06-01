@@ -49,12 +49,12 @@ export class AnthropicParsingStrategy implements IAIParsingStrategy {
     }
 
     /**
-     * Parse du texte brut en structure syllabus via Claude
+     * Parse du texte brut (ou image base64) en structure syllabus via Claude
      */
     async parseToSyllabus(
         text: string,
         language: 'fr' | 'en' = 'fr',
-        _contentType: 'text' | 'image' = 'text'
+        contentType: 'text' | 'image' = 'text'
     ): Promise<ParsedSyllabusDTO> {
         const apiKey = process.env.ANTHROPIC_API_KEY
         if (!apiKey) {
@@ -66,12 +66,38 @@ export class AnthropicParsingStrategy implements IAIParsingStrategy {
 
         const client = new Anthropic({ apiKey })
 
+        // Build user message — vision for images, text for documents
+        let userContent: Anthropic.MessageCreateParams['messages'][0]['content']
+
+        if (contentType === 'image') {
+            // text contains a data URI like "data:image/jpeg;base64,/9j/4AA..."
+            const match = text.match(/^data:(image\/\w+);base64,(.+)$/)
+            if (!match) {
+                throw new Error('Invalid image data URI')
+            }
+            const mediaType = match[1] as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+            const base64Data = match[2]
+
+            userContent = [
+                {
+                    type: 'image' as const,
+                    source: { type: 'base64' as const, media_type: mediaType, data: base64Data },
+                },
+                {
+                    type: 'text' as const,
+                    text: prompts.user('[Image du syllabus ci-dessus — extrais le contenu et structure-le]'),
+                },
+            ]
+        } else {
+            userContent = prompts.user(text)
+        }
+
         const message = await client.messages.create({
             model,
             max_tokens: 4096,
             system: prompts.system,
             messages: [
-                { role: 'user', content: prompts.user(text) },
+                { role: 'user', content: userContent },
             ],
         })
 

@@ -369,6 +369,8 @@ export class SchoolService {
      * Add Teacher to School
      */
     static async addTeacherToSchool(schoolId: string, userId: string) {
+        // Keep both sides in sync
+        await User.findByIdAndUpdate(userId, { $addToSet: { schools: schoolId } });
         return await School.findByIdAndUpdate(
             schoolId,
             { $addToSet: { teachers: userId } },
