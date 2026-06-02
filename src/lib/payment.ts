@@ -76,8 +76,12 @@ paymentSDK.events.on('payment.completed', async (e) => {
 
 /** Activate the subscription plan after payment. */
 paymentSDK.events.on('payment.completed', async (e) => {
-    if (e.type === 'SUBSCRIPTION') {
-        await SubscriptionService.activateSubscription(e.reference)
+    if (e.type !== 'SUBSCRIPTION') return
+    try {
+        const sub = await SubscriptionService.activateSubscription(e.reference)
+        console.log(`[Subscription] Activated: userId=${e.userId} plan=${e.productId} ref=${e.reference}`)
+    } catch (err) {
+        console.error(`[Subscription] Activation FAILED ref=${e.reference}:`, (err as Error).message)
     }
 })
 

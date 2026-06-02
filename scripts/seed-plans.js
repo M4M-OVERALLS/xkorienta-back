@@ -138,6 +138,73 @@ const DEFAULT_PLANS = [
     sortOrder: 2,
     isFree: false,
   },
+  // ── Plans Xkorienta Orientation IA ──────────────────────────────────────────
+
+  {
+    code: "DECOUVERTE",
+    name: "Découverte",
+    description: "Découvrez le conseiller IA Xkorienta avec 1 rapport gratuit.",
+    prices: [],
+    features: ["ORIENTATION_AI"],
+    limits: {
+      maxExamsPerMonth: 5,
+      maxClassesJoined: 2,
+      downloadBooks: false,
+      prioritySupport: false,
+      aiAssistance: true,
+      offlineAccess: false,
+    },
+    isActive: true,
+    sortOrder: 10,
+    isFree: true,
+  },
+  {
+    code: "ELEVE",
+    name: "Plan Élève",
+    description: "Accès illimité au conseiller IA d'orientation Xkorienta.",
+    prices: [
+      { currency: Currency.XAF, amount: 5000, interval: SubscriptionInterval.MONTHLY },
+      { currency: Currency.XAF, amount: 50000, interval: SubscriptionInterval.YEARLY },
+      { currency: Currency.EUR, amount: 8,     interval: SubscriptionInterval.MONTHLY },
+      { currency: Currency.EUR, amount: 80,    interval: SubscriptionInterval.YEARLY },
+    ],
+    features: ["ORIENTATION_AI"],
+    limits: {
+      maxExamsPerMonth: null,
+      maxClassesJoined: null,
+      downloadBooks: false,
+      prioritySupport: false,
+      aiAssistance: true,
+      offlineAccess: false,
+    },
+    isActive: true,
+    sortOrder: 11,
+    isFree: false,
+  },
+  {
+    code: "ETABLISSEMENT",
+    name: "Licence Établissement",
+    description: "Licence B2B pour lycées, instituts BTS et centres de formation.",
+    prices: [
+      { currency: Currency.XAF, amount: 100000, interval: SubscriptionInterval.YEARLY },
+      { currency: Currency.EUR, amount: 150,    interval: SubscriptionInterval.YEARLY },
+    ],
+    features: ["ORIENTATION_AI", "ASSISTANCE", "ANALYTICS_PRO"],
+    limits: {
+      maxExamsPerMonth: null,
+      maxClassesJoined: null,
+      downloadBooks: true,
+      prioritySupport: true,
+      aiAssistance: true,
+      offlineAccess: false,
+    },
+    isActive: true,
+    sortOrder: 12,
+    isFree: false,
+  },
+
+  // ── Plan existant ────────────────────────────────────────────────────────────
+
   {
     code: "INSTITUTION",
     name: "Institution",
@@ -184,9 +251,9 @@ const DEFAULT_PLANS = [
 ];
 
 async function connectDB() {
-  const uri = process.env.MONGODB_URI;
+  const uri = process.env.DATABASE_URL || process.env.MONGODB_URI;
   if (!uri) {
-    throw new Error("MONGODB_URI not defined in environment");
+    throw new Error("DATABASE_URL (or MONGODB_URI) not defined in environment");
   }
   await mongoose.connect(uri);
 }
