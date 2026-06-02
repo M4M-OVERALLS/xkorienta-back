@@ -28,16 +28,14 @@ async function main() {
     { $or: [{ email: EMAIL }, { phone: EMAIL }] },
     { projection: { _id: 1, email: 1, name: 1 } }
   );
-  if (!user) { console.error(`Utilisateur introuvable : ${EMAIL}`); process.exit(1); }
-  console.log(`Utilisateur : ${user.name || user.email} (${user._id})`);
+  if (!user) { process.stderr.write(`Utilisateur introuvable : ${EMAIL}\n`); process.exit(1); }
 
   // 2. Trouver le plan
   const plan = await db.collection("plans").findOne(
     { code: PLAN_CODE },
     { projection: { _id: 1, code: 1, name: 1, features: 1 } }
   );
-  if (!plan) { console.error(`Plan introuvable : ${PLAN_CODE}`); process.exit(1); }
-  console.log(`Plan : ${plan.name} (features: ${JSON.stringify(plan.features)})`);
+  if (!plan) { process.stderr.write(`Plan introuvable : ${PLAN_CODE}\n`); process.exit(1); }
 
   // 3. Vérifier s'il y a déjà un abonnement actif
   const existing = await db.collection("subscriptions").findOne({
