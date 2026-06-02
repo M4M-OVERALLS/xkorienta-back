@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import connectDB from "@/lib/mongodb";
 import XkorientaRegistration from "@/models/XkorientaRegistration";
 
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
         }, { status: 201 });
 
     } catch (error: any) {
-        console.error("Xkorienta Registration Error:", error);
+        Sentry.captureException(error);
         return NextResponse.json(
             { success: false, message: error.message || "Internal server error" },
             { status: 500 }
