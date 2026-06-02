@@ -5,5 +5,6 @@
 export * from "./types"
 export * from "./BaseError"
 export * from "./AuthenticationError"
+export * from "./XOrientationError"
 export * from "./errorHandler"
 export * from "./languageHelper"
