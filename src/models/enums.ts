@@ -521,3 +521,13 @@ export enum MobileMoneyProvider {
   MTN = "mtn",
   OTHER = "other",
 }
+
+/**
+ * Contexte de création d'un examen
+ * - SYLLABUS_BASED : L'examen est lié à un syllabus existant de l'enseignant
+ * - PUBLIC : L'examen est créé indépendamment de tout programme (examen public/standalone)
+ */
+export enum ExamContext {
+  SYLLABUS_BASED = 'SYLLABUS_BASED',
+  PUBLIC = 'PUBLIC',
+}
