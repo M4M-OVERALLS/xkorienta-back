@@ -6,12 +6,12 @@
  *
  * Optimisations tokens :
  * - Context window trimming : ancre (2 premiers) + fenêtre glissante (10 derniers)
- * - Adaptive model : haiku pour les échanges, sonnet pour le rapport final
+ * - Adaptive model : haiku pour toute la conversation ; sonnet uniquement pour le rapport
  * - Adaptive max_tokens : 800 (chat) → 2500 (rapport)
  * - System prompt filtré par langue : BTS (fr) ou HND (en) uniquement
  *
  * - Auth : aucune (endpoint public — orientation accessible à tous)
- * - Rate limit : 20 messages/min par IP
+ * - Rate limit : 40 messages/min par IP
  * - Input  : { messages: {role, content}[], level: string, language: 'fr' | 'en' }
  * - Output : text/event-stream — événements { text: string } | [DONE] | { error: string }
  */
@@ -28,15 +28,15 @@ import {
     XKORIENTA_CHAT_MODEL,
     XKORIENTA_MAX_TOKENS,
     XKORIENTA_CHAT_MAX_TOKENS,
-    XKORIENTA_REPORT_THRESHOLD,
     XKORIENTA_CONTEXT_WINDOW,
     XKORIENTA_ANCHOR_SIZE,
 } from '@/lib/ai/prompts/xkorientaSystemPrompt'
+import { isXkorientaReportPhase } from '@/lib/ai/orientation/reportPhase'
 
-/** Rate limiter : 20 messages par minute par IP */
+/** Rate limiter : conversation longue autorisée (40 messages / min / IP) */
 const chatLimiter = rateLimit({
     windowMs: 60 * 1000,
-    maxRequests: 20,
+    maxRequests: 40,
 })
 
 const MessageSchema = z.object({
@@ -45,7 +45,7 @@ const MessageSchema = z.object({
 })
 
 const ChatRequestSchema = z.object({
-    messages: z.array(MessageSchema).min(1).max(50),
+    messages: z.array(MessageSchema).min(1).max(100),
     level: z.string().min(1).max(50),
     language: z.enum(['fr', 'en']).default('fr'),
 })
@@ -62,20 +62,6 @@ function trimMessages(messages: ApiMessage[]): ApiMessage[] {
     const anchor = messages.slice(0, XKORIENTA_ANCHOR_SIZE)
     const recent = messages.slice(-(XKORIENTA_CONTEXT_WINDOW - XKORIENTA_ANCHOR_SIZE))
     return [...anchor, ...recent]
-}
-
-/**
- * Détecte si on est en phase de génération du rapport final.
- * Bascule vers sonnet + max_tokens élevé quand :
- * - La conversation est longue (≥ seuil) — l'IA a collecté les 8 dimensions
- * - L'utilisateur demande explicitement un résumé / rapport
- */
-function isReportPhase(messages: ApiMessage[]): boolean {
-    if (messages.length >= XKORIENTA_REPORT_THRESHOLD) return true
-    const reportKeywords = ['rapport', 'bilan', 'résumé', 'conclusion', 'report', 'summary', 'orientation finale', 'analyse complète']
-    return messages.slice(-3).some((m) =>
-        reportKeywords.some((kw) => m.content.toLowerCase().includes(kw))
-    )
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -112,7 +98,7 @@ export async function POST(req: Request): Promise<Response> {
 
         // 4. Optimisations tokens
         const messages = trimMessages(rawMessages)
-        const reportPhase = isReportPhase(messages)
+        const reportPhase = isXkorientaReportPhase(messages)
         const model = reportPhase ? XKORIENTA_MODEL : XKORIENTA_CHAT_MODEL
         const maxTokens = reportPhase ? XKORIENTA_MAX_TOKENS : XKORIENTA_CHAT_MAX_TOKENS
         const systemPrompt = getXkorientaSystemPrompt(lang)
