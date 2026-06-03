@@ -13,7 +13,6 @@ import {
     cleanOutput,
     XKORIENTA_CONTEXT_WINDOW,
     XKORIENTA_ANCHOR_SIZE,
-    XKORIENTA_REPORT_THRESHOLD,
     XKORIENTA_TEMPERATURE,
     XKORIENTA_MAX_TOKENS,
     XKORIENTA_CHAT_MAX_TOKENS,
@@ -130,16 +129,12 @@ describe('cleanOutput', () => {
 // =========================================
 
 describe('configuration constants', () => {
-    it('XKORIENTA_CONTEXT_WINDOW should be 12', () => {
-        expect(XKORIENTA_CONTEXT_WINDOW).toBe(12)
+    it('XKORIENTA_CONTEXT_WINDOW should be 30', () => {
+        expect(XKORIENTA_CONTEXT_WINDOW).toBe(30)
     })
 
-    it('XKORIENTA_ANCHOR_SIZE should be 2', () => {
-        expect(XKORIENTA_ANCHOR_SIZE).toBe(2)
-    })
-
-    it('XKORIENTA_REPORT_THRESHOLD should be 18', () => {
-        expect(XKORIENTA_REPORT_THRESHOLD).toBe(18)
+    it('XKORIENTA_ANCHOR_SIZE should be 4', () => {
+        expect(XKORIENTA_ANCHOR_SIZE).toBe(4)
     })
 
     it('XKORIENTA_TEMPERATURE should be 0.8', () => {

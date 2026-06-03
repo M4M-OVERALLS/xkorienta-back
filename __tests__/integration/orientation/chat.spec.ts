@@ -132,8 +132,8 @@ describe('POST /api/xkorienta/chat', () => {
             expect(body.error.code).toBe('XOR_003')
         })
 
-        it('should return XOR_003 (400) when messages array exceeds 50 items', async () => {
-            const messages = Array.from({ length: 51 }, (_, i) => ({
+        it('should return XOR_003 (400) when messages array exceeds 100 items', async () => {
+            const messages = Array.from({ length: 101 }, (_, i) => ({
                 role: i % 2 === 0 ? 'user' : 'assistant',
                 content: `Message ${i}`,
             }))
