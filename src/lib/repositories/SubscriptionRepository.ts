@@ -39,6 +39,17 @@ export class SubscriptionRepository {
             .lean() as Promise<ISubscription | null>
     }
 
+    async findActiveByLastTransactionId(transactionId: string): Promise<ISubscription | null> {
+        await connectDB()
+        return Subscription.findOne({
+            lastTransactionId: new mongoose.Types.ObjectId(transactionId),
+            status: SubscriptionPlanStatus.ACTIVE,
+            currentPeriodEnd: { $gt: new Date() },
+        })
+            .populate('planId')
+            .lean() as Promise<ISubscription | null>
+    }
+
     async findByUser(userId: string): Promise<ISubscription[]> {
         await connectDB()
         return Subscription.find({

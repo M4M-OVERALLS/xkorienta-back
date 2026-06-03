@@ -161,6 +161,13 @@ export class SubscriptionService {
             throw new Error('Transaction is not a subscription')
         }
 
+        const existingForPayment = await subscriptionRepository.findActiveByLastTransactionId(
+            transaction._id.toString()
+        )
+        if (existingForPayment) {
+            return existingForPayment
+        }
+
         const plan = await planRepository.findById(transaction.productId.toString())
         if (!plan) {
             throw new Error('Plan not found')
