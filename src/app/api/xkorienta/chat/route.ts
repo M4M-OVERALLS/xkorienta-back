@@ -21,6 +21,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import * as Sentry from '@sentry/nextjs'
 import { rateLimit, getClientIdentifier, createRateLimitResponse } from '@/lib/security/rateLimiter'
+import { XOrientationError, ErrorHandler, BaseApplicationError, LanguageHelper } from '@/lib/errors'
 import {
     getXkorientaSystemPrompt,
     XKORIENTA_MODEL,
@@ -78,61 +79,62 @@ function isReportPhase(messages: ApiMessage[]): boolean {
 }
 
 export async function POST(req: Request): Promise<Response> {
-    try {
-        // 1. Rate limiting par IP
-        const identifier = getClientIdentifier(req)
-        const rateLimitResult = chatLimiter(`xkorienta:${identifier}`)
-        if (!rateLimitResult.success) {
-            return createRateLimitResponse(rateLimitResult.resetTime)
-        }
+    // 1. Rate limiting (avant tout — réponse custom)
+    const identifier = getClientIdentifier(req)
+    const rateLimitResult = chatLimiter(`xkorienta:${identifier}`)
+    if (!rateLimitResult.success) {
+        return createRateLimitResponse(rateLimitResult.resetTime)
+    }
 
-        // 2. Vérification de la clé API
+    const language = LanguageHelper.getLanguageFromRequest(req)
+
+    try {
+        // 2. Clé API Anthropic
         const apiKey = process.env.ANTHROPIC_API_KEY
-        if (!apiKey) {
-            return NextResponse.json(
-                { success: false, message: 'AI service not configured' },
-                { status: 503 }
-            )
-        }
+        if (!apiKey) throw XOrientationError.apiKeyMissing(language)
 
         // 3. Validation du body
         let body: unknown
         try {
             body = await req.json()
         } catch {
-            return NextResponse.json(
-                { success: false, message: 'Invalid JSON body' },
-                { status: 400 }
-            )
+            throw XOrientationError.invalidJsonBody(language)
         }
 
         const parseResult = ChatRequestSchema.safeParse(body)
         if (!parseResult.success) {
-            return NextResponse.json(
-                { success: false, message: 'Invalid request', errors: parseResult.error.flatten() },
-                { status: 400 }
-            )
+            throw XOrientationError.invalidParameters(language, {
+                errors: parseResult.error.flatten() as unknown as Record<string, unknown>,
+            })
         }
 
-        const { messages: rawMessages, language } = parseResult.data
+        const { messages: rawMessages, language: lang } = parseResult.data
 
         // 4. Optimisations tokens
         const messages = trimMessages(rawMessages)
         const reportPhase = isReportPhase(messages)
         const model = reportPhase ? XKORIENTA_MODEL : XKORIENTA_CHAT_MODEL
         const maxTokens = reportPhase ? XKORIENTA_MAX_TOKENS : XKORIENTA_CHAT_MAX_TOKENS
-        const systemPrompt = getXkorientaSystemPrompt(language)
+        const systemPrompt = getXkorientaSystemPrompt(lang)
 
         // 5. Appel Anthropic en streaming
         const client = new Anthropic({ apiKey })
 
-        const stream = await client.messages.create({
-            model,
-            max_tokens: maxTokens,
-            system: systemPrompt,
-            stream: true,
-            messages,
-        })
+        let stream: Awaited<ReturnType<typeof client.messages.create>>
+        try {
+            stream = await client.messages.create({
+                model,
+                max_tokens: maxTokens,
+                system: systemPrompt,
+                stream: true,
+                messages,
+            })
+        } catch (anthropicErr) {
+            throw XOrientationError.anthropicError(
+                anthropicErr instanceof Error ? anthropicErr.message : 'Unknown',
+                language
+            )
+        }
 
         // 6. Pipe du stream Anthropic vers SSE
         const encoder = new TextEncoder()
@@ -150,10 +152,13 @@ export async function POST(req: Request): Promise<Response> {
                     }
                     controller.enqueue(encoder.encode('data: [DONE]\n\n'))
                 } catch (streamError) {
-                    Sentry.captureException(streamError)
-                    const message = streamError instanceof Error ? streamError.message : 'Stream error'
+                    const err = XOrientationError.streamError(
+                        streamError instanceof Error ? streamError.message : 'Stream error',
+                        language
+                    )
+                    err.log() // capture Sentry via BaseError.log()
                     controller.enqueue(
-                        encoder.encode(`data: ${JSON.stringify({ error: message })}\n\n`)
+                        encoder.encode(`data: ${JSON.stringify({ error: err.message })}\n\n`)
                     )
                 } finally {
                     controller.close()
@@ -170,8 +175,11 @@ export async function POST(req: Request): Promise<Response> {
             },
         })
     } catch (error: unknown) {
+        if (error instanceof BaseApplicationError) {
+            error.log()
+            return NextResponse.json(error.toJSON(), { status: error.httpStatus })
+        }
         Sentry.captureException(error)
-        const message = error instanceof Error ? error.message : 'Internal server error'
-        return NextResponse.json({ success: false, message }, { status: 500 })
+        return ErrorHandler.handleError(error)
     }
 }

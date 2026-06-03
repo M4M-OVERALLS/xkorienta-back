@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs"
 import { NextResponse } from "next/server"
 import { BaseApplicationError } from "./BaseError"
 import { ErrorResponse, SupportedLanguage } from "./types"
@@ -20,11 +21,7 @@ export class ErrorHandler {
 
     // Handle standard Error objects
     if (error instanceof Error) {
-      console.error("❌ Unhandled Error:", {
-        message: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString(),
-      })
+      Sentry.captureException(error)
 
       return NextResponse.json(
         {
@@ -48,7 +45,7 @@ export class ErrorHandler {
     }
 
     // Handle unknown error types
-    console.error("❌ Unknown Error Type:", error)
+    Sentry.captureException(new Error(String(error)))
     return NextResponse.json(
       {
         success: false,
@@ -69,17 +66,7 @@ export class ErrorHandler {
    * These might require developer attention
    */
   static logProgrammingError(error: Error) {
-    console.error("🔴 PROGRAMMING ERROR - This should not happen:", {
-      message: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString(),
-    })
-
-    // In production, you might want to send this to an error tracking service
-    // like Sentry, DataDog, etc.
-    if (process.env.NODE_ENV === "production") {
-      // Example: Sentry.captureException(error)
-    }
+    Sentry.captureException(error, { level: "fatal" })
   }
 
   /**
