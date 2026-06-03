@@ -17,7 +17,7 @@ export async function POST(req: Request) {
             throw XOrientationError.invalidJsonBody(language);
         }
 
-        const registration = await XkorientaRegistration.create(body);
+        const registration = await XkorientaRegistration.create(body as Record<string, unknown>);
 
         return NextResponse.json(
             { success: true, message: "Registration successful", data: registration },

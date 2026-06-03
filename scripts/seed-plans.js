@@ -163,7 +163,7 @@ const DEFAULT_PLANS = [
     name: "Plan Élève",
     description: "Accès illimité au conseiller IA d'orientation Xkorienta.",
     prices: [
-      { currency: Currency.XAF, amount: 5000, interval: SubscriptionInterval.MONTHLY },
+      { currency: Currency.XAF, amount: 100, interval: SubscriptionInterval.MONTHLY },
       { currency: Currency.XAF, amount: 50000, interval: SubscriptionInterval.YEARLY },
       { currency: Currency.EUR, amount: 8,     interval: SubscriptionInterval.MONTHLY },
       { currency: Currency.EUR, amount: 80,    interval: SubscriptionInterval.YEARLY },
