@@ -170,11 +170,49 @@ export class PaymentController {
         session: AuthSession,
         providerRef?: string | null
     ) {
+        const transaction = await transactionRepository.findByReference(reference)
+
+        if (!transaction) {
+            return NextResponse.json(
+                { success: false, message: 'Transaction not found' },
+                { status: 404 }
+            )
+        }
+
+        if (
+            transaction.userId.toString() !== session.user.id &&
+            !['DG_M4M', 'TECH_SUPPORT'].includes(session.user.role)
+        ) {
+            return NextResponse.json(
+                { success: false, message: 'Forbidden' },
+                { status: 403 }
+            )
+        }
+
         const status = await paymentSDK.payments.verifyPayment(reference, providerRef)
+
+        let subscriptionActivated = false
+        if (
+            status === TransactionStatus.COMPLETED &&
+            transaction.type === TransactionType.SUBSCRIPTION
+        ) {
+            try {
+                await SubscriptionService.activateSubscription(reference)
+                subscriptionActivated = true
+            } catch (err) {
+                subscriptionActivated = await SubscriptionService.hasActiveSubscription(
+                    session.user.id
+                )
+                if (!subscriptionActivated) {
+                    const { captureException } = await import('@sentry/nextjs')
+                    captureException(err, { extra: { reference, providerRef } })
+                }
+            }
+        }
 
         return NextResponse.json({
             success: true,
-            data: { reference, status },
+            data: { reference, status, subscriptionActivated },
         })
     }
 
