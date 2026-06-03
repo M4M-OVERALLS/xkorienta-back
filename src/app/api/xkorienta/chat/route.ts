@@ -41,7 +41,7 @@ const chatLimiter = rateLimit({
 
 const MessageSchema = z.object({
     role: z.enum(['user', 'assistant']),
-    content: z.string().min(1).max(4000),
+    content: z.string().min(1).max(32000),
 })
 
 const ChatRequestSchema = z.object({
