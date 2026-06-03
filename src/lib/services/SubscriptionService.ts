@@ -6,6 +6,8 @@ import { paymentSDK } from '@/lib/payment'
 import { PaymentNotificationService } from './PaymentNotificationService'
 import { ISubscription } from '@/models/Subscription'
 import { IPlan } from '@/models/Plan'
+import User from '@/models/User'
+import connectDB from '@/lib/mongodb'
 import {
     SubscriptionPlanStatus,
     SubscriptionInterval,
@@ -106,10 +108,21 @@ export class SubscriptionService {
             throw new Error(`No price found for ${params.currency} ${params.interval}`)
         }
 
+        // Résoudre l'email : session → DB → erreur
+        let resolvedEmail = params.userEmail
+        if (!resolvedEmail) {
+            await connectDB()
+            const dbUser = await User.findById(params.userId).select('email').lean()
+            resolvedEmail = (dbUser as any)?.email || ''
+        }
+        if (!resolvedEmail) {
+            throw new Error('Aucun email associé à ce compte. Veuillez ajouter un email dans votre profil pour procéder au paiement.')
+        }
+
         // Initiate payment
         const paymentResult = await paymentSDK.payments.initiatePayment({
             userId: params.userId,
-            userEmail: params.userEmail,
+            userEmail: resolvedEmail,
             type: TransactionType.SUBSCRIPTION,
             productId: plan._id.toString(),
             productType: 'Plan',

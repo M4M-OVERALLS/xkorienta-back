@@ -166,42 +166,64 @@ export class SchoolRepository {
      */
     async findSchoolsForStudents() {
         await connectDB();
+
+        const SELECTED_FIELDS = [
+            'name', 'type', 'address', 'city', 'country', 'logoUrl', 'status',
+            'contactInfo', 'specialties', 'accreditation', 'tuitionFee', 'modality',
+            'Languages', 'badges', 'academicLevel', 'degrees', 'partnerships',
+            'studentCount', 'foundedYear', 'description', 'learningOutcomes', 'careerPaths'
+        ].join(' ');
+
+        // Populates qui ne risquent pas de CastError (toujours des ObjectId ou des arrays d'ObjectId)
+        const safePopulates = [
+            { path: 'specialties', select: 'name', options: { strictPopulate: false } },
+            { path: 'accreditation', select: 'name', options: { strictPopulate: false } },
+            { path: 'badges.certification', select: 'name', options: { strictPopulate: false } },
+            { path: 'academicLevel', select: 'name', options: { strictPopulate: false } },
+            { path: 'partnerships', select: 'name', options: { strictPopulate: false } },
+            { path: 'careerPaths', select: 'title salary demand', options: { strictPopulate: false } },
+        ];
+
         // Students only see verified schools — never expose PENDING/REJECTED/SUSPENDED
-        const schools = await School.find({ status: SchoolStatus.VALIDATED, isActive: true })
-            .select([
-                'name',
-                'type',
-                'address',
-                'city',
-                'country',
-                'logoUrl',
-                'status',
-                'contactInfo',
-                'specialties',
-                'accreditation',
-                'tuitionFee',
-                'modality',
-                'Languages',
-                'badges',
-                'academicLevel',
-                'degrees',
-                'partnerships',
-                'studentCount',
-                'foundedYear',
-                'description',
-                'learningOutcomes',
-                'careerPaths'
-            ].join(' '))
-            .populate({ path: 'city', select: 'name', options: { strictPopulate: false } })
-            .populate({ path: 'country', select: 'name isoCode currency', options: { strictPopulate: false } })
-            .populate({ path: 'specialties', select: 'name', options: { strictPopulate: false } })
-            .populate({ path: 'accreditation', select: 'name', options: { strictPopulate: false } })
-            .populate({ path: 'badges.certification', select: 'name', options: { strictPopulate: false } })
-            .populate({ path: 'academicLevel', select: 'name', options: { strictPopulate: false } })
-            .populate({ path: 'partnerships', select: 'name', options: { strictPopulate: false } })
-            .populate({ path: 'careerPaths', select: 'title salary demand', options: { strictPopulate: false } })
-            .sort({ name: 1 })
-            .lean();
+        // city/country peuvent contenir des strings au lieu d'ObjectId dans certains documents
+        // (données migrées). On les populate séparément avec un filtre ObjectId.
+        let query = School.find({ status: SchoolStatus.VALIDATED, isActive: true })
+            .select(SELECTED_FIELDS);
+
+        for (const pop of safePopulates) {
+            query = query.populate(pop);
+        }
+
+        const schools = await query.sort({ name: 1 }).lean();
+
+        // Populate manuel city/country : ne tenter que si la valeur est un ObjectId valide
+        const isObjectId = (v: unknown): v is mongoose.Types.ObjectId =>
+            mongoose.isValidObjectId(v) && typeof v !== 'string';
+
+        const cityIds = [...new Set(schools.filter(s => isObjectId(s.city)).map(s => s.city!.toString()))];
+        const countryIds = [...new Set(schools.filter(s => isObjectId(s.country)).map(s => s.country!.toString()))];
+
+        const [cities, countries] = await Promise.all([
+            cityIds.length > 0
+                ? mongoose.model('City').find({ _id: { $in: cityIds } }).select('name').lean()
+                : Promise.resolve([]),
+            countryIds.length > 0
+                ? mongoose.model('Country').find({ _id: { $in: countryIds } }).select('name isoCode currency').lean()
+                : Promise.resolve([]),
+        ]);
+
+        const cityMap = new Map(cities.map((c: any) => [c._id.toString(), c]));
+        const countryMap = new Map(countries.map((c: any) => [c._id.toString(), c]));
+
+        for (const school of schools as any[]) {
+            if (isObjectId(school.city)) {
+                school.city = cityMap.get(school.city.toString()) ?? school.city;
+            }
+            if (isObjectId(school.country)) {
+                school.country = countryMap.get(school.country.toString()) ?? school.country;
+            }
+            // Si c'est une string ("Cameroun", "Douala"), on la laisse telle quelle
+        }
 
         const schoolIds = schools.map(s => s._id as mongoose.Types.ObjectId);
         const scores = await SchoolScore.find({ school: { $in: schoolIds } })
