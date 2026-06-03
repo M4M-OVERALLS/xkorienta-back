@@ -267,10 +267,7 @@ export const XKORIENTA_MAX_TOKENS = 2500;
 /** Max tokens pour un échange conversationnel (max 2 questions) */
 export const XKORIENTA_CHAT_MAX_TOKENS = 800;
 
-/** Nombre de messages à partir duquel on bascule en mode rapport */
-export const XKORIENTA_REPORT_THRESHOLD = 14;
-
-/** Taille de la fenêtre contextuelle (anchor + recent) */
+/** Taille de la fenêtre contextuelle (anchor + recent) — pas de limite sur le nombre d'échanges élève */
 export const XKORIENTA_CONTEXT_WINDOW = 30;
 
 /** Nombre de messages d'ancrage toujours conservés en début de conversation */
