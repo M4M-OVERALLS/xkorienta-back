@@ -250,5 +250,107 @@
       "severity": "ERROR",
       "category": "EXTERNAL_SERVICE"
     }
+  },
+  "XORIENTATION": {
+    "XOR_001": {
+      "code": "XOR_001",
+      "message": {
+        "fr": "Service IA non configuré — clé API manquante",
+        "en": "AI service not configured — missing API key"
+      },
+      "httpStatus": 503,
+      "severity": "CRITICAL",
+      "category": "CONFIGURATION"
+    },
+    "XOR_002": {
+      "code": "XOR_002",
+      "message": {
+        "fr": "Corps de requête invalide",
+        "en": "Invalid request body"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "XOR_003": {
+      "code": "XOR_003",
+      "message": {
+        "fr": "Paramètres de conversation invalides",
+        "en": "Invalid conversation parameters"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "XOR_004": {
+      "code": "XOR_004",
+      "message": {
+        "fr": "Limite de messages dépassée — réessayez dans un instant",
+        "en": "Message rate limit exceeded — please try again shortly"
+      },
+      "httpStatus": 429,
+      "severity": "WARNING",
+      "category": "RATE_LIMIT"
+    },
+    "XOR_005": {
+      "code": "XOR_005",
+      "message": {
+        "fr": "Erreur du service IA Anthropic",
+        "en": "Anthropic AI service error"
+      },
+      "httpStatus": 502,
+      "severity": "ERROR",
+      "category": "EXTERNAL_SERVICE"
+    },
+    "XOR_006": {
+      "code": "XOR_006",
+      "message": {
+        "fr": "Erreur lors du streaming de la réponse",
+        "en": "Error during response streaming"
+      },
+      "httpStatus": 500,
+      "severity": "ERROR",
+      "category": "EXTERNAL_SERVICE"
+    },
+    "XOR_007": {
+      "code": "XOR_007",
+      "message": {
+        "fr": "Erreur lors de l'enregistrement de la demande d'orientation",
+        "en": "Error saving orientation registration"
+      },
+      "httpStatus": 500,
+      "severity": "ERROR",
+      "category": "DATABASE"
+    },
+    "XOR_008": {
+      "code": "XOR_008",
+      "message": {
+        "fr": "Niveau scolaire non reconnu",
+        "en": "Unrecognised education level"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "XOR_009": {
+      "code": "XOR_009",
+      "message": {
+        "fr": "Conversation trop longue — maximum 50 messages",
+        "en": "Conversation too long — maximum 50 messages"
+      },
+      "httpStatus": 400,
+      "severity": "WARNING",
+      "category": "VALIDATION"
+    },
+    "XOR_010": {
+      "code": "XOR_010",
+      "message": {
+        "fr": "Service d'orientation temporairement indisponible",
+        "en": "Orientation service temporarily unavailable"
+      },
+      "httpStatus": 503,
+      "severity": "CRITICAL",
+      "category": "EXTERNAL_SERVICE"
+    }
   }
 }

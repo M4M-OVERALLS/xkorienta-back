@@ -94,6 +94,8 @@ export const authOptions: NextAuthOptions = {
                     session.user.name = token.name as string
                     session.user.image = token.picture as string
                     session.user.schools = token.schools || []
+                    // email est requis par les providers de paiement (NotchPay)
+                    if (token.email) session.user.email = token.email as string
                 }
             } catch (error) {
                 console.error("Error in session callback:", error)
@@ -135,6 +137,8 @@ export const authOptions: NextAuthOptions = {
                             token.name = dbUser.name
                             token.picture = sanitizeTokenImage(dbUser.image || dbUser.metadata?.avatar)
                             token.schools = dbUser.schools?.map((id: any) => id.toString()) || []
+                            // Toujours stocker l'email DB dans le token (requis pour le paiement NotchPay)
+                            if (dbUser.email) token.email = dbUser.email
                             // Store the real phone in token if phone-only user
                             if (isPhone) token.phone = identifier
                         } else {
@@ -156,14 +160,14 @@ export const authOptions: NextAuthOptions = {
                             : await User.findOne({ email: identifier }).lean()
                         if (dbUser) {
                             if (dbUser.role !== token.role) {
-                                console.log(`[Auth] Role updated for ${identifier}: ${token.role} -> ${dbUser.role}`)
                                 token.role = dbUser.role
                             }
                             // Keep session identity fields in sync with DB
                             token.name = dbUser.name
                             token.picture = sanitizeTokenImage(dbUser.image || dbUser.metadata?.avatar)
-                            // Always refresh schools
                             token.schools = dbUser.schools?.map((id: any) => id.toString()) || []
+                            // Toujours synchroniser l'email depuis la DB
+                            if (dbUser.email) token.email = dbUser.email
                         }
                     } catch (error) {
                         console.error("Error refreshing user role:", error)

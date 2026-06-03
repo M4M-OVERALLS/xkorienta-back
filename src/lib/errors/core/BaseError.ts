@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs"
 import { ErrorCategory, ErrorContext, ErrorSeverity, SupportedLanguage } from "./types"
 import { LanguageHelper } from "./languageHelper"
 
@@ -92,19 +93,18 @@ export class BaseApplicationError extends Error {
 
     switch (this.severity) {
       case "CRITICAL":
-        console.error("🔴 CRITICAL ERROR:", logData)
-        break
       case "ERROR":
-        console.error("❌ ERROR:", logData)
+        Sentry.captureException(this, {
+          level: this.severity === "CRITICAL" ? "fatal" : "error",
+          extra: logData,
+        })
         break
       case "WARNING":
-        console.warn("⚠️  WARNING:", logData)
+        Sentry.captureMessage(this.message, { level: "warning", extra: logData })
         break
       case "INFO":
-        console.info("ℹ️  INFO:", logData)
+        // INFO : pas capturé par Sentry
         break
-      default:
-        console.log("📝 LOG:", logData)
     }
   }
 }

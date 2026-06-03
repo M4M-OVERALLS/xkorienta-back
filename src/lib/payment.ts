@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { PaymentSDK } from '@xkorienta/payment-sdk'
 import { MongoStorageAdapter } from '@/lib/adapters/MongoStorageAdapter'
 import { PusherNotificationAdapter } from '@/lib/adapters/PusherNotificationAdapter'
@@ -76,8 +77,11 @@ paymentSDK.events.on('payment.completed', async (e) => {
 
 /** Activate the subscription plan after payment. */
 paymentSDK.events.on('payment.completed', async (e) => {
-    if (e.type === 'SUBSCRIPTION') {
+    if (e.type !== 'SUBSCRIPTION') return
+    try {
         await SubscriptionService.activateSubscription(e.reference)
+    } catch (err) {
+        Sentry.captureException(err, { extra: { ref: e.reference, userId: e.userId, productId: e.productId } })
     }
 })
 
