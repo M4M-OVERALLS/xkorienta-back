@@ -33,6 +33,16 @@ import {
 } from '@/lib/ai/prompts/xkorientaSystemPrompt'
 import { isXkorientaReportPhase } from '@/lib/ai/orientation/reportPhase'
 
+/**
+ * Le rapport payant (Sonnet, jusqu'à 5000 tokens) est un long stream :
+ * on autorise jusqu'à 5 min d'exécution pour éviter une coupure prématurée
+ * de la fonction (plateforme/proxy) pendant la génération du rapport.
+ */
+export const maxDuration = 300
+
+/** Endpoint de streaming : toujours dynamique, jamais mis en cache. */
+export const dynamic = 'force-dynamic'
+
 /** Rate limiter : conversation longue autorisée (40 messages / min / IP) */
 const chatLimiter = rateLimit({
     windowMs: 60 * 1000,
