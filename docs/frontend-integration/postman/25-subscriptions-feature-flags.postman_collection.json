@@ -1,0 +1,540 @@
+{
+  "info": {
+    "_postman_id": "25-subscriptions-feature-flags-xkorienta",
+    "name": "Xkorienta API — 25. Abonnements & Feature Flags",
+    "description": "Module 25 — Abonnements & Feature Flags\n\nGestion des abonnements payants et des feature flags d'accès.\n\n**Flow principal :**\n1. GET /api/subscriptions/check → vérifier si abonnement actif\n2. POST /api/subscriptions → initier le paiement NotchPay\n3. (redirect NotchPay) → callbackUrl /checkout/success\n4. GET /api/subscriptions/mine → vérifier les features actives\n\n**Auth** : Cookie next-auth.session-token (rôle STUDENT)\n**Base URL** : {{baseUrl}}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "subscriptionId",
+      "value": "",
+      "type": "string",
+      "description": "ID de l'abonnement actif — auto-rempli par les scripts de test"
+    },
+    {
+      "key": "paymentReference",
+      "value": "",
+      "type": "string",
+      "description": "Référence NotchPay — auto-remplie après POST /api/subscriptions"
+    },
+    {
+      "key": "phone",
+      "value": "699000000",
+      "type": "string",
+      "description": "Numéro Mobile Money de test (sans +237)"
+    }
+  ],
+  "item": [
+    {
+      "name": "Abonnements",
+      "item": [
+        {
+          "name": "1.1 Vérifier abonnement actif (check)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Contient hasActiveSubscription', function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.success).to.be.true;",
+                  "    pm.expect(res.data).to.have.property('hasActiveSubscription');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscriptions/check",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscriptions", "check"]
+            },
+            "description": "GET /api/subscriptions/check\n\nVérification rapide binaire — actif ou non.\nUtilisé par la page /checkout avant d'afficher le formulaire.\n\n**Réponse :** { success, data: { hasActiveSubscription: boolean } }"
+          },
+          "response": [
+            {
+              "name": "200 — Abonnement actif",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"hasActiveSubscription\": true\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "200 — Aucun abonnement",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"hasActiveSubscription\": false\n  }\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "1.2 Récupérer abonnement complet (mine)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var res = pm.response.json();",
+                  "    if (res.data && res.data._id) {",
+                  "        pm.collectionVariables.set('subscriptionId', res.data._id);",
+                  "        console.log('subscriptionId défini :', res.data._id);",
+                  "    }",
+                  "}",
+                  "pm.test('Status 200 ou 404', function () {",
+                  "    pm.expect([200, 404]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscriptions/mine",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscriptions", "mine"]
+            },
+            "description": "GET /api/subscriptions/mine\n\nRetourne l'abonnement actif avec le plan et ses features.\nUtilisé par SubscriptionProvider pour alimenter useFeatures().\n\n**Réponses :**\n- 200 : { success, data: { _id, status, planId: { features, code } } }\n- 404 : { success: false, message: 'No active subscription found' }"
+          },
+          "response": [
+            {
+              "name": "200 — Abonnement actif avec features",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"664abc123def456789012345\",\n    \"status\": \"ACTIVE\",\n    \"interval\": \"MONTHLY\",\n    \"currentPeriodStart\": \"2026-06-01T00:00:00.000Z\",\n    \"currentPeriodEnd\": \"2026-07-01T00:00:00.000Z\",\n    \"amount\": 5000,\n    \"currency\": \"XAF\",\n    \"autoRenew\": true,\n    \"planId\": {\n      \"_id\": \"663def789abc012345678901\",\n      \"code\": \"ELEVE\",\n      \"name\": \"Plan Élève\",\n      \"features\": [\"ORIENTATION_AI\"],\n      \"limits\": {\n        \"aiAssistance\": true,\n        \"prioritySupport\": false\n      }\n    }\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "404 — Aucun abonnement actif",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"No active subscription found\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "1.3 Souscrire — Plan ELEVE (payant)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var res = pm.response.json();",
+                  "    if (res.data && res.data.paymentReference) {",
+                  "        pm.collectionVariables.set('paymentReference', res.data.paymentReference);",
+                  "        console.log('paymentReference :', res.data.paymentReference);",
+                  "        console.log('→ Rediriger vers :', res.data.paymentUrl);",
+                  "    }",
+                  "}",
+                  "pm.test('Status 200 ou 409', function () {",
+                  "    pm.expect([200, 409]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscriptions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscriptions"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planCode\": \"ELEVE\",\n  \"interval\": \"MONTHLY\",\n  \"currency\": \"XAF\",\n  \"phone\": \"{{phone}}\",\n  \"callbackUrl\": \"https://app.xkorin.com/checkout/success?plan=ELEVE&returnTo=/student/orientation/ai\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "POST /api/subscriptions\n\nInitie le paiement NotchPay pour le plan ELEVE.\n\n**Réponse isFree=false :** { paymentUrl, paymentReference, plan, isFree: false }\n→ Action frontend : rediriger vers paymentUrl\n\n**Réponse 409 :** déjà abonné — ne pas recharger le paiement"
+          },
+          "response": [
+            {
+              "name": "200 — Paiement initié (plan payant)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"paymentUrl\": \"https://pay.notchpay.co/pay/ref_abc123\",\n    \"paymentReference\": \"ref_abc123\",\n    \"plan\": { \"code\": \"ELEVE\", \"name\": \"Plan Élève\" },\n    \"isFree\": false\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "409 — Déjà abonné",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"You already have an active subscription. Cancel it first to change plans.\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "1.3b Souscrire — Plan DECOUVERTE (gratuit)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var res = pm.response.json();",
+                  "    if (res.data && res.data.subscription) {",
+                  "        pm.collectionVariables.set('subscriptionId', res.data.subscription._id);",
+                  "    }",
+                  "    console.log('isFree :', res.data.isFree);",
+                  "    if (res.data.isFree) {",
+                  "        console.log('→ Rediriger directement vers returnTo (pas de NotchPay)');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscriptions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscriptions"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planCode\": \"DECOUVERTE\",\n  \"interval\": \"MONTHLY\",\n  \"currency\": \"XAF\",\n  \"phone\": \"{{phone}}\",\n  \"callbackUrl\": \"https://app.xkorin.com/checkout/success?plan=DECOUVERTE\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Plan gratuit — activation immédiate sans passer par NotchPay.\n\n**Réponse isFree=true :** { subscription, plan, isFree: true }\n→ Action frontend : rediriger directement vers returnTo"
+          },
+          "response": [
+            {
+              "name": "200 — Plan gratuit activé",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"subscription\": { \"_id\": \"664abc...\", \"status\": \"ACTIVE\" },\n    \"plan\": { \"code\": \"DECOUVERTE\", \"name\": \"Découverte\" },\n    \"isFree\": true\n  }\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "1.3c Souscrire — Plan ETABLISSEMENT (YEARLY)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscriptions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscriptions"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planCode\": \"ETABLISSEMENT\",\n  \"interval\": \"YEARLY\",\n  \"currency\": \"XAF\",\n  \"phone\": \"{{phone}}\",\n  \"callbackUrl\": \"https://app.xkorin.com/checkout/success?plan=ETABLISSEMENT&returnTo=/student/orientation/ai\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Plan ETABLISSEMENT — features: ['ORIENTATION_AI', 'ASSISTANCE'], intervalle YEARLY."
+          },
+          "response": []
+        },
+        {
+          "name": "1.4 Renouveler l'abonnement",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscriptions/mine/renew",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscriptions", "mine", "renew"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interval\": \"MONTHLY\",\n  \"currency\": \"XAF\",\n  \"phone\": \"{{phone}}\",\n  \"callbackUrl\": \"https://app.xkorin.com/checkout/success?plan=ELEVE&returnTo=/student/orientation/ai\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "POST /api/subscriptions/mine/renew\n\nRenouvelle un abonnement expiré ou annulé.\nMême flow que la souscription initiale — retourne un paymentUrl."
+          },
+          "response": []
+        },
+        {
+          "name": "1.5 Annuler l'abonnement",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Status CANCELLED', function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.data.status).to.equal('CANCELLED');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscriptions/mine",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscriptions", "mine"]
+            },
+            "description": "DELETE /api/subscriptions/mine\n\nAnnule l'abonnement actif.\nNe rembourse pas — désactive à la prochaine période.\n\n**Réponse :** { success, data: { _id, status: 'CANCELLED', cancelledAt } }"
+          },
+          "response": [
+            {
+              "name": "200 — Abonnement annulé",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"664abc123def456789012345\",\n    \"status\": \"CANCELLED\",\n    \"cancelledAt\": \"2026-06-04T10:30:00.000Z\"\n  }\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "1.6 Historique des abonnements",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('data est un tableau', function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscriptions/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscriptions", "history"]
+            },
+            "description": "GET /api/subscriptions/history\n\nHistorique complet des abonnements (actifs, expirés, annulés).\nUtile pour la page /settings → onglet Achats."
+          },
+          "response": [
+            {
+              "name": "200 — Historique",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"664abc...\",\n      \"status\": \"EXPIRED\",\n      \"interval\": \"MONTHLY\",\n      \"amount\": 5000,\n      \"currency\": \"XAF\",\n      \"currentPeriodStart\": \"2026-05-01T00:00:00.000Z\",\n      \"currentPeriodEnd\": \"2026-06-01T00:00:00.000Z\",\n      \"planId\": { \"code\": \"ELEVE\", \"name\": \"Plan Élève\" }\n    }\n  ]\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Feature Flags — Vérifications",
+      "item": [
+        {
+          "name": "[Test] Plan ELEVE → ORIENTATION_AI accessible",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('ORIENTATION_AI présent dans features', function () {",
+                  "    var res = pm.response.json();",
+                  "    if (res.data && res.data.planId) {",
+                  "        pm.expect(res.data.planId.features).to.include('ORIENTATION_AI');",
+                  "    }",
+                  "    console.log('Features actives :', JSON.stringify(res.data?.planId?.features));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscriptions/mine",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscriptions", "mine"]
+            },
+            "description": "Vérifie que le plan actif contient la feature ORIENTATION_AI.\nÀ exécuter après avoir souscrit au plan ELEVE."
+          },
+          "response": []
+        },
+        {
+          "name": "[Test] Plan ETABLISSEMENT → ORIENTATION_AI + ASSISTANCE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('ORIENTATION_AI présent', function () {",
+                  "    var res = pm.response.json();",
+                  "    if (res.data && res.data.planId) {",
+                  "        pm.expect(res.data.planId.features).to.include('ORIENTATION_AI');",
+                  "        pm.expect(res.data.planId.features).to.include('ASSISTANCE');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscriptions/mine",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscriptions", "mine"]
+            },
+            "description": "Vérifie les features ORIENTATION_AI ET ASSISTANCE pour le plan ETABLISSEMENT."
+          },
+          "response": []
+        },
+        {
+          "name": "[Test] Plan DECOUVERTE → features vides",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Aucune feature premium', function () {",
+                  "    var res = pm.response.json();",
+                  "    if (res.data && res.data.planId) {",
+                  "        var features = res.data.planId.features;",
+                  "        pm.expect(features).to.not.include('ORIENTATION_AI');",
+                  "        pm.expect(features).to.not.include('ASSISTANCE');",
+                  "        console.log('Features plan DECOUVERTE :', JSON.stringify(features));",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscriptions/mine",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscriptions", "mine"]
+            },
+            "description": "Vérifie qu'un user sur plan DECOUVERTE n'a aucune feature premium."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Scénarios erreurs",
+      "item": [
+        {
+          "name": "[Erreur] Souscrire sans être connecté (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscriptions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscriptions"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planCode\": \"ELEVE\",\n  \"interval\": \"MONTHLY\",\n  \"currency\": \"XAF\",\n  \"phone\": \"699000000\",\n  \"callbackUrl\": \"https://app.xkorin.com/checkout/success\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Requête sans cookie de session → doit retourner 401.\n⚠️ Pour ce test, supprimer manuellement le cookie avant d'envoyer."
+          },
+          "response": []
+        },
+        {
+          "name": "[Erreur] Souscrire quand déjà abonné (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test('Message explicite', function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.success).to.be.false;",
+                  "    pm.expect(res.message).to.include('already have an active subscription');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscriptions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "subscriptions"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planCode\": \"ELEVE\",\n  \"interval\": \"MONTHLY\",\n  \"currency\": \"XAF\",\n  \"phone\": \"{{phone}}\",\n  \"callbackUrl\": \"https://app.xkorin.com/checkout/success\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "À tester quand l'utilisateur a déjà un abonnement ACTIVE.\nIdempotency guard — ne crée pas de doublon."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
