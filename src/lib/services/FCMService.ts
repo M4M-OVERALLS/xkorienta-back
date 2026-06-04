@@ -35,6 +35,7 @@ function resolveRouteFromNotification(notification: INotification): string {
             return '/notifications'
 
         case 'success':
+            if (data.examId && data.attemptId) return `/exam/${data.examId}/result`
             if (data.examId) return `/exam/${data.examId}`
             return '/notifications'
 
