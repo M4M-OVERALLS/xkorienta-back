@@ -34,6 +34,8 @@
 | **24** | **Paramètres & Reset Password** | **Tous** | **🔴 Haute** | **✅** | **✅** |
 | **19** | **Education Structure** | **Tous** | **🟢 Basse** | **✅** | **✅** |
 | 20 | Public Mini-Tests | Public | 🟢 Basse | ✅ | ✅ |
+| **27** | **Push Notifications (FCM)** | **Mobile Flutter** | **🔴 Critique** | **✅** | **✅** |
+| **28** | **Préférences de Notifications** | **Mobile Flutter** | **🔴 Critique** | **✅** | **✅** |
 
 ---
 

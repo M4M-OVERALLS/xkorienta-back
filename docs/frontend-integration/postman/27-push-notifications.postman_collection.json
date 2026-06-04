@@ -1,0 +1,223 @@
+{
+  "info": {
+    "_postman_id": "27-push-notifications-xkorienta-mobile",
+    "name": "Xkorienta API — 27. Push Notifications (FCM)",
+    "description": "Module 27 — Push Notifications Firebase Cloud Messaging\n\nEndpoints consommés par l'app mobile Flutter pour enregistrer/désenregistrer les devices FCM.\n\n**Flux :**\n1. Login next-auth → récupérer le FCM token via firebase_messaging\n2. POST /api/notification-devices (register)\n3. ... utilisation normale de l'app ...\n4. DELETE /api/notification-devices (logout, AVANT signOut)\n\n**Auth** : Cookie next-auth.session-token\n**Base URL** : {{baseUrl}}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "fcmToken",
+      "value": "COLLER_VOTRE_FCM_TOKEN_ICI",
+      "type": "string"
+    },
+    {
+      "key": "deviceId",
+      "value": "550e8400-e29b-41d4-a716-446655440000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Register device (POST — login)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('success === true', function () {",
+              "    var res = pm.response.json();",
+              "    pm.expect(res.success).to.be.true;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/notification-devices",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notification-devices"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"{{fcmToken}}\",\n  \"platform\": \"android\",\n  \"deviceId\": \"{{deviceId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "POST /api/notification-devices\n\nEnregistre le device FCM de l'utilisateur connecté.\nComportement upsert sur le token — idempotent.\n\nAppeler :\n- À chaque login\n- À chaque renouvellement du token FCM (onTokenRefresh)\n\n**Champs :**\n- token (obligatoire) : FCM token de l'appareil\n- platform (obligatoire) : android | ios | web\n- deviceId (optionnel) : UUID v4 de l'appareil\n\n**Réponse succès :**\n{ \"success\": true, \"message\": \"Device registered\" }"
+      },
+      "response": [
+        {
+          "name": "200 — Device registered",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Device registered\"\n}",
+          "_postman_previewlanguage": "json"
+        },
+        {
+          "name": "400 — Token manquant",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Le champ token est requis\"\n}",
+          "_postman_previewlanguage": "json"
+        },
+        {
+          "name": "400 — Platform invalide",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Le champ platform doit être android, ios ou web\"\n}",
+          "_postman_previewlanguage": "json"
+        },
+        {
+          "name": "401 — Non autorisé",
+          "status": "Unauthorized",
+          "code": 401,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized\"\n}",
+          "_postman_previewlanguage": "json"
+        }
+      ]
+    },
+    {
+      "name": "Register device iOS (POST)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/notification-devices",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notification-devices"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"{{fcmToken}}\",\n  \"platform\": \"ios\",\n  \"deviceId\": \"{{deviceId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Même appel que Android, avec platform: \"ios\"."
+      },
+      "response": []
+    },
+    {
+      "name": "Unregister device (DELETE — logout)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('success === true', function () {",
+              "    var res = pm.response.json();",
+              "    pm.expect(res.success).to.be.true;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/notification-devices",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notification-devices"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"{{fcmToken}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "DELETE /api/notification-devices\n\nSupprime le device FCM au logout.\n\n⚠️ IMPORTANT : appeler AVANT next_auth.signOut()\nLa session doit encore être valide au moment de cet appel.\n\n**Réponse succès :**\n{ \"success\": true, \"message\": \"Device removed\" }"
+      },
+      "response": [
+        {
+          "name": "200 — Device removed",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Device removed\"\n}",
+          "_postman_previewlanguage": "json"
+        },
+        {
+          "name": "401 — Session déjà expirée",
+          "status": "Unauthorized",
+          "code": 401,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized\"\n}",
+          "_postman_previewlanguage": "json"
+        }
+      ]
+    },
+    {
+      "name": "[Référence] Marquer notification FCM comme lue",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/notifications",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notifications"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"notificationId\": \"COLLER_LE_notificationId_DU_PAYLOAD_FCM\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "PATCH /api/notifications\n\nUtiliser le champ data.notificationId reçu dans le payload FCM pour marquer la notification comme lue dans la base de données.\n\nSe référer au Module 14 pour la documentation complète."
+      },
+      "response": []
+    }
+  ]
+}
