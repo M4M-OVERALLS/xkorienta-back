@@ -25,6 +25,15 @@ const USER_REPORT_PHRASES = [
     'generate my report',
 ]
 
+/**
+ * Marqueur de la 7e (dernière) dimension de la Phase 2.
+ * Le prompt impose le compteur "(D7/7)" sur la dernière question d'orientation :
+ * dès que l'élève y répond, la réponse suivante est OBLIGATOIREMENT le rapport complet.
+ * C'est le signal le plus fiable (déterministe) pour basculer en mode Sonnet + max_tokens élevé.
+ * Tolère "(D7/7)", "D7 / 7", "d7/7", etc.
+ */
+const LAST_DIMENSION_MARKER = /\bD\s*7\s*\/\s*7\b/i
+
 /** Dernier message assistant : l'IA va produire le rapport à la réponse suivante */
 const ASSISTANT_REPORT_IMMINENT = [
     'dernière question avant',
@@ -64,6 +73,10 @@ export function isXkorientaReportPhase(messages: OrientationChatMessage[]): bool
 
     const lastAssistant = lastMessage(messages, 'assistant')
     if (lastAssistant) {
+        // Signal déterministe : la dernière question posée portait le compteur "(D7/7)"
+        // → la réponse de l'élève déclenche la génération du rapport complet.
+        if (LAST_DIMENSION_MARKER.test(lastAssistant.content)) return true
+
         const assistant = lastAssistant.content.toLowerCase()
         if (ASSISTANT_REPORT_IMMINENT.some((p) => assistant.includes(p))) return true
     }

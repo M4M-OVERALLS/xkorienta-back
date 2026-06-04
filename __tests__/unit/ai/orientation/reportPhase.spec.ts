@@ -40,6 +40,33 @@ describe('isXkorientaReportPhase', () => {
         ).toBe(true)
     })
 
+    it('should be true when last assistant question carries the (D7/7) marker', () => {
+        expect(
+            isXkorientaReportPhase([
+                { role: 'assistant', content: 'Super profil ! **(D7/7) Quelles sont tes principales contraintes ?**' },
+                { role: 'user', content: 'Contraintes financières' },
+            ]),
+        ).toBe(true)
+    })
+
+    it('should tolerate spacing variations of the D7 marker', () => {
+        expect(
+            isXkorientaReportPhase([
+                { role: 'assistant', content: 'Dernier point (d7 / 7) : des contraintes ?' },
+                { role: 'user', content: 'Aucune' },
+            ]),
+        ).toBe(true)
+    })
+
+    it('should not trigger on earlier dimensions like (D2/7)', () => {
+        expect(
+            isXkorientaReportPhase([
+                { role: 'assistant', content: '**(D2/7) Quelle est ta série ?**' },
+                { role: 'user', content: 'Série C' },
+            ]),
+        ).toBe(false)
+    })
+
     it('should not trigger on vague mention of rapport in middle of chat', () => {
         expect(
             isXkorientaReportPhase([
