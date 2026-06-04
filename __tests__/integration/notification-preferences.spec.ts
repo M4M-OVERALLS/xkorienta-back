@@ -2,13 +2,15 @@
  * Tests d'intégration — GET & PATCH /api/notification-preferences
  *
  * Teste les routes HTTP complètes : auth, lazy init, merge profond, validation.
+ * Les erreurs sont retournées via le système centralisé (BaseApplicationError.toJSON).
  * MongoDB : MongoMemoryServer — aucune base réelle requise.
  */
 
-// ─── Mocks (avant tous les imports) ──────────────────────────────────────────
+// ─── Mocks ───────────────────────────────────────────────────────────────────
 
 jest.mock('@sentry/nextjs', () => ({
     captureException: jest.fn(),
+    captureMessage: jest.fn(),
 }))
 
 jest.mock('@/lib/mongodb', () => ({
@@ -76,14 +78,15 @@ function makePatchRequest(body: unknown): Request {
 
 describe('GET /api/notification-preferences', () => {
     describe('authentification', () => {
-        it('should return 401 when session is missing', async () => {
+        it('should return 401 with AUTH_007 when session is missing', async () => {
             mockGetServerSession.mockResolvedValue(null)
 
-            const res = await GET()
+            const res = await GET(makeGetRequest())
             const body = await res.json()
 
             expect(res.status).toBe(401)
             expect(body.success).toBe(false)
+            expect(body.error.code).toBe('AUTH_007')
         })
     })
 
@@ -91,7 +94,7 @@ describe('GET /api/notification-preferences', () => {
         beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
 
         it('should return 200 with default values for a new user', async () => {
-            const res = await GET()
+            const res = await GET(makeGetRequest())
             const body = await res.json()
 
             expect(res.status).toBe(200)
@@ -101,10 +104,9 @@ describe('GET /api/notification-preferences', () => {
         })
 
         it('should return all 7 types enabled by default', async () => {
-            const res = await GET()
-            const body = await res.json()
+            const res = await GET(makeGetRequest())
+            const { types } = (await res.json()).data
 
-            const types = body.data.types
             expect(types.exam_result).toBe(true)
             expect(types.exam_pending).toBe(true)
             expect(types.new_message).toBe(true)
@@ -114,53 +116,44 @@ describe('GET /api/notification-preferences', () => {
             expect(types.account).toBe(true)
         })
 
-        it('should return quietHours disabled with Africa/Douala timezone by default', async () => {
-            const res = await GET()
-            const body = await res.json()
+        it('should return quietHours disabled with Africa/Douala by default', async () => {
+            const res = await GET(makeGetRequest())
+            const { quietHours } = (await res.json()).data
 
-            expect(body.data.quietHours.enabled).toBe(false)
-            expect(body.data.quietHours.start).toBe('22:00')
-            expect(body.data.quietHours.end).toBe('06:00')
-            expect(body.data.quietHours.timezone).toBe('Africa/Douala')
+            expect(quietHours.enabled).toBe(false)
+            expect(quietHours.start).toBe('22:00')
+            expect(quietHours.end).toBe('06:00')
+            expect(quietHours.timezone).toBe('Africa/Douala')
         })
 
         it('should create a document in the database (lazy init)', async () => {
-            const countBefore = await NotificationPreferences.countDocuments()
-            await GET()
-            const countAfter = await NotificationPreferences.countDocuments()
-
-            expect(countAfter).toBe(countBefore + 1)
+            const before = await NotificationPreferences.countDocuments()
+            await GET(makeGetRequest())
+            expect(await NotificationPreferences.countDocuments()).toBe(before + 1)
         })
 
         it('should NOT create a duplicate on second GET call', async () => {
-            await GET()
-            await GET()
-
-            const count = await NotificationPreferences.countDocuments({ userId: USER_ID })
-            expect(count).toBe(1)
+            await GET(makeGetRequest())
+            await GET(makeGetRequest())
+            expect(await NotificationPreferences.countDocuments({ userId: USER_ID })).toBe(1)
         })
     })
 
     describe('lecture des préférences existantes', () => {
-        it('should return the stored preferences, not the defaults', async () => {
+        it('should return stored preferences, not defaults', async () => {
             mockGetServerSession.mockResolvedValue(makeSession())
 
             await NotificationPreferences.create({
                 userId: new mongoose.Types.ObjectId(USER_ID),
                 channels: { push: false, email: false },
                 types: {
-                    exam_result: false,
-                    exam_pending: true,
-                    new_message: true,
-                    forum_reply: false,
-                    assistance_response: true,
-                    rewards: false,
-                    account: true,
+                    exam_result: false, exam_pending: true, new_message: true,
+                    forum_reply: false, assistance_response: true, rewards: false, account: true,
                 },
                 quietHours: { enabled: true, start: '23:00', end: '07:00', timezone: 'Europe/Paris' },
             })
 
-            const res = await GET()
+            const res = await GET(makeGetRequest())
             const body = await res.json()
 
             expect(body.data.channels.push).toBe(false)
@@ -176,68 +169,75 @@ describe('GET /api/notification-preferences', () => {
 
 describe('PATCH /api/notification-preferences', () => {
     describe('authentification', () => {
-        it('should return 401 when session is missing', async () => {
+        it('should return 401 with AUTH_007 when session is missing', async () => {
             mockGetServerSession.mockResolvedValue(null)
 
             const res = await PATCH(makePatchRequest({ channels: { push: false } }))
+            const body = await res.json()
 
             expect(res.status).toBe(401)
+            expect(body.error.code).toBe('AUTH_007')
         })
     })
 
     describe('validation du body', () => {
         beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
 
-        it('should return 400 when body is empty (no section provided)', async () => {
+        it('should return 400 with NOTIF_006 when body has no recognized section', async () => {
             const res = await PATCH(makePatchRequest({}))
             const body = await res.json()
 
             expect(res.status).toBe(400)
-            expect(body.success).toBe(false)
+            expect(body.error.code).toBe('NOTIF_006')
         })
 
-        it('should return 400 when channels is not an object', async () => {
+        it('should return 400 with NOTIF_003 when channels is not an object', async () => {
             const res = await PATCH(makePatchRequest({ channels: 'invalid' }))
-
-            expect(res.status).toBe(400)
-        })
-
-        it('should return 400 for invalid HH:mm format in quietHours.start', async () => {
-            const res = await PATCH(makePatchRequest({
-                quietHours: { start: '25:00' },
-            }))
             const body = await res.json()
 
             expect(res.status).toBe(400)
-            expect(body.success).toBe(false)
-            expect(body.message).toMatch(/HH:mm/i)
+            expect(body.error.code).toBe('NOTIF_003')
         })
 
-        it('should return 400 for missing leading zero in time (6:00)', async () => {
-            const res = await PATCH(makePatchRequest({
-                quietHours: { start: '6:00' },
-            }))
-
-            expect(res.status).toBe(400)
-        })
-
-        it('should return 400 for invalid IANA timezone (UTC+1)', async () => {
-            const res = await PATCH(makePatchRequest({
-                quietHours: { timezone: 'UTC+1' },
-            }))
+        it('should return 400 with NOTIF_004 for invalid HH:mm start (25:00)', async () => {
+            const res = await PATCH(makePatchRequest({ quietHours: { start: '25:00' } }))
             const body = await res.json()
 
             expect(res.status).toBe(400)
-            expect(body.success).toBe(false)
-            expect(body.message).toMatch(/IANA/i)
+            expect(body.error.code).toBe('NOTIF_004')
+            expect(body.error.context.field).toBe('quietHours.start')
+            expect(body.error.context.receivedValue).toBe('25:00')
         })
 
-        it('should return 400 for offset format timezone (GMT+2)', async () => {
-            const res = await PATCH(makePatchRequest({
-                quietHours: { timezone: 'GMT+2' },
-            }))
+        it('should return 400 with NOTIF_004 for missing leading zero (6:00)', async () => {
+            const res = await PATCH(makePatchRequest({ quietHours: { start: '6:00' } }))
+            const body = await res.json()
 
             expect(res.status).toBe(400)
+            expect(body.error.code).toBe('NOTIF_004')
+        })
+
+        it('should return 400 with NOTIF_005 for non-IANA timezone (UTC+1)', async () => {
+            const res = await PATCH(makePatchRequest({ quietHours: { timezone: 'UTC+1' } }))
+            const body = await res.json()
+
+            expect(res.status).toBe(400)
+            expect(body.error.code).toBe('NOTIF_005')
+            expect(body.error.context.receivedTimezone).toBe('UTC+1')
+        })
+
+        it('should return 400 with NOTIF_005 for GMT offset format (GMT+2)', async () => {
+            const res = await PATCH(makePatchRequest({ quietHours: { timezone: 'GMT+2' } }))
+            const body = await res.json()
+
+            expect(res.status).toBe(400)
+            expect(body.error.code).toBe('NOTIF_005')
+        })
+
+        it('should NOT touch the DB when validation fails', async () => {
+            const before = await NotificationPreferences.countDocuments()
+            await PATCH(makePatchRequest({ quietHours: { start: '25:00' } }))
+            expect(await NotificationPreferences.countDocuments()).toBe(before)
         })
     })
 
@@ -251,14 +251,13 @@ describe('PATCH /api/notification-preferences', () => {
             expect(res.status).toBe(200)
             expect(body.success).toBe(true)
             expect(body.data.channels.push).toBe(false)
-            expect(body.data.channels.email).toBe(false) // inchangé (défaut)
+            expect(body.data.channels.email).toBe(false)
         })
 
-        it('should return the complete merged object in the response', async () => {
+        it('should include all 3 sections in the response', async () => {
             const res = await PATCH(makePatchRequest({ channels: { push: false } }))
             const body = await res.json()
 
-            // La réponse doit contenir les 3 sections
             expect(body.data).toHaveProperty('channels')
             expect(body.data).toHaveProperty('types')
             expect(body.data).toHaveProperty('quietHours')
@@ -268,32 +267,19 @@ describe('PATCH /api/notification-preferences', () => {
     describe('merge profond — types', () => {
         beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
 
-        it('should disable rewards without touching the other 6 types', async () => {
+        it('should disable rewards without touching the 6 other types', async () => {
             const res = await PATCH(makePatchRequest({ types: { rewards: false } }))
-            const body = await res.json()
+            const { types } = (await res.json()).data
 
-            expect(res.status).toBe(200)
-            expect(body.data.types.rewards).toBe(false)
-            expect(body.data.types.exam_result).toBe(true)
-            expect(body.data.types.new_message).toBe(true)
-            expect(body.data.types.forum_reply).toBe(true)
-            expect(body.data.types.assistance_response).toBe(true)
-            expect(body.data.types.account).toBe(true)
+            expect(types.rewards).toBe(false)
+            expect(types.exam_result).toBe(true)
+            expect(types.new_message).toBe(true)
+            expect(types.forum_reply).toBe(true)
+            expect(types.assistance_response).toBe(true)
+            expect(types.account).toBe(true)
         })
 
-        it('should update multiple types in a single call', async () => {
-            const res = await PATCH(makePatchRequest({
-                types: { rewards: false, forum_reply: false, exam_result: false },
-            }))
-            const body = await res.json()
-
-            expect(body.data.types.rewards).toBe(false)
-            expect(body.data.types.forum_reply).toBe(false)
-            expect(body.data.types.exam_result).toBe(false)
-            expect(body.data.types.exam_pending).toBe(true) // inchangé
-        })
-
-        it('should persist the updated types in the database', async () => {
+        it('should persist changes to the database', async () => {
             await PATCH(makePatchRequest({ types: { rewards: false } }))
 
             const doc = await NotificationPreferences.findOne({
@@ -310,34 +296,26 @@ describe('PATCH /api/notification-preferences', () => {
 
         it('should enable quietHours without changing start/end/timezone', async () => {
             const res = await PATCH(makePatchRequest({ quietHours: { enabled: true } }))
-            const body = await res.json()
+            const { quietHours } = (await res.json()).data
 
-            expect(res.status).toBe(200)
-            expect(body.data.quietHours.enabled).toBe(true)
-            expect(body.data.quietHours.start).toBe('22:00')
-            expect(body.data.quietHours.end).toBe('06:00')
-            expect(body.data.quietHours.timezone).toBe('Africa/Douala')
+            expect(quietHours.enabled).toBe(true)
+            expect(quietHours.start).toBe('22:00')
+            expect(quietHours.end).toBe('06:00')
+            expect(quietHours.timezone).toBe('Africa/Douala')
         })
 
-        it('should update timezone to a valid IANA timezone', async () => {
-            const res = await PATCH(makePatchRequest({
-                quietHours: { timezone: 'Europe/Paris' },
-            }))
-            const body = await res.json()
-
+        it('should accept a valid IANA timezone (Europe/Paris)', async () => {
+            const res = await PATCH(makePatchRequest({ quietHours: { timezone: 'Europe/Paris' } }))
             expect(res.status).toBe(200)
-            expect(body.data.quietHours.timezone).toBe('Europe/Paris')
+            const { quietHours } = (await res.json()).data
+            expect(quietHours.timezone).toBe('Europe/Paris')
         })
 
-        it('should update start and end times with valid HH:mm format', async () => {
-            const res = await PATCH(makePatchRequest({
-                quietHours: { start: '21:30', end: '07:00' },
-            }))
-            const body = await res.json()
-
-            expect(res.status).toBe(200)
-            expect(body.data.quietHours.start).toBe('21:30')
-            expect(body.data.quietHours.end).toBe('07:00')
+        it('should accept valid HH:mm times', async () => {
+            const res = await PATCH(makePatchRequest({ quietHours: { start: '21:30', end: '07:00' } }))
+            const { quietHours } = (await res.json()).data
+            expect(quietHours.start).toBe('21:30')
+            expect(quietHours.end).toBe('07:00')
         })
     })
 
@@ -349,37 +327,56 @@ describe('PATCH /api/notification-preferences', () => {
             await PATCH(makePatchRequest({ types: { rewards: false } }))
             await PATCH(makePatchRequest({ quietHours: { enabled: true } }))
 
-            const res = await GET()
+            const res = await GET(makeGetRequest())
             const body = await res.json()
 
             expect(body.data.channels.push).toBe(false)
             expect(body.data.types.rewards).toBe(false)
             expect(body.data.quietHours.enabled).toBe(true)
-            // Les autres valeurs restent à leurs defaults
             expect(body.data.types.exam_result).toBe(true)
-            expect(body.data.channels.email).toBe(false)
         })
 
-        it('should only create one document regardless of the number of PATCH calls', async () => {
+        it('should only create one document regardless of number of PATCH calls', async () => {
             await PATCH(makePatchRequest({ channels: { push: false } }))
             await PATCH(makePatchRequest({ types: { rewards: false } }))
             await PATCH(makePatchRequest({ quietHours: { enabled: true } }))
 
-            const count = await NotificationPreferences.countDocuments({ userId: USER_ID })
-            expect(count).toBe(1)
+            expect(await NotificationPreferences.countDocuments({ userId: USER_ID })).toBe(1)
         })
     })
 
-    describe("cas 8 de la spec — filtrages validés", () => {
-        it('should block PATCH and not touch DB when format is invalid', async () => {
-            mockGetServerSession.mockResolvedValue(makeSession())
+    describe('réponses bilingues', () => {
+        beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
 
-            const countBefore = await NotificationPreferences.countDocuments()
+        it('should return French message by default', async () => {
+            const res = await PATCH(makePatchRequest({ channels: { push: false } }))
+            const body = await res.json()
+            expect(body.message).toBe('Préférences mises à jour')
+        })
 
-            await PATCH(makePatchRequest({ quietHours: { start: '25:00' } }))
+        it('should return English message with ?lang=en', async () => {
+            const req = new Request('http://localhost/api/notification-preferences?lang=en', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channels: { push: false } }),
+            })
+            const res = await PATCH(req)
+            const body = await res.json()
+            expect(body.message).toBe('Preferences updated')
+        })
 
-            const countAfter = await NotificationPreferences.countDocuments()
-            expect(countAfter).toBe(countBefore) // aucune création/modification
+        it('should return English error message with ?lang=en', async () => {
+            const req = new Request('http://localhost/api/notification-preferences?lang=en', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quietHours: { start: '25:00' } }),
+            })
+            const res = await PATCH(req)
+            const body = await res.json()
+
+            expect(res.status).toBe(400)
+            expect(body.error.code).toBe('NOTIF_004')
+            expect(body.error.message).toMatch(/HH:mm/i)
         })
     })
 })

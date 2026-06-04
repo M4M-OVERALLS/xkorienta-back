@@ -14,10 +14,8 @@ jest.mock('@/lib/mongodb', () => ({
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
 import mongoose from 'mongoose'
 import { MongoMemoryServer } from 'mongodb-memory-server'
-import {
-    NotificationPreferencesService,
-    PreferencesValidationError,
-} from '@/lib/services/NotificationPreferencesService'
+import { NotificationPreferencesService } from '@/lib/services/NotificationPreferencesService'
+import { NotificationError } from '@/lib/errors/core/NotificationError'
 import NotificationPreferences from '@/models/NotificationPreferences'
 
 let mongoServer: MongoMemoryServer
@@ -156,28 +154,28 @@ describe('NotificationPreferencesService.patch', () => {
     })
 
     describe('validation — format HH:mm', () => {
-        it('should throw PreferencesValidationError for invalid start hour (25:00)', async () => {
+        it('should throw NotificationError for invalid start hour (25:00)', async () => {
             await expect(
                 NotificationPreferencesService.patch(USER_ID, {
                     quietHours: { start: '25:00' },
                 })
-            ).rejects.toThrow(PreferencesValidationError)
+            ).rejects.toThrow(NotificationError)
         })
 
-        it('should throw PreferencesValidationError for invalid end format (6h)', async () => {
+        it('should throw NotificationError for invalid end format (6h)', async () => {
             await expect(
                 NotificationPreferencesService.patch(USER_ID, {
                     quietHours: { end: '6h' },
                 })
-            ).rejects.toThrow(PreferencesValidationError)
+            ).rejects.toThrow(NotificationError)
         })
 
-        it('should throw PreferencesValidationError for missing leading zero (6:00)', async () => {
+        it('should throw NotificationError for missing leading zero (6:00)', async () => {
             await expect(
                 NotificationPreferencesService.patch(USER_ID, {
                     quietHours: { start: '6:00' },
                 })
-            ).rejects.toThrow(PreferencesValidationError)
+            ).rejects.toThrow(NotificationError)
         })
 
         it('should accept valid formats: 00:00, 23:59, 06:30', async () => {
@@ -192,20 +190,20 @@ describe('NotificationPreferencesService.patch', () => {
     })
 
     describe('validation — timezone IANA', () => {
-        it('should throw PreferencesValidationError for non-IANA timezone (UTC+1)', async () => {
+        it('should throw NotificationError for non-IANA timezone (UTC+1)', async () => {
             await expect(
                 NotificationPreferencesService.patch(USER_ID, {
                     quietHours: { timezone: 'UTC+1' },
                 })
-            ).rejects.toThrow(PreferencesValidationError)
+            ).rejects.toThrow(NotificationError)
         })
 
-        it('should throw PreferencesValidationError for offset format (GMT+2)', async () => {
+        it('should throw NotificationError for offset format (GMT+2)', async () => {
             await expect(
                 NotificationPreferencesService.patch(USER_ID, {
                     quietHours: { timezone: 'GMT+2' },
                 })
-            ).rejects.toThrow(PreferencesValidationError)
+            ).rejects.toThrow(NotificationError)
         })
 
         it('should accept valid IANA timezones', async () => {
@@ -231,7 +229,7 @@ describe('NotificationPreferencesService.patch', () => {
                 NotificationPreferencesService.patch(USER_ID, {
                     quietHours: { start: '25:00' },
                 })
-            ).rejects.toThrow(PreferencesValidationError)
+            ).rejects.toThrow(NotificationError)
 
             const countAfter = await NotificationPreferences.countDocuments()
             expect(countAfter).toBe(countBefore) // aucune création en base

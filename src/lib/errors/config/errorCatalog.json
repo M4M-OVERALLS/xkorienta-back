@@ -352,5 +352,87 @@
       "severity": "CRITICAL",
       "category": "EXTERNAL_SERVICE"
     }
+  },
+  "NOTIF": {
+    "NOTIF_001": {
+      "code": "NOTIF_001",
+      "message": {
+        "fr": "Le token FCM est requis",
+        "en": "FCM token is required"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "NOTIF_002": {
+      "code": "NOTIF_002",
+      "message": {
+        "fr": "La plateforme doit être android, ios ou web",
+        "en": "Platform must be android, ios or web"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "NOTIF_003": {
+      "code": "NOTIF_003",
+      "message": {
+        "fr": "Corps de requête invalide",
+        "en": "Invalid request body"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "NOTIF_004": {
+      "code": "NOTIF_004",
+      "message": {
+        "fr": "Format d'heure invalide — attendu HH:mm (ex: 22:00)",
+        "en": "Invalid time format — expected HH:mm (e.g. 22:00)"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "NOTIF_005": {
+      "code": "NOTIF_005",
+      "message": {
+        "fr": "Fuseau horaire IANA invalide (ex: Africa/Douala, Europe/Paris)",
+        "en": "Invalid IANA timezone (e.g. Africa/Douala, Europe/Paris)"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "NOTIF_006": {
+      "code": "NOTIF_006",
+      "message": {
+        "fr": "Au moins un champ est requis : channels, types ou quietHours",
+        "en": "At least one field is required: channels, types or quietHours"
+      },
+      "httpStatus": 400,
+      "severity": "ERROR",
+      "category": "VALIDATION"
+    },
+    "NOTIF_007": {
+      "code": "NOTIF_007",
+      "message": {
+        "fr": "Service FCM non configuré — variable FIREBASE_SERVICE_ACCOUNT_JSON manquante",
+        "en": "FCM service not configured — FIREBASE_SERVICE_ACCOUNT_JSON variable missing"
+      },
+      "httpStatus": 503,
+      "severity": "CRITICAL",
+      "category": "CONFIGURATION"
+    },
+    "NOTIF_008": {
+      "code": "NOTIF_008",
+      "message": {
+        "fr": "Erreur lors de l'envoi de la notification push",
+        "en": "Error sending push notification"
+      },
+      "httpStatus": 500,
+      "severity": "ERROR",
+      "category": "EXTERNAL_SERVICE"
+    }
   }
 }

@@ -4,6 +4,8 @@ import NotificationPreferences, {
     ITypePrefs,
     IQuietHours,
 } from '@/models/NotificationPreferences'
+import { NotificationError } from '@/lib/errors/core/NotificationError'
+import { SupportedLanguage } from '@/lib/errors/core/types'
 import connectDB from '@/lib/mongodb'
 import logger from '@/lib/utils/logger'
 
@@ -66,22 +68,10 @@ function isInQuietHours(qh: IQuietHours): boolean {
     const startMinutes = sH * 60 + sM
     const endMinutes = eH * 60 + eM
 
-    // Fenêtre sur la même journée (ex: 09:00 → 17:00)
     if (startMinutes < endMinutes) {
         return currentMinutes >= startMinutes && currentMinutes < endMinutes
     }
-    // Fenêtre qui traverse minuit (ex: 22:00 → 06:00)
     return currentMinutes >= startMinutes || currentMinutes < endMinutes
-}
-
-/**
- * Erreurs de validation retournées par patchPreferences
- */
-export class PreferencesValidationError extends Error {
-    constructor(message: string) {
-        super(message)
-        this.name = 'PreferencesValidationError'
-    }
 }
 
 export class NotificationPreferencesService {
@@ -107,7 +97,8 @@ export class NotificationPreferencesService {
      * Met à jour partiellement les préférences (merge profond).
      * Seuls les champs envoyés sont modifiés — les autres restent intacts.
      *
-     * @throws {PreferencesValidationError} si le format HH:mm ou la timezone sont invalides
+     * @throws {NotificationError} NOTIF_004 si le format HH:mm est invalide
+     * @throws {NotificationError} NOTIF_005 si la timezone IANA est invalide
      */
     static async patch(
         userId: string,
@@ -115,25 +106,19 @@ export class NotificationPreferencesService {
             channels?: Partial<INotificationPreferences['channels']>
             types?: Partial<INotificationPreferences['types']>
             quietHours?: Partial<INotificationPreferences['quietHours']>
-        }
+        },
+        language?: SupportedLanguage
     ): Promise<INotificationPreferences> {
-        // Validation avant toute écriture en base
         if (body.quietHours) {
             const qh = body.quietHours
             if (qh.start !== undefined && !HH_MM_REGEX.test(qh.start)) {
-                throw new PreferencesValidationError(
-                    `Format d'heure invalide pour quietHours.start : "${qh.start}" (attendu HH:mm)`
-                )
+                throw NotificationError.invalidTimeFormat('quietHours.start', qh.start, language)
             }
             if (qh.end !== undefined && !HH_MM_REGEX.test(qh.end)) {
-                throw new PreferencesValidationError(
-                    `Format d'heure invalide pour quietHours.end : "${qh.end}" (attendu HH:mm)`
-                )
+                throw NotificationError.invalidTimeFormat('quietHours.end', qh.end, language)
             }
             if (qh.timezone !== undefined && !isValidIANATimezone(qh.timezone)) {
-                throw new PreferencesValidationError(
-                    `Fuseau horaire IANA invalide : "${qh.timezone}" (ex: "Africa/Douala", "Europe/Paris")`
-                )
+                throw NotificationError.invalidTimezone(qh.timezone, language)
             }
         }
 
@@ -161,8 +146,6 @@ export class NotificationPreferencesService {
     /**
      * Détermine si une push FCM doit être envoyée pour cette notification.
      * Applique les 3 gates dans l'ordre : master switch → type → heures de silence.
-     *
-     * La notification in-app est toujours créée en base — seule la push est filtrée.
      */
     static async canSendPush(userId: string, notificationType: string): Promise<boolean> {
         try {
@@ -172,22 +155,17 @@ export class NotificationPreferencesService {
                 userId: new mongoose.Types.ObjectId(userId),
             }).lean()
 
-            // Pas de préférences en base → on utilise les valeurs par défaut (tout activé)
             if (!prefs) return true
 
-            // Gate 1 — master switch push
             if (!prefs.channels.push) return false
 
-            // Gate 2 — type spécifique
             const category = TYPE_TO_PREF_CATEGORY[notificationType]
             if (category && prefs.types[category] === false) return false
 
-            // Gate 3 — heures de silence
             if (isInQuietHours(prefs.quietHours)) return false
 
             return true
         } catch (error) {
-            // En cas d'erreur de lecture des prefs, on envoie quand même la push (safe default)
             logger.error('[NotificationPreferencesService] Erreur lors de la vérification des préférences:', error)
             return true
         }

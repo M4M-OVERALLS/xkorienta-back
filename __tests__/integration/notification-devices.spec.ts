@@ -2,13 +2,15 @@
  * Tests d'intégration — POST & DELETE /api/notification-devices
  *
  * Teste les routes HTTP complètes : auth, validation, persistance.
+ * Les erreurs sont retournées via le système centralisé (BaseApplicationError.toJSON).
  * MongoDB : MongoMemoryServer — aucune base réelle requise.
  */
 
-// ─── Mocks (avant tous les imports) ──────────────────────────────────────────
+// ─── Mocks ───────────────────────────────────────────────────────────────────
 
 jest.mock('@sentry/nextjs', () => ({
     captureException: jest.fn(),
+    captureMessage: jest.fn(),
 }))
 
 jest.mock('@/lib/mongodb', () => ({
@@ -82,7 +84,7 @@ function makeDeleteRequest(body: unknown): Request {
 
 describe('POST /api/notification-devices', () => {
     describe('authentification', () => {
-        it('should return 401 when session is missing', async () => {
+        it('should return 401 with AUTH_007 when session is missing', async () => {
             mockGetServerSession.mockResolvedValue(null)
 
             const res = await POST(makePostRequest({ token: FCM_TOKEN, platform: 'android' }))
@@ -90,6 +92,7 @@ describe('POST /api/notification-devices', () => {
 
             expect(res.status).toBe(401)
             expect(body.success).toBe(false)
+            expect(body.error.code).toBe('AUTH_007')
         })
 
         it('should return 401 when session has no user id', async () => {
@@ -104,38 +107,44 @@ describe('POST /api/notification-devices', () => {
     describe('validation du body', () => {
         beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
 
-        it('should return 400 when token is missing', async () => {
+        it('should return 400 with NOTIF_001 when token is missing', async () => {
             const res = await POST(makePostRequest({ platform: 'android' }))
             const body = await res.json()
 
             expect(res.status).toBe(400)
             expect(body.success).toBe(false)
-            expect(body.message).toMatch(/token/i)
+            expect(body.error.code).toBe('NOTIF_001')
         })
 
-        it('should return 400 when token is an empty string', async () => {
+        it('should return 400 with NOTIF_001 when token is empty string', async () => {
             const res = await POST(makePostRequest({ token: '   ', platform: 'android' }))
             const body = await res.json()
 
             expect(res.status).toBe(400)
-            expect(body.success).toBe(false)
+            expect(body.error.code).toBe('NOTIF_001')
         })
 
-        it('should return 400 when platform is missing', async () => {
+        it('should return 400 with NOTIF_002 when platform is missing', async () => {
             const res = await POST(makePostRequest({ token: FCM_TOKEN }))
             const body = await res.json()
 
             expect(res.status).toBe(400)
-            expect(body.success).toBe(false)
-            expect(body.message).toMatch(/platform/i)
+            expect(body.error.code).toBe('NOTIF_002')
         })
 
-        it('should return 400 when platform is invalid', async () => {
+        it('should return 400 with NOTIF_002 when platform is invalid', async () => {
             const res = await POST(makePostRequest({ token: FCM_TOKEN, platform: 'windows' }))
             const body = await res.json()
 
             expect(res.status).toBe(400)
-            expect(body.success).toBe(false)
+            expect(body.error.code).toBe('NOTIF_002')
+        })
+
+        it('should include error context with receivedPlatform', async () => {
+            const res = await POST(makePostRequest({ token: FCM_TOKEN, platform: 'foobar' }))
+            const body = await res.json()
+
+            expect(body.error.context.receivedPlatform).toBe('foobar')
         })
     })
 
@@ -161,9 +170,7 @@ describe('POST /api/notification-devices', () => {
 
             expect(res2.status).toBe(200)
             expect(body2.success).toBe(true)
-
-            const count = await NotificationDevice.countDocuments()
-            expect(count).toBe(1)
+            expect(await NotificationDevice.countDocuments()).toBe(1)
         })
 
         it('should accept all valid platforms', async () => {
@@ -196,9 +203,7 @@ describe('POST /api/notification-devices', () => {
             mockGetServerSession.mockResolvedValue(makeSession(ANOTHER_USER_ID))
             await POST(makePostRequest({ token: FCM_TOKEN, platform: 'android' }))
 
-            const count = await NotificationDevice.countDocuments()
-            expect(count).toBe(1)
-
+            expect(await NotificationDevice.countDocuments()).toBe(1)
             const doc = await NotificationDevice.findOne({}).lean()
             expect(doc!.userId.toString()).toBe(ANOTHER_USER_ID)
         })
@@ -207,8 +212,7 @@ describe('POST /api/notification-devices', () => {
             await POST(makePostRequest({ token: 'token_device_A', platform: 'android' }))
             await POST(makePostRequest({ token: 'token_device_B', platform: 'ios' }))
 
-            const count = await NotificationDevice.countDocuments({ userId: USER_ID })
-            expect(count).toBe(2)
+            expect(await NotificationDevice.countDocuments({ userId: USER_ID })).toBe(2)
         })
     })
 })
@@ -217,30 +221,34 @@ describe('POST /api/notification-devices', () => {
 
 describe('DELETE /api/notification-devices', () => {
     describe('authentification', () => {
-        it('should return 401 when session is missing', async () => {
+        it('should return 401 with AUTH_007 when session is missing', async () => {
             mockGetServerSession.mockResolvedValue(null)
 
             const res = await DELETE(makeDeleteRequest({ token: FCM_TOKEN }))
+            const body = await res.json()
 
             expect(res.status).toBe(401)
+            expect(body.error.code).toBe('AUTH_007')
         })
     })
 
     describe('validation du body', () => {
         beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
 
-        it('should return 400 when token is missing', async () => {
+        it('should return 400 with NOTIF_001 when token is missing', async () => {
             const res = await DELETE(makeDeleteRequest({}))
             const body = await res.json()
 
             expect(res.status).toBe(400)
-            expect(body.success).toBe(false)
+            expect(body.error.code).toBe('NOTIF_001')
         })
 
-        it('should return 400 when token is empty string', async () => {
+        it('should return 400 with NOTIF_001 when token is empty', async () => {
             const res = await DELETE(makeDeleteRequest({ token: '' }))
+            const body = await res.json()
 
             expect(res.status).toBe(400)
+            expect(body.error.code).toBe('NOTIF_001')
         })
     })
 
@@ -262,45 +270,36 @@ describe('DELETE /api/notification-devices', () => {
             expect(res.status).toBe(200)
             expect(body.success).toBe(true)
             expect(body.message).toBe('Device removed')
-
-            const count = await NotificationDevice.countDocuments()
-            expect(count).toBe(0)
+            expect(await NotificationDevice.countDocuments()).toBe(0)
         })
 
         it('should NOT delete a device belonging to a different user (security)', async () => {
             mockGetServerSession.mockResolvedValue(makeSession(ANOTHER_USER_ID))
 
             const res = await DELETE(makeDeleteRequest({ token: FCM_TOKEN }))
-            const body = await res.json()
 
-            expect(res.status).toBe(200) // pas d'erreur — juste aucune suppression
-            expect(body.success).toBe(true)
-
-            const count = await NotificationDevice.countDocuments()
-            expect(count).toBe(1) // toujours là
+            expect(res.status).toBe(200) // pas d'erreur — aucune suppression silencieuse
+            expect(await NotificationDevice.countDocuments()).toBe(1)
         })
 
         it('should return 200 even if the device does not exist (idempotent)', async () => {
             const res = await DELETE(makeDeleteRequest({ token: 'non_existent_token' }))
-
             expect(res.status).toBe(200)
         })
 
-        it('should only delete the targeted device, leaving other devices intact', async () => {
+        it('should only delete the targeted device, leaving others intact', async () => {
             await NotificationDevice.create({
                 userId: new mongoose.Types.ObjectId(USER_ID),
-                token: 'another_token_keep_me',
+                token: 'keep_me_token',
                 platform: 'ios',
                 lastUsedAt: new Date(),
             })
 
             await DELETE(makeDeleteRequest({ token: FCM_TOKEN }))
 
-            const remaining = await NotificationDevice.countDocuments({ userId: USER_ID })
-            expect(remaining).toBe(1)
-
+            expect(await NotificationDevice.countDocuments({ userId: USER_ID })).toBe(1)
             const kept = await NotificationDevice.findOne({ userId: USER_ID }).lean()
-            expect(kept!.token).toBe('another_token_keep_me')
+            expect(kept!.token).toBe('keep_me_token')
         })
     })
 })
