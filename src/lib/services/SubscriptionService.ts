@@ -1,8 +1,10 @@
+import * as Sentry from "@sentry/nextjs";
 import connectDB from "@/lib/mongodb";
 import { paymentSDK } from "@/lib/payment";
 import { planRepository } from "@/lib/repositories/PlanRepository";
 import { subscriptionRepository } from "@/lib/repositories/SubscriptionRepository";
 import { transactionRepository } from "@/lib/repositories/TransactionRepository";
+import logger from "@/lib/utils/logger";
 import {
   SubscriptionInterval,
   SubscriptionPlanStatus,
@@ -418,7 +420,7 @@ export class SubscriptionService {
    */
   static async processExpiredSubscriptions(): Promise<number> {
     const expiredCount = await subscriptionRepository.expireSubscriptions();
-    console.log(`[SubscriptionService] Expired ${expiredCount} subscriptions`);
+    logger.info(`[SubscriptionService] Expired ${expiredCount} subscriptions`);
     return expiredCount;
   }
 
@@ -453,14 +455,17 @@ export class SubscriptionService {
 
         sentCount++;
       } catch (error) {
-        console.error(
+        Sentry.captureException(error, {
+          extra: { subscriptionId: sub._id.toString() },
+        });
+        logger.error(
           `[SubscriptionService] Failed to send reminder for ${sub._id}:`,
           error,
         );
       }
     }
 
-    console.log(`[SubscriptionService] Sent ${sentCount} renewal reminders`);
+    logger.info(`[SubscriptionService] Sent ${sentCount} renewal reminders`);
     return sentCount;
   }
 
