@@ -127,15 +127,15 @@ export class NotificationPreferencesService {
         const prefs = await NotificationPreferencesService.getOrCreate(userId)
 
         if (body.channels) {
-            prefs.channels = { ...prefs.channels.toObject(), ...body.channels } as any
+            prefs.channels = { ...(prefs.channels as object), ...body.channels } as any
             prefs.markModified('channels')
         }
         if (body.types) {
-            prefs.types = { ...prefs.types.toObject(), ...body.types } as any
+            prefs.types = { ...(prefs.types as object), ...body.types } as any
             prefs.markModified('types')
         }
         if (body.quietHours) {
-            prefs.quietHours = { ...prefs.quietHours.toObject(), ...body.quietHours } as any
+            prefs.quietHours = { ...(prefs.quietHours as object), ...body.quietHours } as any
             prefs.markModified('quietHours')
         }
 
