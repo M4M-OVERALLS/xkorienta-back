@@ -1,0 +1,441 @@
+{
+  "info": {
+    "_postman_id": "26-xkorienta-orientation-ia-xkorienta",
+    "name": "Xkorienta API — 26. Xkorienta Orientation IA",
+    "description": "Module 26 — Xkorienta Orientation IA\n\nEndpoint de chat conversationnel avec streaming SSE (Server-Sent Events).\nL'IA conduit une conversation structurée (~10 échanges) puis génère un rapport d'orientation personnalisé en 9 modules.\n\n**Endpoint :** POST /api/xkorienta/chat\n**Auth :** Aucune (public) — rate limit : 20 req/min/IP\n**Réponse :** text/event-stream (SSE)\n\n⚠️ Postman supporte le SSE depuis v10.18 — activer \"Enable SSE\" dans les paramètres de la requête.\nAlternativement, utiliser le test curl fourni dans la section 11 de la documentation.\n\n**Base URL :** {{baseUrl}}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "level",
+      "value": "TERMINALE_BAC",
+      "type": "string",
+      "description": "Niveau scolaire — valeurs possibles : BEPC_3EME, SECONDE, TERMINALE_BAC, GCE_OL, GCE_AL, UNIVERSITE_BTS"
+    },
+    {
+      "key": "language",
+      "value": "fr",
+      "type": "string",
+      "description": "Langue — fr (francophone) ou en (anglophone)"
+    }
+  ],
+  "item": [
+    {
+      "name": "Chat SSE — Niveaux francophones (fr)",
+      "item": [
+        {
+          "name": "1er message — TERMINALE_BAC",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Content-Type SSE', function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('text/event-stream');",
+                  "});",
+                  "// Note : le body est un stream SSE — Postman peut l'afficher en mode \"raw\"",
+                  "// Chaque ligne commence par 'data: ' et le stream se termine par 'data: [DONE]'"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/xkorienta/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "xkorienta", "chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Bonjour ! Je suis en Terminale C, j'ai une moyenne de 14/20 et je souhaite faire des études en informatique.\"\n    }\n  ],\n  \"level\": \"TERMINALE_BAC\",\n  \"language\": \"fr\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Premier message d'une session Terminale BAC (francophone).\n\n**Modèle utilisé :** claude-haiku (conversation, messages.length < 18)\n**Réponse :** Stream SSE — tokens en temps réel\n\nFormat de chaque chunk :\n  data: {\"text\":\"Bonjour !\"}\n  data: {\"text\":\" Félicitations...\"}\n  ...\n  data: [DONE]\n\n⚠️ Activer le mode SSE dans Postman ou lire le body en mode raw."
+          },
+          "response": [
+            {
+              "name": "200 — Stream SSE (exemple tronqué)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "text/event-stream" },
+                { "key": "Cache-Control", "value": "no-cache, no-transform" },
+                { "key": "Connection", "value": "keep-alive" },
+                { "key": "X-Accel-Buffering", "value": "no" }
+              ],
+              "body": "data: {\"text\":\"Bonjour ! Merci de me faire confiance pour\"}\n\ndata: {\"text\":\" ton orientation. Tu es en Terminale C avec\"}\n\ndata: {\"text\":\" une solide moyenne de 14/20 — c'est très bien !\"}\n\ndata: {\"text\":\" Pour bien te conseiller, j'ai quelques questions :\"}\n\ndata: {\"text\":\" Quelle est ta région de résidence ?\"}\n\ndata: [DONE]",
+              "_postman_previewlanguage": "text"
+            }
+          ]
+        },
+        {
+          "name": "Conversation avancée — TERMINALE_BAC (5 échanges)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/xkorienta/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "xkorienta", "chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"Bonjour ! Je suis en Terminale C, moyenne 14/20, je veux faire informatique.\" },\n    { \"role\": \"assistant\", \"content\": \"Bonjour ! Excellente moyenne. Quelle est votre région de résidence et avez-vous une idée du budget familial mensuel ?\" },\n    { \"role\": \"user\", \"content\": \"Je suis à Yaoundé, budget familial environ 150 000 FCFA par mois.\" },\n    { \"role\": \"assistant\", \"content\": \"Merci. Avez-vous des matières particulièrement fortes ou faibles ? Et avez-vous des expériences (stages, projets personnels) ?\" },\n    { \"role\": \"user\", \"content\": \"Très fort en maths et physique, moyen en français. J'ai fait un petit projet de site web l'été dernier.\" }\n  ],\n  \"level\": \"TERMINALE_BAC\",\n  \"language\": \"fr\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Simule 5 échanges déjà effectués.\nL'IA continue la collecte des 11 dimensions.\nLe modèle haiku est encore utilisé (messages.length < 18)."
+          },
+          "response": []
+        },
+        {
+          "name": "1er message — BEPC_3EME",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/xkorienta/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "xkorienta", "chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Bonjour ! Je suis en 3ème, j'ai eu le BEPC avec mention Bien. Je veux savoir quelle série choisir en Seconde.\"\n    }\n  ],\n  \"level\": \"BEPC_3EME\",\n  \"language\": \"fr\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Session pour un élève de 3ème venant d'avoir le BEPC."
+          },
+          "response": []
+        },
+        {
+          "name": "1er message — SECONDE",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/xkorienta/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "xkorienta", "chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Je suis en classe de Seconde, série A4. Je veux savoir si je dois changer de série ou continuer.\"\n    }\n  ],\n  \"level\": \"SECONDE\",\n  \"language\": \"fr\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Session pour un élève de Seconde."
+          },
+          "response": []
+        },
+        {
+          "name": "1er message — UNIVERSITE_BTS",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/xkorienta/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "xkorienta", "chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Bonjour, j'ai mon BAC C depuis 2 ans et j'hésite entre un BTS en Génie Logiciel et une Licence en Informatique à l'université.\"\n    }\n  ],\n  \"level\": \"UNIVERSITE_BTS\",\n  \"language\": \"fr\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Session pour un étudiant post-BAC hésitant entre BTS et université."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Chat SSE — Niveaux anglophones (en)",
+      "item": [
+        {
+          "name": "1er message — GCE_AL",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/xkorienta/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "xkorienta", "chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Hello! I just completed my GCE A/Level with grades A in Mathematics, B in Physics and C in Chemistry. I want to study Engineering.\"\n    }\n  ],\n  \"level\": \"GCE_AL\",\n  \"language\": \"en\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Session GCE A/Level (anglophone).\nLe backend utilise le catalogue HND uniquement (~35% moins de tokens)."
+          },
+          "response": []
+        },
+        {
+          "name": "1er message — GCE_OL",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/xkorienta/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "xkorienta", "chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Hi, I just passed my GCE O/Level with 6 subjects including Mathematics and English. I need guidance on what to study for A/Level.\"\n    }\n  ],\n  \"level\": \"GCE_OL\",\n  \"language\": \"en\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Session GCE O/Level (anglophone)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Génération du rapport final",
+      "item": [
+        {
+          "name": "Déclencher le rapport (mots-clés)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "// Le body SSE devrait contenir ---RAPPORT--- si assez de dimensions collectées",
+                  "var body = pm.response.text();",
+                  "if (body.includes('---RAPPORT---')) {",
+                  "    console.log('✅ Rapport détecté dans le stream');",
+                  "    pm.test('Rapport généré', function () {",
+                  "        pm.expect(body).to.include('---RAPPORT---');",
+                  "        pm.expect(body).to.include('---FIN---');",
+                  "    });",
+                  "} else {",
+                  "    console.log('ℹ️ Pas encore de rapport — plus de dimensions requises');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/xkorienta/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "xkorienta", "chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"Je suis en Terminale C, moyenne 14/20, série C.\" },\n    { \"role\": \"assistant\", \"content\": \"Excellent ! Votre matière forte ?\" },\n    { \"role\": \"user\", \"content\": \"Maths et physique. Je suis à Yaoundé.\" },\n    { \"role\": \"assistant\", \"content\": \"Budget familial mensuel approximatif ?\" },\n    { \"role\": \"user\", \"content\": \"Environ 200 000 FCFA. Je peux me déplacer.\" },\n    { \"role\": \"assistant\", \"content\": \"Avez-vous des expériences ou projets ?\" },\n    { \"role\": \"user\", \"content\": \"J'ai participé à un club informatique. Je suis autonome et discipliné.\" },\n    { \"role\": \"assistant\", \"content\": \"Aspirations professionnelles ?\" },\n    { \"role\": \"user\", \"content\": \"Ingénieur logiciel dans une grande entreprise. Pas de contraintes logistiques majeures.\" },\n    { \"role\": \"assistant\", \"content\": \"Merci pour ces informations complètes !\" },\n    { \"role\": \"user\", \"content\": \"Pouvez-vous maintenant générer mon rapport d'orientation ?\" }\n  ],\n  \"level\": \"TERMINALE_BAC\",\n  \"language\": \"fr\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Conversation de 11 messages contenant le mot-clé 'rapport'.\nDéclenche le mode rapport → modèle Sonnet (max_tokens: 2500).\n\nLe stream doit contenir :\n  ---RAPPORT---\n  MODULE 1 — DIAGNOSTIC DU PROFIL\n  ...\n  MODULE 9 — CONCLUSION D'ORIENTATION\n  ---FIN---"
+          },
+          "response": [
+            {
+              "name": "200 — Stream avec rapport (exemple structure)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "text/event-stream" }
+              ],
+              "body": "data: {\"text\":\"Voici votre rapport d'orientation personnalisé :\\n\\n\"}\n\ndata: {\"text\":\"---RAPPORT---\\n\"}\n\ndata: {\"text\":\"MODULE 1 — DIAGNOSTIC DU PROFIL\\n\"}\n\ndata: {\"text\":\"Forces : Excellentes bases en mathématiques et physique...\"}\n\ndata: {\"text\":\"\\nMODULE 9 — CONCLUSION D'ORIENTATION\\n\"}\n\ndata: {\"text\":\"Recommandation finale : BTS Génie Logiciel à l'IUT de Yaoundé...\"}\n\ndata: {\"text\":\"\\n---FIN---\"}\n\ndata: [DONE]",
+              "_postman_previewlanguage": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Scénarios erreurs & limites",
+      "item": [
+        {
+          "name": "[Erreur 400] Champ level manquant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/xkorienta/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "xkorienta", "chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"Bonjour\" }\n  ],\n  \"language\": \"fr\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Body sans le champ 'level' requis → doit retourner 400."
+          },
+          "response": []
+        },
+        {
+          "name": "[Erreur 400] Messages vide",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/xkorienta/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "xkorienta", "chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [],\n  \"level\": \"TERMINALE_BAC\",\n  \"language\": \"fr\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Tableau messages vide → doit retourner 400."
+          },
+          "response": []
+        },
+        {
+          "name": "[Erreur 429] Simulation rate limit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Ce test nécessite d'envoyer > 20 requêtes en moins d'une minute",
+                  "// Postman Runner peut être utilisé pour simuler le rate limit",
+                  "if (pm.response.code === 429) {",
+                  "    var res = pm.response.json();",
+                  "    pm.test('Contient retryAfter', function () {",
+                  "        pm.expect(res).to.have.property('retryAfter');",
+                  "    });",
+                  "    console.log('Retry after :', new Date(res.retryAfter).toISOString());",
+                  "} else {",
+                  "    console.log('Rate limit pas encore atteint — status :', pm.response.code);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/xkorienta/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "xkorienta", "chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [{ \"role\": \"user\", \"content\": \"Test rate limit\" }],\n  \"level\": \"TERMINALE_BAC\",\n  \"language\": \"fr\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Pour déclencher le 429, utiliser Postman Runner avec 21+ itérations rapides.\n\n**Réponse 429 :**\n{ success: false, message: 'Too many requests', retryAfter: 1748823600000 }\n\nRate limit : 20 requêtes / minute / IP"
+          },
+          "response": [
+            {
+              "name": "429 — Rate limit dépassé",
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Too many requests\",\n  \"retryAfter\": 1748823600000\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "[Erreur 503] ANTHROPIC_API_KEY non configurée",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Ce test se produit si ANTHROPIC_API_KEY est absente du .env du backend",
+                  "if (pm.response.code === 503) {",
+                  "    pm.test('Status 503', function () {",
+                  "        pm.response.to.have.status(503);",
+                  "    });",
+                  "    console.log('→ Configurer ANTHROPIC_API_KEY dans xkorienta-api/.env');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/xkorienta/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "xkorienta", "chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [{ \"role\": \"user\", \"content\": \"Test\" }],\n  \"level\": \"TERMINALE_BAC\",\n  \"language\": \"fr\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Retourne 503 si ANTHROPIC_API_KEY n'est pas définie côté backend.\n→ Corriger dans xkorienta-api/.env.local"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Utilitaires — curl équivalents",
+      "item": [
+        {
+          "name": "[Info] Commande curl — test rapide",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/xkorienta/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "xkorienta", "chat"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Bonjour, je suis en Terminale C, moyenne 14/20 et je souhaite faire des études en informatique.\"\n    }\n  ],\n  \"level\": \"TERMINALE_BAC\",\n  \"language\": \"fr\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "⚠️ Si Postman ne supporte pas bien le SSE, utiliser directement dans le terminal :\n\n```bash\ncurl -X POST http://localhost:3001/api/xkorienta/chat \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"messages\": [{\"role\":\"user\",\"content\":\"Bonjour, je suis en Terminale C, moyenne 14/20\"}],\n    \"level\": \"TERMINALE_BAC\",\n    \"language\": \"fr\"\n  }'\n```\n\nRéponse attendue :\n  data: {\"text\":\"Bonjour ! ...\"}\n  data: {\"text\":\"...\"}\n  data: [DONE]"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
