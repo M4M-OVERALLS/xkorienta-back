@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Firebase — NE JAMAIS commiter le service account JSON (accès total au projet Firebase)
+*firebase-adminsdk*.json

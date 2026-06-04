@@ -28,12 +28,14 @@
 | **16** | **Forum / Conversations** | **Tous** | **🟢 Basse** | **✅** | **✅** |
 | 17 | Admin (validation) | Admin | 🔴 Haute | ⏳ | ⏳ |
 | 18 | Orientation (étudiant) | Student | 🟢 Basse | ⏳ | ⏳ |
-| **25** | **Abonnements & Feature Flags** | **Student** | **🔴 Critique** | **✅** | ⏳ |
-| **26** | **Xkorienta Orientation IA** | **Student** | **🔴 Critique** | **✅** | ⏳ |
+| **25** | **Abonnements & Feature Flags** | **Student** | **🔴 Critique** | **✅** | **✅** |
+| **26** | **Xkorienta Orientation IA** | **Student** | **🔴 Critique** | **✅** | **✅** |
 | **23** | **Messages Hub (Messagerie + Forums + Demandes)** | **Teacher, Student** | **🔴 Haute** | **✅** | **✅** |
 | **24** | **Paramètres & Reset Password** | **Tous** | **🔴 Haute** | **✅** | **✅** |
 | **19** | **Education Structure** | **Tous** | **🟢 Basse** | **✅** | **✅** |
 | 20 | Public Mini-Tests | Public | 🟢 Basse | ✅ | ✅ |
+| **27** | **Push Notifications (FCM)** | **Mobile Flutter** | **🔴 Critique** | **✅** | **✅** |
+| **28** | **Préférences de Notifications** | **Mobile Flutter** | **🔴 Critique** | **✅** | **✅** |
 
 ---
 

@@ -8,7 +8,7 @@
 
 ## Vue d'ensemble
 
-Le système de notifications de Quizlock repose sur une architecture orientée événements (**Event-Driven Architecture**).  
+Le système de notifications de Xkorienta repose sur une architecture orientée événements (**Event-Driven Architecture**).  
 Plutôt que de créer les notifications directement post-action, le code émet un "Événement" (`publishEvent`). Un "Observateur" (`NotificationObserver`) écoute ces événements et décide, en tâche de fond, s'il faut générer et sauvegarder une alerte dans la collection `Notification`.
 
 Ce module documente l'API destinée au frontend (pour afficher la cloche de notifications) **et** la procédure backend pour créer des événements.

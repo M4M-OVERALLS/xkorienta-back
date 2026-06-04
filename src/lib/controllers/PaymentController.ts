@@ -10,6 +10,14 @@ import { TransactionType, TransactionStatus, MediaStatus, SubscriptionInterval }
 import { BookConfigService } from '@/lib/services/BookConfigService'
 import { bookConfigRepository } from '@/lib/repositories/BookConfigRepository'
 
+/** Extract a plain string ID from a field that may be a populated Mongoose document. */
+function resolveUserId(userId: unknown): string {
+    if (typeof userId === 'object' && userId !== null && '_id' in (userId as object)) {
+        return String((userId as any)._id)
+    }
+    return String(userId)
+}
+
 export interface AuthSession {
     user: {
         id: string
@@ -134,7 +142,7 @@ export class PaymentController {
         }
 
         if (
-            transaction.userId.toString() !== session.user.id &&
+            resolveUserId(transaction.userId) !== session.user.id &&
             !['DG_M4M', 'TECH_SUPPORT'].includes(session.user.role)
         ) {
             return NextResponse.json(
@@ -180,7 +188,7 @@ export class PaymentController {
         }
 
         if (
-            transaction.userId.toString() !== session.user.id &&
+            resolveUserId(transaction.userId) !== session.user.id &&
             !['DG_M4M', 'TECH_SUPPORT'].includes(session.user.role)
         ) {
             return NextResponse.json(

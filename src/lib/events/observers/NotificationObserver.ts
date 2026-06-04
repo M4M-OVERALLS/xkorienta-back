@@ -1,9 +1,10 @@
-import Notification from "@/models/Notification";
+import Notification, { INotification } from "@/models/Notification";
 import User from "@/models/User";
 import { UserRole } from "@/models/enums";
 import mongoose from "mongoose";
 import { IObserver } from "../interfaces/IObserver";
 import logger from "@/lib/utils/logger";
+import { FCMService } from "@/lib/services/FCMService";
 import {
   AttemptGradedEvent,
   BadgeEarnedEvent,
@@ -16,7 +17,8 @@ import {
 
 /**
  * Observateur pour créer des notifications en base de données
- * selon le rôle de l'utilisateur (STUDENT, TEACHER, ADMIN, etc.)
+ * selon le rôle de l'utilisateur (STUDENT, TEACHER, ADMIN, etc.),
+ * puis envoyer une push FCM sur tous les devices enregistrés.
  */
 export class NotificationObserver implements IObserver {
   getName(): string {
@@ -44,11 +46,9 @@ export class NotificationObserver implements IObserver {
   async update(event: Event): Promise<void> {
     try {
       switch (event.type) {
-        // ... existing cases ...
         case EventType.EXAM_COMPLETED:
           await this.handleExamCompleted(event as ExamCompletedEvent);
           break;
-        // ...
         case EventType.SYLLABUS_CREATED:
           await this.handleSyllabusCreated(event);
           break;
@@ -58,11 +58,9 @@ export class NotificationObserver implements IObserver {
         case EventType.EXAM_CREATED:
           await this.handleExamCreated(event);
           break;
-        // ...
         case EventType.BADGE_EARNED:
           await this.handleBadgeEarned(event as BadgeEarnedEvent);
           break;
-        // ... (keep others)
         case EventType.LEVEL_UP:
           await this.handleLevelUp(event as LevelUpEvent);
           break;
@@ -96,7 +94,50 @@ export class NotificationObserver implements IObserver {
     }
   }
 
-  // ... existing handlers ...
+  // ─── Helpers ─────────────────────────────────────────────────────────────
+
+  /**
+   * Crée une notification en base, puis déclenche une push FCM (best-effort).
+   */
+  private async createNotifAndPush(data: {
+    userId: mongoose.Types.ObjectId | string;
+    type: string;
+    title: string;
+    message: string;
+    read: boolean;
+    data?: Record<string, any>;
+  }): Promise<void> {
+    const notification = await Notification.create(data);
+    FCMService.sendPushForNotification(notification as INotification).catch(
+      (err) =>
+        logger.error("[NotificationObserver] FCM push échouée:", err),
+    );
+  }
+
+  /**
+   * Crée des notifications en masse, puis déclenche une push FCM par utilisateur (best-effort).
+   */
+  private async createManyNotifAndPush(
+    dataArray: Array<{
+      userId: string | mongoose.Types.ObjectId;
+      type: string;
+      title: string;
+      message: string;
+      read: boolean;
+      data?: Record<string, any>;
+    }>,
+  ): Promise<void> {
+    if (dataArray.length === 0) return;
+    const notifications = await Notification.insertMany(dataArray);
+    for (const notif of notifications) {
+      FCMService.sendPushForNotification(notif as INotification).catch(
+        (err) =>
+          logger.error("[NotificationObserver] FCM push échouée:", err),
+      );
+    }
+  }
+
+  // ─── Handlers ────────────────────────────────────────────────────────────
 
   /**
    * Notification pour nouveau syllabus (STUDENTS & TEACHER)
@@ -104,13 +145,8 @@ export class NotificationObserver implements IObserver {
   private async handleSyllabusCreated(event: Event): Promise<void> {
     try {
       const syllabusId = event.data.syllabusId;
-      // Need to fetch syllabus to get classes, or trust event data?
-      // Safer to fetch or we pass classes in event data.
-      // Let's assume we fetch or pass. Passing is faster.
-      // But let's verify with import.
-      const { default: Syllabus } = await import("@/models/Syllabus"); // Dynamic import to avoid circular dep if any
+      const { default: Syllabus } = await import("@/models/Syllabus");
       const { default: Class } = await import("@/models/Class");
-      const { default: Subject } = await import("@/models/Subject"); // Import Subject
 
       const syllabus = await (Syllabus as any)
         .findById(syllabusId)
@@ -121,10 +157,8 @@ export class NotificationObserver implements IObserver {
       const subjectName = syllabus.subject?.name || "Matière inconnue";
       const studentIds = new Set<string>();
 
-      // Notify Students if classes are assigned
       if (syllabus.classes && syllabus.classes.length > 0) {
         for (const cls of syllabus.classes) {
-          // Fetch full class to get students
           const fullClass = await (Class as any).findById(cls._id);
           if (fullClass && fullClass.students) {
             fullClass.students.forEach((s: any) =>
@@ -142,14 +176,11 @@ export class NotificationObserver implements IObserver {
           data: { syllabusId: syllabus._id },
         }));
 
-        if (notifications.length > 0) {
-          await Notification.insertMany(notifications);
-        }
+        await this.createManyNotifAndPush(notifications);
       }
 
-      // Notify Teacher
       if (event.data.teacherId) {
-        await Notification.create({
+        await this.createNotifAndPush({
           userId: new mongoose.Types.ObjectId(event.data.teacherId),
           type: "success",
           title: "Syllabus créé avec succès ✅",
@@ -171,7 +202,6 @@ export class NotificationObserver implements IObserver {
       const syllabusId = event.data.syllabusId;
       const { default: Syllabus } = await import("@/models/Syllabus");
       const { default: Class } = await import("@/models/Class");
-      const { default: Subject } = await import("@/models/Subject");
 
       const syllabus = await (Syllabus as any)
         .findById(syllabusId)
@@ -182,7 +212,6 @@ export class NotificationObserver implements IObserver {
       const subjectName = syllabus.subject?.name || "Matière inconnue";
       const studentIds = new Set<string>();
 
-      // Notify Students if classes are assigned
       if (syllabus.classes && syllabus.classes.length > 0) {
         for (const cls of syllabus.classes) {
           const fullClass = await (Class as any).findById(cls._id);
@@ -202,14 +231,11 @@ export class NotificationObserver implements IObserver {
           data: { syllabusId: syllabus._id },
         }));
 
-        if (notifications.length > 0) {
-          await Notification.insertMany(notifications);
-        }
+        await this.createManyNotifAndPush(notifications);
       }
 
-      // Notify Teacher
       if (event.data.teacherId) {
-        await Notification.create({
+        await this.createNotifAndPush({
           userId: new mongoose.Types.ObjectId(event.data.teacherId),
           type: "success",
           title: "Syllabus mis à jour ✅",
@@ -232,12 +258,10 @@ export class NotificationObserver implements IObserver {
       const { default: Exam } = await import("@/models/Exam");
       const { default: Syllabus } = await import("@/models/Syllabus");
       const { default: Class } = await import("@/models/Class");
-      const { default: Subject } = await import("@/models/Subject");
 
       const exam = await (Exam as any).findById(examId);
       if (!exam || !exam.syllabus) return;
 
-      // Find syllabus and its classes
       const syllabus = await (Syllabus as any)
         .findById(exam.syllabus)
         .populate("classes")
@@ -264,13 +288,10 @@ export class NotificationObserver implements IObserver {
         data: { examId: exam._id },
       }));
 
-      if (notifications.length > 0) {
-        await Notification.insertMany(notifications);
-      }
+      await this.createManyNotifAndPush(notifications);
 
-      // Notify Teacher
       if (event.data.teacherId) {
-        await Notification.create({
+        await this.createNotifAndPush({
           userId: new mongoose.Types.ObjectId(event.data.teacherId),
           type: "success",
           title: "Examen planifié ✅",
@@ -293,7 +314,7 @@ export class NotificationObserver implements IObserver {
     const user = await User.findById(event.userId);
     if (!user || user.role !== UserRole.STUDENT) return;
 
-    await Notification.create({
+    await this.createNotifAndPush({
       userId: event.userId,
       type: event.data.passed ? "success" : "info",
       title: event.data.passed ? "Examen réussi ! 🎉" : "Examen terminé",
@@ -314,7 +335,7 @@ export class NotificationObserver implements IObserver {
   private async handleBadgeEarned(event: BadgeEarnedEvent): Promise<void> {
     if (!event.userId) return;
 
-    await Notification.create({
+    await this.createNotifAndPush({
       userId: event.userId,
       type: "badge",
       title: "Nouveau Badge! 🏆",
@@ -330,7 +351,7 @@ export class NotificationObserver implements IObserver {
   private async handleLevelUp(event: LevelUpEvent): Promise<void> {
     if (!event.userId) return;
 
-    await Notification.create({
+    await this.createNotifAndPush({
       userId: event.userId,
       type: "level_up",
       title: "Level Up! ⬆️",
@@ -342,14 +363,13 @@ export class NotificationObserver implements IObserver {
 
   /**
    * Notification pour XP gagné (STUDENT)
+   * Ne notifie que pour les gros gains d'XP (>= 100)
    */
   private async handleXPGained(event: XPGainedEvent): Promise<void> {
     if (!event.userId) return;
-
-    // Ne notifier que pour les gros gains d'XP (>= 100)
     if (event.data.amount < 100) return;
 
-    await Notification.create({
+    await this.createNotifAndPush({
       userId: event.userId,
       type: "xp",
       title: `+${event.data.amount} XP ⚡`,
@@ -370,9 +390,8 @@ export class NotificationObserver implements IObserver {
         .populate("createdById");
       if (!exam) return;
 
-      // Notification pour le teacher créateur
       if (exam.createdById && typeof exam.createdById !== "string") {
-        await Notification.create({
+        await this.createNotifAndPush({
           userId: (exam.createdById as any)._id,
           type: "success",
           title: "Examen publié ✅",
@@ -400,8 +419,7 @@ export class NotificationObserver implements IObserver {
       const exam = await (Exam as any).findById(event.data.examId);
       if (!exam) return;
 
-      // Notifier le teacher créateur
-      await Notification.create({
+      await this.createNotifAndPush({
         userId: exam.createdById,
         type: "success",
         title: "Examen validé ✅",
@@ -429,13 +447,11 @@ export class NotificationObserver implements IObserver {
       const exam = await (Exam as any).findById(event.data.examId);
       if (!exam) return;
 
-      // Trouver tous les inspecteurs
       const inspectors = await User.find({
         role: UserRole.INSPECTOR,
         isActive: true,
       });
 
-      // Créer une notification pour chaque inspecteur
       const notifications = inspectors.map((inspector) => ({
         userId: inspector._id,
         type: "info",
@@ -445,9 +461,7 @@ export class NotificationObserver implements IObserver {
         data: { examId: exam._id, createdBy: exam.createdById },
       }));
 
-      if (notifications.length > 0) {
-        await Notification.insertMany(notifications);
-      }
+      await this.createManyNotifAndPush(notifications);
     } catch (error) {
       logger.error(
         "[NotificationObserver] Error in handleExamSubmittedForValidation:",
@@ -462,7 +476,7 @@ export class NotificationObserver implements IObserver {
   private async handleAttemptGraded(event: AttemptGradedEvent): Promise<void> {
     if (!event.userId) return;
 
-    await Notification.create({
+    await this.createNotifAndPush({
       userId: event.userId,
       type: "info",
       title: "Examen corrigé 📝",
@@ -478,7 +492,7 @@ export class NotificationObserver implements IObserver {
   private async handleLateCodeGenerated(event: Event): Promise<void> {
     if (!event.userId) return;
 
-    await Notification.create({
+    await this.createNotifAndPush({
       userId: event.userId,
       type: "alert",
       title: "Code de retard généré ⏰",
@@ -494,7 +508,7 @@ export class NotificationObserver implements IObserver {
   private async handleUserRegistered(event: Event): Promise<void> {
     if (!event.userId) return;
 
-    await Notification.create({
+    await this.createNotifAndPush({
       userId: event.userId,
       type: "info",
       title: "Bienvenue sur Xkorienta! 👋",
