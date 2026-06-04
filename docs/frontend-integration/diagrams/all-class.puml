@@ -3,20 +3,36 @@
 !theme plain
 skinparam classAttributeIconSize 0
 skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam class {
+    BackgroundColor White
+    BorderColor #555
+    ArrowColor #333
+}
+skinparam package {
+    BorderColor #777
+    FontSize 13
+    FontStyle bold
+}
 
-title Diagramme de Classes - Xkorienta API
-footer Mai 2026
+title Diagramme de Classes — Xkorienta API
+footer Juin 2026 — 74 modèles + patterns lib/
 
-' ============================================
-' ENUMS PRINCIPAUX
-' ============================================
-package "Enums" #EEE {
+' ============================================================
+' ENUMS
+' ============================================================
+package "Enums" #EEEEEE {
     enum UserRole {
         STUDENT
         TEACHER
         SCHOOL_ADMIN
         INSPECTOR
+        SURVEILLANT
+        PREFET
         PRINCIPAL
+        DG_ISIMMA
+        RECTOR
         DG_M4M
         TECH_SUPPORT
     }
@@ -34,6 +50,15 @@ package "Enums" #EEE {
         LICENCE
         MASTER
         DOCTORAT
+        FORMATION_CONTINUE
+    }
+    enum SchoolType {
+        PRESCHOOL
+        PRIMARY
+        SECONDARY_GENERAL
+        SECONDARY_TECHNICAL
+        HIGHER_ED
+        NON_FORMAL
     }
     enum SchoolStatus {
         PENDING
@@ -41,10 +66,15 @@ package "Enums" #EEE {
         REJECTED
         SUSPENDED
     }
-    enum ClassValidationStatus {
-        PENDING
-        VALIDATED
-        REJECTED
+    enum ExamType {
+        SELF_ASSESSMENT
+        FORMATIVE_QUIZ
+        FINAL_EXAM
+        PRACTICAL_WORK
+        OLYMPIAD
+        MOCK_EXAM
+        MINI_TEST
+        CASE_STUDY
     }
     enum ExamStatus {
         DRAFT
@@ -53,6 +83,26 @@ package "Enums" #EEE {
         PUBLISHED
         ARCHIVED
     }
+    enum EvaluationType {
+        QCM
+        TRUE_FALSE
+        OPEN_QUESTION
+        CASE_STUDY
+        EXAM_SIMULATION
+        RUBRIC
+    }
+    enum AttemptStatus {
+        IN_PROGRESS
+        SUBMITTED
+        GRADED
+        ABANDONED
+    }
+    enum MediaType {
+        VIDEO
+        PODCAST
+        AUDIO
+        BOOK
+    }
     enum TransactionStatus {
         PENDING
         PROCESSING
@@ -60,11 +110,107 @@ package "Enums" #EEE {
         FAILED
         REFUNDED
     }
+    enum SubscriptionStatus {
+        FREEMIUM
+        PREMIUM
+        INSTITUTION_PREMIUM
+        EDUCATOR_ACCESS
+    }
+    enum DifficultyLevel {
+        BEGINNER
+        INTERMEDIATE
+        ADVANCED
+        EXPERT
+    }
+    enum MasteryLevel {
+        UNKNOWN
+        AWARE
+        FAMILIAR
+        UNDERSTANDING
+        APPLYING
+        MASTERED
+        PERFECTLY_ABLE
+    }
+    enum BadgeCategory {
+        PERFORMANCE
+        STREAK
+        SOCIAL
+        EXPLORATION
+        MASTERY
+    }
+    enum ChallengeType {
+        CLASS_BATTLE
+        SOLO_CHALLENGE
+        SCHOOL_LEAGUE
+        SUBJECT_SPRINT
+    }
+    enum ConversationStatus {
+        ACTIVE
+        ARCHIVED
+        CLOSED
+    }
+    enum AssistanceRequestStatus {
+        OPEN
+        IN_PROGRESS
+        RESOLVED
+        CLOSED
+    }
+    enum PayoutStatus {
+        PENDING
+        PROCESSING
+        COMPLETED
+        FAILED
+    }
+    enum UEType {
+        FONDAMENTALE
+        COMPLEMENTAIRE
+        TRANSVERSALE
+        STAGE
+        MEMOIRE
+    }
+    enum SpecialtyLevel {
+        LICENCE
+        MASTER
+        DOCTORAT
+        BTS_HND
+    }
+    enum DeliveryMode {
+        PRESENTIEL
+        EN_LIGNE
+        HYBRIDE
+    }
+    enum LateCodeStatus {
+        ACTIVE
+        USED
+        EXPIRED
+        REVOKED
+    }
+    enum ImportStatus {
+        PENDING
+        PROCESSING
+        COMPLETED
+        FAILED
+    }
+    enum DemandStatus {
+        HIGH
+        MEDIUM
+        LOW
+    }
+    enum TutelleType {
+        MINISTERIELLE
+        UNIVERSITAIRE
+        PRIVEE
+    }
+    enum ApprovalStatus {
+        PENDING
+        APPROVED
+        REJECTED
+    }
 }
 
-' ============================================
-' UTILISATEURS
-' ============================================
+' ============================================================
+' PACKAGE : UTILISATEURS
+' ============================================================
 package "Utilisateurs" #E3F2FD {
     class User {
         _id: ObjectId
@@ -73,77 +219,174 @@ package "Utilisateurs" #E3F2FD {
         phone: String
         role: UserRole
         subSystem: SubSystem
+        password: String (hashed)
+        googleId: String
+        githubId: String
         isActive: Boolean
+        isEmailVerified: Boolean
+        schools: ObjectId[]
         preferences: Object
         gamification: Object
         paymentInfo: Object
+        createdAt: Date
+        updatedAt: Date
     }
     class LearnerProfile {
         _id: ObjectId
         enrollmentDate: Date
-        subscriptionStatus: String
+        subscriptionStatus: SubscriptionStatus
+        currentLevel: ObjectId
+        currentField: ObjectId
         stats: Object
-        gamification: Object
+        gamification: {xp, level, streak, badges}
+        learningGoals: Array
+        completedExams: Array
     }
     class PedagogicalProfile {
         _id: ObjectId
         teachingExperience: Number
         certifications: Array
+        teachingSubjects: ObjectId[]
+        accessScope: String
+        teachingSyllabuses: ObjectId[]
         stats: Object
     }
+    class NotificationPreferences {
+        _id: ObjectId
+        channels: {email, push, sms}
+        types: {badge, exam, payment, ...}
+        quietHours: {start, end}
+    }
+    class NotificationDevice {
+        _id: ObjectId
+        token: String
+        platform: String
+        isActive: Boolean
+        lastUsedAt: Date
+    }
+
     User "1" --> "0..1" LearnerProfile : learnerProfile
     User "1" --> "0..1" PedagogicalProfile : pedagogicalProfile
+    User "1" --> "0..1" NotificationPreferences : preferences
+    User "1" --> "*" NotificationDevice : devices
 }
 
-' ============================================
-' ETABLISSEMENTS
-' ============================================
-package "Etablissements" #E8F5E9 {
+' ============================================================
+' PACKAGE : GÉOGRAPHIE
+' ============================================================
+package "Géographie" #E8F5E9 {
+    class Country {
+        _id: ObjectId
+        name: String
+        isoCode: String
+        currency: String
+        dialCode: String
+    }
+    class Region {
+        _id: ObjectId
+        name: String
+    }
+    class Department {
+        _id: ObjectId
+        name: String
+    }
+    class City {
+        _id: ObjectId
+        name: String
+        lat: Number
+        lng: Number
+        costOfLivingIndex: Number
+    }
+
+    Region "*" --> "1" Country : country
+    Department "*" --> "1" Region : region
+    City "*" --> "1" Department : department
+}
+
+' ============================================================
+' PACKAGE : ÉTABLISSEMENTS
+' ============================================================
+package "Établissements" #FFF3E0 {
     class School {
         _id: ObjectId
         name: String
         type: SchoolType
         cycles: Cycle[]
         status: SchoolStatus
+        subSystem: SubSystem
         contactInfo: Object
         isActive: Boolean
+        createdAt: Date
     }
-    class Country {
+    class UnverifiedSchool {
+        _id: ObjectId
+        declaredName: String
+        declaredCity: String
+        status: String
+        matchedSchool: ObjectId
+        declaredBy: ObjectId[]
+    }
+    class AcademicTutelle {
+        _id: ObjectId
+        tutelleName: String
+        tutelleType: TutelleType
+        tutelleCode: String
+    }
+    class RegulatoryApproval {
+        _id: ObjectId
+        approvalNumber: String
+        approvalStatus: ApprovalStatus
+        approvalDate: Date
+        expiryDate: Date
+    }
+    class Partner {
         _id: ObjectId
         name: String
-        isoCode: String
-        currency: String
+        partnerType: String
+        sector: String
+        logoUrl: String
     }
-    class City {
+    class InstitutionPartner {
         _id: ObjectId
-        name: String
-        region: String
+        relationshipType: String
+        startDate: Date
+        endDate: Date
+        description: String
     }
+
     School "*" --> "1" Country : country
     School "*" --> "1" City : city
     School "*" --> "*" User : teachers
     School "*" --> "*" User : admins
     School "1" --> "1" User : owner
-    User "*" --> "*" School : schools
+    AcademicTutelle "*" --> "1" School : school
+    RegulatoryApproval "*" --> "1" School : school
+    InstitutionPartner "*" --> "1" School : school
+    InstitutionPartner "*" --> "1" Partner : partner
 }
 
-' ============================================
-' STRUCTURE EDUCATIVE
-' ============================================
-package "Structure Educative" #FFF3E0 {
+' ============================================================
+' PACKAGE : STRUCTURE ÉDUCATIVE
+' ============================================================
+package "Structure Éducative" #FCE4EC {
     class EducationLevel {
         _id: ObjectId
         name: String
         code: String
         cycle: Cycle
         subSystem: SubSystem
+        schoolType: SchoolType
         order: Number
+        isFinal: Boolean
     }
     class Field {
         _id: ObjectId
         name: String
         code: String
         category: String
+        cycle: Cycle
+        subSystem: SubSystem
+        applicableLevels: ObjectId[]
     }
     class Subject {
         _id: ObjectId
@@ -151,53 +394,121 @@ package "Structure Educative" #FFF3E0 {
         code: String
         subjectType: String
         coefficient: Number
+        subSystem: SubSystem
+        levels: ObjectId[]
+        fields: ObjectId[]
     }
     class LearningUnit {
         _id: ObjectId
-        name: String
+        title: String
         unitType: String
         order: Number
+        objectives: String[]
+        prerequisites: String[]
     }
     class Concept {
         _id: ObjectId
-        name: String
-        keywords: Array
+        title: String
+        order: Number
+        keywords: String[]
+        parent: ObjectId
     }
     class Competency {
         _id: ObjectId
         name: String
         code: String
         type: String
+        assessmentCriteria: String[]
+        relatedSubjects: ObjectId[]
     }
-    Field "*" --> "*" EducationLevel : levels
+    class Skill {
+        _id: ObjectId
+        name: String
+        skillType: String
+    }
+    class CareerOutcome {
+        _id: ObjectId
+        name: String
+        sector: String
+        demand: DemandStatus
+        averageSalary: Number
+    }
+
+    Field "*" --> "*" EducationLevel : applicableLevels
     Field "*" --> "0..1" Field : parentField
     Subject "*" --> "*" EducationLevel : levels
     Subject "*" --> "*" Field : fields
     LearningUnit "*" --> "1" Subject : subject
     LearningUnit "*" --> "0..1" LearningUnit : parentUnit
-    Concept "*" --> "1" LearningUnit : unit
-    Competency "*" --> "1" Subject : subject
-    LearnerProfile "*" --> "0..1" EducationLevel : currentLevel
-    LearnerProfile "*" --> "0..1" Field : currentField
+    Concept "*" --> "1" LearningUnit : learningUnit
+    Concept "*" --> "0..1" Concept : parent
+    Competency "*" --> "*" Subject : relatedSubjects
 }
 
-' ============================================
-' CLASSES
-' ============================================
-package "Classes" #FCE4EC {
+' ============================================================
+' PACKAGE : SPÉCIALITÉS (Orientation)
+' ============================================================
+package "Spécialités & Orientation" #E8EAF6 {
+    class Specialty {
+        _id: ObjectId
+        specialtyName: String
+        level: SpecialtyLevel
+        mode: String
+        duration: Number
+        description: String
+    }
+    class SpecialtyOutcome {
+        _id: ObjectId
+    }
+    class SpecialtySkill {
+        _id: ObjectId
+    }
+    class SpecialtyScore {
+        _id: ObjectId
+        globalScore: Number
+        employabilityScore: Number
+        accessibilityScore: Number
+    }
+    class CurriculumSemester {
+        _id: ObjectId
+        semesterNumber: Number
+    }
+    class CurriculumUE {
+        _id: ObjectId
+        ueCode: String
+        ueType: UEType
+        credits: Number
+        hoursTotal: Number
+        hoursCM: Number
+        hoursTD: Number
+        hoursTP: Number
+    }
+    class XkorientaRegistration {
+        _id: ObjectId
+        student: Object
+        parent: Object
+        createdAt: Date
+    }
+
+    SpecialtyOutcome "*" --> "1" Specialty : specialty
+    SpecialtyOutcome "*" --> "1" CareerOutcome : outcome
+    SpecialtySkill "*" --> "1" Specialty : specialty
+    SpecialtySkill "*" --> "1" Skill : skill
+    SpecialtyScore "*" --> "1" Specialty : specialty
+    CurriculumSemester "*" --> "1" Specialty : specialty
+    CurriculumUE "*" --> "1" CurriculumSemester : semester
+}
+
+' ============================================================
+' PACKAGE : CLASSES
+' ============================================================
+package "Classes" #F9FBE7 {
     class Class {
         _id: ObjectId
         name: String
         academicYear: String
         isIndependent: Boolean
-        validationStatus: ClassValidationStatus
-        isActive: Boolean
-    }
-    class ClassTeacher {
-        teacher: ObjectId
-        subject: ObjectId
-        role: String
-        permissions: Array
+        validationStatus: String
         isActive: Boolean
     }
     class Invitation {
@@ -207,22 +518,23 @@ package "Classes" #FCE4EC {
         email: String
         expiresAt: Date
         maxUses: Number
+        currentUses: Number
+        status: String
     }
+
     Class "1" --> "0..1" School : school
-    Class "1" --> "0..1" School : pendingSchoolId
     Class "1" --> "1" User : mainTeacher
     Class "1" --> "1" EducationLevel : level
     Class "1" --> "0..1" Field : field
     Class "*" --> "*" User : students
-    Class "1" *-- "*" ClassTeacher : teachers
-    ClassTeacher "*" --> "1" User : teacher
-    ClassTeacher "*" --> "1" Subject : subject
-    Invitation "*" --> "1" Class : class
+    Invitation "*" --> "1" Class : classId
+    Invitation "*" --> "0..1" School : schoolId
+    Invitation "1" --> "1" User : createdBy
 }
 
-' ============================================
-' SYLLABUS
-' ============================================
+' ============================================================
+' PACKAGE : SYLLABUS
+' ============================================================
 package "Syllabus" #F3E5F5 {
     class Syllabus {
         _id: ObjectId
@@ -230,119 +542,339 @@ package "Syllabus" #F3E5F5 {
         status: String
         version: Number
         isPublished: Boolean
+        structure: Object
+        visibility: String
     }
-    class Chapter {
-        _id: ObjectId
-        title: String
-        order: Number
-        duration: Number
-    }
+
     Syllabus "1" --> "1" User : teacher
     Syllabus "1" --> "1" Subject : subject
-    Syllabus "1" --> "1" EducationLevel : level
+    Syllabus "1" --> "0..1" EducationLevel : level
     Syllabus "*" --> "*" Class : classes
-    Syllabus "1" *-- "*" Chapter : chapters
-    Chapter "*" --> "*" LearningUnit : units
+    Syllabus "1" --> "0..1" School : school
+    Concept "*" --> "1" Syllabus : syllabus
 }
 
-' ============================================
-' EXAMENS
-' ============================================
-package "Examens" #FFFDE7 {
+' ============================================================
+' PACKAGE : EXAMENS & ÉVALUATIONS
+' ============================================================
+package "Examens & Évaluations" #FFFDE7 {
     class Exam {
         _id: ObjectId
         title: String
-        examType: String
+        examType: ExamType
         status: ExamStatus
         duration: Number
         totalPoints: Number
         startTime: Date
         endTime: Date
+        isPublic: Boolean
+        config: Object
+        linkedConcepts: ObjectId[]
+        targetLevels: ObjectId[]
+        targetFields: ObjectId[]
+        targetClasses: ObjectId[]
     }
     class Question {
         _id: ObjectId
         text: String
-        type: String
+        type: EvaluationType
         points: Number
-        options: Array
-        correctAnswer: String
+        difficulty: DifficultyLevel
+        explanation: String
+        tags: String[]
+        openQuestionConfig: Object
+    }
+    class Option {
+        _id: ObjectId
+        text: String
+        isCorrect: Boolean
+        explanation: String
     }
     class Attempt {
         _id: ObjectId
-        status: String
+        status: AttemptStatus
         startedAt: Date
         submittedAt: Date
         score: Number
         percentage: Number
-        answers: Array
+        timeSpent: Number
+        resumeToken: String
+        guestSessionId: String
     }
+    class Response {
+        _id: ObjectId
+        selectedOptionId: ObjectId
+        textResponse: String
+        isCorrect: Boolean
+        pointsEarned: Number
+        timeSpent: Number
+    }
+    class QuestionBank {
+        _id: ObjectId
+        text: String
+        type: EvaluationType
+        difficulty: DifficultyLevel
+        isPublic: Boolean
+        usageCount: Number
+    }
+    class LateCode {
+        _id: ObjectId
+        code: String
+        status: LateCodeStatus
+        usageHistory: Array
+        expiresAt: Date
+    }
+
     Exam "1" --> "1" User : createdById
     Exam "1" --> "1" Subject : subject
-    Exam "*" --> "*" EducationLevel : targetLevels
-    Exam "*" --> "*" Field : targetFields
-    Exam "*" --> "*" Class : targetClasses
     Exam "0..1" --> "0..1" Syllabus : syllabus
+    Exam "*" --> "*" LearningUnit : learningUnits
+    Exam "*" --> "*" Concept : linkedConcepts
     Exam "1" *-- "*" Question : questions
+    Question "1" *-- "*" Option : options
     Question "*" --> "*" Concept : concepts
     Question "*" --> "*" Competency : competencies
     Attempt "*" --> "1" User : userId
     Attempt "*" --> "1" Exam : examId
+    Attempt "1" *-- "*" Response : responses
+    Response "*" --> "1" Question : questionId
+    Response "*" --> "0..1" Option : selectedOptionId
+    QuestionBank "1" --> "1" User : createdBy
+    QuestionBank "*" --> "1" Subject : subject
+    QuestionBank "*" --> "0..1" Syllabus : syllabus
+    QuestionBank "*" --> "*" Concept : concepts
+    LateCode "*" --> "1" Exam : examId
+    LateCode "*" --> "1" User : generatedBy
 }
 
-' ============================================
-' CONTENUS (Bibliothèque & Médiathèque)
-' ============================================
-package "Contenus" #E0F7FA {
-    class Book {
+' ============================================================
+' PACKAGE : AUTO-ÉVALUATION
+' ============================================================
+package "Auto-évaluation" #E0F2F1 {
+    class ConceptEvaluation {
         _id: ObjectId
-        title: String
-        author: String
-        format: String
-        status: String
-        fileUrl: String
-        price: Number
-        isFree: Boolean
+        level: MasteryLevel
+        reflection: String
+        evaluatedAt: Date
     }
-    class Media {
+    class SelfAssessmentResult {
+        _id: ObjectId
+        conceptAssessments: Array
+        overallScore: Number
+        completedAt: Date
+    }
+
+    ConceptEvaluation "*" --> "1" User : student
+    ConceptEvaluation "*" --> "1" Concept : concept
+    ConceptEvaluation "*" --> "1" Syllabus : syllabus
+    SelfAssessmentResult "*" --> "1" Exam : exam
+    SelfAssessmentResult "*" --> "1" User : student
+    SelfAssessmentResult "*" --> "0..1" Syllabus : syllabus
+}
+
+' ============================================================
+' PACKAGE : GAMIFICATION
+' ============================================================
+package "Gamification" #FFF8E1 {
+    class Badge {
+        _id: ObjectId
+        name: String
+        description: String
+        category: BadgeCategory
+        rarity: String
+        iconUrl: String
+        criteria: Object
+        xpReward: Number
+    }
+    class Challenge {
         _id: ObjectId
         title: String
+        type: ChallengeType
+        status: String
+        startDate: Date
+        endDate: Date
+        goals: Array
+        rewards: Object
+    }
+    class ChallengeProgress {
+        _id: ObjectId
+        progress: Array
+        overallProgress: Number
+        completed: Boolean
+        completedAt: Date
+    }
+
+    Challenge "*" --> "0..1" Class : targetClass
+    Challenge "*" --> "0..1" School : targetSchool
+    Challenge "*" --> "0..1" Subject : targetSubject
+    ChallengeProgress "*" --> "1" User : userId
+    ChallengeProgress "*" --> "1" Challenge : challengeId
+    LearnerProfile "*" --> "*" Badge : badges
+}
+
+' ============================================================
+' PACKAGE : NOTIFICATIONS
+' ============================================================
+package "Notifications" #FAFAFA {
+    class Notification {
+        _id: ObjectId
+        type: String
+        title: String
+        message: String
+        isRead: Boolean
+        data: Object
+        createdAt: Date
+    }
+
+    Notification "*" --> "1" User : userId
+}
+
+' ============================================================
+' PACKAGE : COMMUNICATION
+' ============================================================
+package "Communication" #F5F5F5 {
+    class Conversation {
+        _id: ObjectId
+        type: String
+        status: ConversationStatus
+        title: String
+        lastMessageAt: Date
+    }
+    class Message {
+        _id: ObjectId
+        content: String
+        type: String
+        isRead: Boolean
+        sentAt: Date
+    }
+    class Forum {
+        _id: ObjectId
+        type: String
+        title: String
+        isActive: Boolean
+        postCount: Number
+    }
+    class ForumPost {
+        _id: ObjectId
+        title: String
+        content: String
+        isPinned: Boolean
+        viewCount: Number
+        replies: Array
+    }
+    class AssistanceRequest {
+        _id: ObjectId
+        type: String
+        title: String
+        description: String
+        status: AssistanceRequestStatus
+        priority: String
+        resolvedAt: Date
+    }
+    class Request {
+        _id: ObjectId
         type: String
         status: String
-        fileUrl: String
+        priority: String
+        message: String
+    }
+
+    Conversation "*" --> "*" User : participants
+    Conversation "1" --> "1" User : createdBy
+    Message "*" --> "1" Conversation : conversationId
+    Message "*" --> "1" User : senderId
+    Forum "*" --> "0..1" Class : relatedClass
+    Forum "*" --> "0..1" Subject : relatedSubject
+    Forum "1" --> "1" User : createdBy
+    ForumPost "*" --> "1" Forum : forumId
+    ForumPost "*" --> "1" User : authorId
+    AssistanceRequest "*" --> "1" User : student
+    AssistanceRequest "*" --> "0..1" User : assignedTo
+    AssistanceRequest "*" --> "0..1" Subject : subject
+    Request "*" --> "1" User : studentId
+    Request "*" --> "0..1" User : teacherId
+    Request "*" --> "0..1" Exam : relatedExam
+}
+
+' ============================================================
+' PACKAGE : BIBLIOTHÈQUE & MÉDIATHÈQUE
+' ============================================================
+package "Bibliothèque & Médiathèque" #E0F7FA {
+    class Media {
+        _id: ObjectId
+        mediaType: MediaType
+        title: String
+        description: String
+        fileKey: String
         price: Number
+        isFree: Boolean
+        status: String
+        duration: Number
+        targetLevels: ObjectId[]
+    }
+    class Book {
+        _id: ObjectId
+        bookFormat: String
+        pageCount: Number
+        isbn: String
+    }
+    class MediaInteraction {
+        _id: ObjectId
+        eventType: String
+        completionRate: Number
+        watchedSeconds: Number
+        interactedAt: Date
     }
     class BookPurchase {
         _id: ObjectId
-        amount: Number
+        finalAmount: Number
         status: String
+        downloadCount: Number
         purchasedAt: Date
     }
     class MediaPurchase {
         _id: ObjectId
-        amount: Number
+        finalAmount: Number
         status: String
         purchasedAt: Date
     }
-    Book "1" --> "1" User : uploadedBy
-    Book "1" --> "0..1" School : school
-    Book "*" --> "*" Subject : subjects
-    Media "1" --> "1" User : uploadedBy
-    BookPurchase "*" --> "1" User : buyer
-    BookPurchase "*" --> "1" Book : book
-    MediaPurchase "*" --> "1" User : buyer
-    MediaPurchase "*" --> "1" Media : media
+    class GuestPurchase {
+        _id: ObjectId
+        email: String
+        downloadToken: String
+        expiresAt: Date
+    }
+    class BookConfig {
+        _id: ObjectId
+        commissionRate: Number
+        storageProvider: String
+        discountRules: Array
+    }
+
+    Book --|> Media : extends
+    Media "*" --> "1" User : submittedBy
+    Media "*" --> "0..1" School : schoolId
+    MediaInteraction "*" --> "1" User : userId
+    MediaInteraction "*" --> "1" Media : mediaId
+    BookPurchase "*" --> "1" User : userId
+    BookPurchase "*" --> "1" Book : bookId
+    MediaPurchase "*" --> "1" User : userId
+    MediaPurchase "*" --> "1" Media : mediaId
+    GuestPurchase "*" --> "1" Book : bookId
 }
 
-' ============================================
-' PAIEMENTS & ABONNEMENTS
-' ============================================
-package "Paiements" #FFEBEE {
+' ============================================================
+' PACKAGE : PAIEMENTS & FINANCES
+' ============================================================
+package "Paiements & Finances" #FFEBEE {
     class Plan {
         _id: ObjectId
         code: String
         name: String
         prices: Array
+        features: String[]
         limits: Object
+        isActive: Boolean
     }
     class Subscription {
         _id: ObjectId
@@ -350,83 +882,489 @@ package "Paiements" #FFEBEE {
         currentPeriodStart: Date
         currentPeriodEnd: Date
         amount: Number
+        autoRenew: Boolean
+        cancelledAt: Date
     }
     class Transaction {
         _id: ObjectId
         type: String
         status: TransactionStatus
         amount: Number
+        currency: String
         paymentProvider: String
+        providerRef: String
+        productId: ObjectId
+        productType: String
     }
     class Wallet {
         _id: ObjectId
         balance: Number
         totalEarned: Number
         totalWithdrawn: Number
+        currency: String
+        isActive: Boolean
     }
     class Payout {
         _id: ObjectId
         amount: Number
-        status: String
-        mobileMoneyPhone: String
+        status: PayoutStatus
+        recipientPhone: String
+        paymentProvider: String
+        processedAt: Date
     }
+    class Invoice {
+        _id: ObjectId
+        type: String
+        status: String
+        amount: Number
+        currency: String
+        issuedAt: Date
+        dueDate: Date
+        pdfUrl: String
+    }
+    class ExchangeRate {
+        _id: ObjectId
+        baseCurrency: String
+        targetCurrency: String
+        rate: Number
+        source: String
+        fetchedAt: Date
+    }
+
     Subscription "*" --> "1" User : userId
     Subscription "*" --> "1" Plan : planId
     Transaction "*" --> "1" User : userId
     Wallet "1" --> "1" User : userId
     Payout "*" --> "1" User : userId
     Payout "*" --> "1" Wallet : walletId
+    Invoice "*" --> "1" User : recipientId
+    Invoice "*" --> "0..1" Transaction : transactionId
 }
 
-' ============================================
-' COMMUNICATION
-' ============================================
-package "Communication" #F5F5F5 {
-    class Notification {
+' ============================================================
+' PACKAGE : ANALYTICS
+' ============================================================
+package "Analytics & Métriques" #E8EAF6 {
+    class PerformanceMetric {
         _id: ObjectId
-        type: String
-        title: String
-        message: String
-        isRead: Boolean
+        successRate: Number
+        rankingPosition: Number
+        examType: String
+        year: Number
+        semester: Number
     }
-    class ForumConversation {
+    class EmploymentMetric {
         _id: ObjectId
-        title: String
-        type: String
+        employmentRate6m: Number
+        employmentRate12m: Number
+        topEmployersJson: Object
+        year: Number
+    }
+    class InfrastructureMetric {
+        _id: ObjectId
+        labsAvailable: Boolean
+        labQualityScore: Number
+        internetQuality: Number
+        librarySize: Number
+    }
+    class SchoolScore {
+        _id: ObjectId
+        globalScore: Number
+        academicScore: Number
+        employmentScore: Number
+        infrastructureScore: Number
+        updatedAt: Date
+    }
+    class SchoolProgram {
+        _id: ObjectId
+        deliveryMode: DeliveryMode
+        durationYears: Number
+        tuitionFee: Number
         isActive: Boolean
     }
-    class ForumMessage {
+    class SchoolProgramScore {
         _id: ObjectId
-        content: String
-        createdAt: Date
+        matchScoreAvg: Number
+        valueForMoneyScore: Number
+        popularityScore: Number
     }
-    Notification "*" --> "1" User : userId
-    ForumConversation "*" --> "0..1" Class : classId
-    ForumConversation "1" --> "1" User : createdBy
-    ForumConversation "*" --> "*" User : participants
-    ForumMessage "*" --> "1" ForumConversation : conversation
-    ForumMessage "1" --> "1" User : author
+
+    PerformanceMetric "*" --> "1" School : school
+    EmploymentMetric "*" --> "1" School : school
+    InfrastructureMetric "*" --> "1" School : school
+    SchoolScore "1" --> "1" School : school
+    SchoolProgram "*" --> "1" School : school
+    SchoolProgram "*" --> "1" Specialty : specialty
+    SchoolProgramScore "1" --> "1" SchoolProgram : schoolProgram
 }
 
-' ============================================
-' PARTENARIATS
-' ============================================
-package "Partenariats" #ECEFF1 {
-    class Partner {
+' ============================================================
+' PACKAGE : ADMINISTRATION
+' ============================================================
+package "Administration" #ECEFF1 {
+    class ImportLog {
         _id: ObjectId
-        name: String
-        type: String
-        logoUrl: String
+        fileName: String
+        fileType: String
+        status: ImportStatus
+        totalRows: Number
+        successRows: Number
+        errorDetails: Array
+        importedAt: Date
     }
-    class InstitutionPartner {
+    class Idempotency {
         _id: ObjectId
-        partnershipType: String
-        startDate: Date
-        endDate: Date
+        key: String
+        status: String
+        responsePayload: Object
+        expiresAt: Date
     }
-    InstitutionPartner "*" --> "1" School : school
-    InstitutionPartner "*" --> "1" Partner : partner
-    School "*" --> "*" Partner : partnerships
+
+    ImportLog "*" --> "0..1" Class : classId
+    ImportLog "*" --> "1" User : importedBy
 }
+
+' ============================================================
+' PACKAGE : DESIGN PATTERNS — lib/patterns/
+' ============================================================
+package "Design Patterns (lib/)" #FCEBD0 {
+
+    ' --- STRATEGY : Évaluation ---
+    package "Strategy: Évaluation" #FFE0B2 {
+        interface EvaluationStrategy <<interface>> {
+            + evaluate(attempt, question, response): EvaluationResult
+        }
+        class QCMEvaluationStrategy {
+            + evaluate(): EvaluationResult
+        }
+        class TrueFalseEvaluationStrategy {
+            + evaluate(): EvaluationResult
+        }
+        class AdaptiveEvaluationStrategy {
+            + evaluate(): EvaluationResult
+        }
+        class ExamSimulationStrategy {
+            + evaluate(): EvaluationResult
+            - applyPenalty(wrong): Number
+        }
+        class OpenQuestionEvaluationStrategy {
+            + evaluate(): EvaluationResult
+            - scoreByKeywords(): Number
+            - scoreBySemantic(): Number
+        }
+        class ConceptSelfEvaluationStrategy {
+            + evaluate(): EvaluationResult
+        }
+        class EvaluationStrategyFactory {
+            + {static} getStrategy(type: EvaluationType): EvaluationStrategy
+        }
+
+        EvaluationStrategy <|.. QCMEvaluationStrategy
+        EvaluationStrategy <|.. TrueFalseEvaluationStrategy
+        EvaluationStrategy <|.. AdaptiveEvaluationStrategy
+        EvaluationStrategy <|.. ExamSimulationStrategy
+        EvaluationStrategy <|.. OpenQuestionEvaluationStrategy
+        EvaluationStrategy <|.. ConceptSelfEvaluationStrategy
+        EvaluationStrategyFactory ..> EvaluationStrategy : creates
+    }
+
+    ' --- DECORATOR : Examen ---
+    package "Decorator: Examen" #DCEDC8 {
+        abstract class BaseExamDecorator {
+            # wrapped: ExamResult
+            + decorate(result): ExamResult
+        }
+        class TimeBonusDecorator {
+            + decorate(): ExamResult
+        }
+        class StreakBonusDecorator {
+            + decorate(): ExamResult
+        }
+        class TimePenaltyDecorator {
+            + decorate(): ExamResult
+        }
+        class BadgeDecorator {
+            + decorate(): ExamResult
+        }
+        class DetailedStatsDecorator {
+            + decorate(): ExamResult
+        }
+        class ExamDecoratorFactory {
+            + {static} applyDecorators(result, config): ExamResult
+        }
+
+        BaseExamDecorator <|-- TimeBonusDecorator
+        BaseExamDecorator <|-- StreakBonusDecorator
+        BaseExamDecorator <|-- TimePenaltyDecorator
+        BaseExamDecorator <|-- BadgeDecorator
+        BaseExamDecorator <|-- DetailedStatsDecorator
+        ExamDecoratorFactory ..> BaseExamDecorator : composes
+    }
+
+    ' --- BUILDER : Examen ---
+    package "Builder: Examen" #B3E5FC {
+        class ExamBuilder {
+            - examData: Partial<IExam>
+            + setContext(subject, level): this
+            + setTarget(classes, fields): this
+            + setTiming(start, end, duration): this
+            + setMetadata(tags, difficulty): this
+            + customizeConfig(config): this
+            + validate(): ValidationResult
+            + build(): IExam
+            + saveDraft(): Promise<IExam>
+        }
+        class ExamBuilderFactory {
+            + {static} selfAssessment(): ExamBuilder
+            + {static} finalExam(): ExamBuilder
+            + {static} practiceTest(): ExamBuilder
+            + {static} fromTemplate(templateId): ExamBuilder
+            + {static} fromExamType(type: ExamType): ExamBuilder
+        }
+
+        ExamBuilderFactory ..> ExamBuilder : creates
+    }
+
+    ' --- CHAIN OF RESPONSIBILITY : Accès ---
+    package "Chain of Responsibility: Accès" #F8BBD0 {
+        abstract class AccessHandler {
+            # next: AccessHandler
+            + setNext(handler): AccessHandler
+            + handle(request): boolean
+        }
+        class GlobalAccessHandler {
+            + handle(request): boolean
+        }
+        class LocalAccessHandler {
+            + handle(request): boolean
+        }
+        class SubjectAccessHandler {
+            + handle(request): boolean
+        }
+        class LevelAccessHandler {
+            + handle(request): boolean
+        }
+        class FieldAccessHandler {
+            + handle(request): boolean
+        }
+        class AccessHandlerChain {
+            + {static} checkAccess(scope, request): boolean
+        }
+
+        AccessHandler <|-- GlobalAccessHandler
+        AccessHandler <|-- LocalAccessHandler
+        AccessHandler <|-- SubjectAccessHandler
+        AccessHandler <|-- LevelAccessHandler
+        AccessHandler <|-- FieldAccessHandler
+        AccessHandlerChain ..> AccessHandler : builds chain
+    }
+
+    ' --- STRATEGY : Auth ---
+    package "Strategy: Authentification" #E1BEE7 {
+        interface IAuthStrategy <<interface>> {
+            + authenticate(credentials): Promise<User>
+            + validate(token): boolean
+        }
+        abstract class BaseAuthStrategy {
+            # config: Object
+            + authenticate(credentials): Promise<User>
+        }
+        class CredentialsAuthStrategy {
+            + authenticate(): Promise<User>
+            - verifyPassword(plain, hash): boolean
+        }
+        class GoogleAuthStrategy {
+            + authenticate(): Promise<User>
+        }
+        class GitHubAuthStrategy {
+            + authenticate(): Promise<User>
+        }
+        class AuthStrategyManager <<Singleton>> {
+            - {static} instance: AuthStrategyManager
+            - strategies: Map<String, IAuthStrategy>
+            + {static} getInstance(): AuthStrategyManager
+            + getStrategy(provider): IAuthStrategy
+            + register(name, strategy): void
+        }
+
+        IAuthStrategy <|.. BaseAuthStrategy
+        BaseAuthStrategy <|-- CredentialsAuthStrategy
+        BaseAuthStrategy <|-- GoogleAuthStrategy
+        BaseAuthStrategy <|-- GitHubAuthStrategy
+        AuthStrategyManager --> IAuthStrategy : manages
+    }
+
+    ' --- STRATEGY : Stockage ---
+    package "Strategy: Stockage" #B2EBF2 {
+        interface IStorageStrategy <<interface>> {
+            + upload(file, key): Promise<String>
+            + delete(key): Promise<void>
+            + getUrl(key): String
+        }
+        class LocalStorageStrategy {
+            + upload(): Promise<String>
+            + delete(): Promise<void>
+            + getUrl(): String
+        }
+        class S3StorageStrategy {
+            + upload(): Promise<String>
+            + delete(): Promise<void>
+            + getUrl(): String
+        }
+        class StorageStrategyFactory {
+            + {static} getStrategy(provider): IStorageStrategy
+        }
+
+        IStorageStrategy <|.. LocalStorageStrategy
+        IStorageStrategy <|.. S3StorageStrategy
+        StorageStrategyFactory ..> IStorageStrategy : selects
+    }
+
+    ' --- STRATEGY : Type d'école ---
+    package "Strategy: Type École" #F0F4C3 {
+        interface ISchoolTypeStrategy <<interface>> {
+            + getApplicableExamTypes(): ExamType[]
+            + validateExam(exam): boolean
+        }
+        class PrimaryExamStrategy {
+            + getApplicableExamTypes(): ExamType[]
+        }
+        class SecondaryExamStrategy {
+            + getApplicableExamTypes(): ExamType[]
+        }
+        class HigherEdExamStrategy {
+            + getApplicableExamTypes(): ExamType[]
+        }
+        class SchoolTypeStrategyContext {
+            - strategy: ISchoolTypeStrategy
+            + setStrategy(s): void
+            + execute(): any
+        }
+        class SchoolTypeDetector {
+            + {static} detect(schoolType): ISchoolTypeStrategy
+        }
+
+        ISchoolTypeStrategy <|.. PrimaryExamStrategy
+        ISchoolTypeStrategy <|.. SecondaryExamStrategy
+        ISchoolTypeStrategy <|.. HigherEdExamStrategy
+        SchoolTypeStrategyContext --> ISchoolTypeStrategy : uses
+        SchoolTypeDetector ..> ISchoolTypeStrategy : creates
+    }
+
+    ' --- FACTORY : Profils ---
+    package "Factory: Profils" #FFD180 {
+        class ProfileFactory {
+            + {static} createUser(data, role): Promise<{user, profile}>
+            - {static} createLearnerProfile(userId): LearnerProfile
+            - {static} createPedagogicalProfile(userId): PedagogicalProfile
+        }
+
+        ProfileFactory ..> User : creates
+        ProfileFactory ..> LearnerProfile : creates
+        ProfileFactory ..> PedagogicalProfile : creates
+    }
+}
+
+' ============================================================
+' PACKAGE : COUCHE REPOSITORY (lib/repositories/)
+' ============================================================
+package "Repositories (lib/repositories/)" #E3F2FD {
+    class ExamRepository {
+        + findById(id): Promise<IExam>
+        + findBySubject(subjectId): Promise<IExam[]>
+        + findPublished(filters): Promise<IExam[]>
+        + save(exam): Promise<IExam>
+        + updateStatus(id, status): Promise<void>
+    }
+    class UserRepository {
+        + findById(id): Promise<IUser>
+        + findByEmail(email): Promise<IUser>
+        + updateProfile(id, data): Promise<void>
+    }
+    class AttemptRepository {
+        + findByUserAndExam(userId, examId): Promise<IAttempt>
+        + findActiveAttempt(userId): Promise<IAttempt>
+        + save(attempt): Promise<IAttempt>
+    }
+    class ClassRepository {
+        + findById(id): Promise<IClass>
+        + findByTeacher(teacherId): Promise<IClass[]>
+        + findBySchool(schoolId): Promise<IClass[]>
+    }
+    class SyllabusRepository {
+        + findById(id): Promise<ISyllabus>
+        + findByTeacher(teacherId): Promise<ISyllabus[]>
+    }
+    note right of ExamRepository
+        50+ repositories au total.
+        Pattern : lean() pour lectures,
+        projections explicites,
+        pas de requêtes N+1.
+    end note
+}
+
+' ============================================================
+' PACKAGE : COUCHE SERVICE (lib/services/)
+' ============================================================
+package "Services (lib/services/)" #E8F5E9 {
+    class ExamService {
+        + createExam(data): Promise<IExam>
+        + publishExam(id): Promise<void>
+        + validateExam(id): Promise<void>
+        + getExamWithStats(id): Promise<IExam>
+    }
+    class AttemptService {
+        + startAttempt(userId, examId): Promise<IAttempt>
+        + submitAttempt(attemptId, responses): Promise<IAttempt>
+        + resumeAttempt(token): Promise<IAttempt>
+        + calculateScore(attempt): Promise<Number>
+    }
+    class GamificationService {
+        + awardXP(userId, amount): Promise<void>
+        + checkBadges(userId, event): Promise<Badge[]>
+        + updateStreak(userId): Promise<void>
+        + levelUp(userId): Promise<void>
+    }
+    class AuthService {
+        + login(credentials): Promise<{user, token}>
+        + register(data): Promise<IUser>
+        + refreshToken(token): Promise<String>
+        + resetPassword(token, password): Promise<void>
+    }
+    class PaymentService {
+        + createSubscription(userId, planId): Promise<ISubscription>
+        + processTransaction(data): Promise<ITransaction>
+        + handleWebhook(payload): Promise<void>
+    }
+    class MediaService {
+        + uploadMedia(file, metadata): Promise<IMedia>
+        + purchaseMedia(userId, mediaId): Promise<IMediaPurchase>
+        + getStreamUrl(mediaId): Promise<String>
+    }
+    note right of ExamService
+        80+ services au total.
+        Pattern : logique métier pure,
+        délégation aux repositories,
+        throw d'erreurs typées.
+    end note
+
+    ExamService --> ExamRepository : uses
+    AttemptService --> AttemptRepository : uses
+    AttemptService ..> EvaluationStrategyFactory : uses
+    AttemptService ..> ExamDecoratorFactory : uses
+    GamificationService --> UserRepository : uses
+    AuthService --> UserRepository : uses
+    AuthService ..> AuthStrategyManager : uses
+    MediaService ..> StorageStrategyFactory : uses
+}
+
+' ============================================================
+' LIAISONS INTER-PACKAGES (clés)
+' ============================================================
+User "*" --> "*" School : schools
+LearnerProfile "*" --> "0..1" EducationLevel : currentLevel
+LearnerProfile "*" --> "0..1" Field : currentField
+PedagogicalProfile "*" --> "*" Subject : teachingSubjects
+PedagogicalProfile "*" --> "*" Syllabus : teachingSyllabuses
 
 @enduml

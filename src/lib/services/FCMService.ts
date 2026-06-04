@@ -139,7 +139,7 @@ export class FCMService {
                     ...flattenDataForFcm(notification.data ?? {}),
                 },
                 android: {
-                    notification: { channel_id: 'xkorienta_default_channel' },
+                    notification: { channelId: 'xkorienta_default_channel' },
                 },
                 apns: {
                     payload: { aps: { sound: 'default' } },
