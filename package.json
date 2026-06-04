@@ -18,7 +18,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",
     "@sentry/nextjs": "^10.55.0",
-    "@xkorienta/payment-sdk": "^1.0.0",
+    "@xkorienta/payment-sdk": "^1.0.1",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -27,6 +27,7 @@
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.19.0",
     "file-type": "^21.3.0",
+    "firebase-admin": "^13.10.0",
     "helmet": "^8.1.0",
     "mammoth": "^1.12.0",
     "mongoose": "^9.1.4",

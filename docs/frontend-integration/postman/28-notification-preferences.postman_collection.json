@@ -1,0 +1,219 @@
+{
+  "info": {
+    "_postman_id": "28-notification-preferences-xkorienta-mobile",
+    "name": "Xkorienta API — 28. Préférences de Notifications",
+    "description": "Module 28 — Préférences de notifications par utilisateur\n\nCe module permet de contrôler quelles push FCM sont envoyées.\nLa notification in-app (cloche) est toujours créée. Seule la bannière push est filtrée.\n\n**Endpoints :**\n- GET /api/notification-preferences — lire les préférences (lazy init)\n- PATCH /api/notification-preferences — modifier partiellement (merge profond)\n\n**Auth** : Cookie next-auth.session-token\n**Base URL** : {{baseUrl}}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "GET — Lire les préférences",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Contient channels, types, quietHours', function () {",
+              "    var res = pm.response.json();",
+              "    pm.expect(res.success).to.be.true;",
+              "    pm.expect(res.data).to.have.property('channels');",
+              "    pm.expect(res.data).to.have.property('types');",
+              "    pm.expect(res.data).to.have.property('quietHours');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/notification-preferences",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notification-preferences"]
+        },
+        "description": "GET /api/notification-preferences\n\nRetourne les préférences de l'utilisateur connecté.\nLazy init : crée une ligne avec les valeurs par défaut (tout activé) si aucune n'existe.\n\n**Réponse :** { success, data: { channels, types, quietHours } }"
+      },
+      "response": [
+        {
+          "name": "200 — Préférences par défaut (premier appel)",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"data\": {\n    \"channels\": {\n      \"push\": true,\n      \"email\": false\n    },\n    \"types\": {\n      \"exam_result\": true,\n      \"exam_pending\": true,\n      \"new_message\": true,\n      \"forum_reply\": true,\n      \"assistance_response\": true,\n      \"rewards\": true,\n      \"account\": true\n    },\n    \"quietHours\": {\n      \"enabled\": false,\n      \"start\": \"22:00\",\n      \"end\": \"06:00\",\n      \"timezone\": \"Africa/Douala\"\n    }\n  }\n}",
+          "_postman_previewlanguage": "json"
+        }
+      ]
+    },
+    {
+      "name": "PATCH — Désactiver master switch push",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/notification-preferences",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notification-preferences"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"channels\": { \"push\": false }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "description": "Désactive toutes les push FCM (master switch).\nLes notifications in-app continuent d'être créées en base."
+      },
+      "response": [
+        {
+          "name": "200 — Master switch désactivé",
+          "status": "OK",
+          "code": 200,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Préférences mises à jour\",\n  \"data\": {\n    \"channels\": { \"push\": false, \"email\": false },\n    \"types\": { \"exam_result\": true, \"exam_pending\": true, \"new_message\": true, \"forum_reply\": true, \"assistance_response\": true, \"rewards\": true, \"account\": true },\n    \"quietHours\": { \"enabled\": false, \"start\": \"22:00\", \"end\": \"06:00\", \"timezone\": \"Africa/Douala\" }\n  }\n}",
+          "_postman_previewlanguage": "json"
+        }
+      ]
+    },
+    {
+      "name": "PATCH — Désactiver un type (rewards)",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/notification-preferences",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notification-preferences"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"types\": { \"rewards\": false }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "description": "Désactive uniquement les push de type récompenses (XP, badges, level up).\nLes 6 autres types restent inchangés — merge profond."
+      },
+      "response": []
+    },
+    {
+      "name": "PATCH — Activer les heures de silence",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/notification-preferences",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notification-preferences"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quietHours\": {\n    \"enabled\": true,\n    \"start\": \"22:00\",\n    \"end\": \"06:00\",\n    \"timezone\": \"Africa/Douala\"\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "description": "Active les heures de silence 22h → 06h en timezone Yaoundé.\nDurant cette fenêtre, les push FCM sont silencieuses. Les notifs in-app sont créées."
+      },
+      "response": []
+    },
+    {
+      "name": "PATCH — Modifier plusieurs champs",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/notification-preferences",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notification-preferences"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"types\": {\n    \"forum_reply\": false,\n    \"rewards\": false\n  },\n  \"quietHours\": {\n    \"enabled\": true\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "description": "Plusieurs champs modifiés en un seul appel.\nMerge profond : seuls les champs présents sont modifiés."
+      },
+      "response": []
+    },
+    {
+      "name": "PATCH — Erreur format heure invalide (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "pm.test('success === false', function () {",
+              "    var res = pm.response.json();",
+              "    pm.expect(res.success).to.be.false;",
+              "    pm.expect(res.message).to.include('HH:mm');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/notification-preferences",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notification-preferences"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quietHours\": { \"start\": \"25:00\" }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "description": "Test de validation — format d'heure invalide.\nDoit retourner 400 avec un message explicite."
+      },
+      "response": [
+        {
+          "name": "400 — Format heure invalide",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Format d'heure invalide pour quietHours.start : \\\"25:00\\\" (attendu HH:mm)\"\n}",
+          "_postman_previewlanguage": "json"
+        }
+      ]
+    },
+    {
+      "name": "PATCH — Erreur timezone invalide (400)",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/notification-preferences",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "notification-preferences"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quietHours\": { \"timezone\": \"UTC+1\" }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "description": "Test de validation — timezone non-IANA.\n\"UTC+1\" est invalide, utiliser \"Africa/Douala\" ou \"Europe/Paris\"."
+      },
+      "response": [
+        {
+          "name": "400 — Timezone invalide",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Fuseau horaire IANA invalide : \\\"UTC+1\\\" (ex: \\\"Africa/Douala\\\", \\\"Europe/Paris\\\")\"\n}",
+          "_postman_previewlanguage": "json"
+        }
+      ]
+    }
+  ]
+}
