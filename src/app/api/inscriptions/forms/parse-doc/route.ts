@@ -3,14 +3,14 @@ import { authOptions } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { InscriptionFormParsingService } from '@/lib/services/InscriptionFormParsingService'
-import { UserRole } from '@/models/enums'
+import { isSchoolOrPlatformAdmin } from '@/lib/auth/roles'
 
 /**
  * POST /api/inscriptions/forms/parse-doc
  * Upload un document (PDF/DOCX/image) et parse via Claude
  * pour pre-remplir les champs d'une fiche d'inscription.
  *
- * Auth : SCHOOL_ADMIN ou PLATFORM_ADMIN requis
+ * Auth : SCHOOL_ADMIN ou admin plateforme (DG_M4M, TECH_SUPPORT) requis
  * Body : multipart/form-data avec champ "file"
  * Response : { formFields[], domainGroups[], docsRequired[], price?, title? }
  */
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
         }
 
         const role = (session.user as { role?: string }).role
-        if (role !== UserRole.SCHOOL_ADMIN && role !== UserRole.PLATFORM_ADMIN) {
+        if (!isSchoolOrPlatformAdmin(role)) {
             return NextResponse.json({ success: false, message: 'Non autorise' }, { status: 403 })
         }
 

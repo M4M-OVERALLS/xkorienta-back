@@ -5,7 +5,8 @@ import * as Sentry from '@sentry/nextjs'
 import mongoose from 'mongoose'
 import Invoice from '@/models/Invoice'
 import SchoolApplication from '@/models/SchoolApplication'
-import { UserRole, TransactionType } from '@/models/enums'
+import { TransactionType } from '@/models/enums'
+import { isSchoolOrPlatformAdmin } from '@/lib/auth/roles'
 
 /**
  * GET /api/inscriptions/admin/invoices/export
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
         }
 
         const role = (session.user as { role?: string }).role
-        if (role !== UserRole.SCHOOL_ADMIN && role !== UserRole.PLATFORM_ADMIN) {
+        if (!isSchoolOrPlatformAdmin(role)) {
             return new Response('Non autorise', { status: 403 })
         }
 

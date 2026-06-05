@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { IBookPurchase } from '@/models/BookPurchase'
 import { BookPurchaseStatus, MediaStatus, TransactionType } from '@/models/enums'
 import { bookRepository } from '@/lib/repositories/BookRepository'
@@ -194,7 +195,7 @@ export class BookPurchaseService {
                         }
                     }
                 } catch (err) {
-                    console.error('[Webhook] Error handling guest inscription payment:', err)
+                    Sentry.captureException(err, { extra: { context: 'guest inscription webhook', reference } })
                 }
             }
         }

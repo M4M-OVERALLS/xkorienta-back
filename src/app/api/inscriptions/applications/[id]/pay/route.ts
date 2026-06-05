@@ -45,7 +45,7 @@ export async function POST(req: Request, { params }: RouteParams) {
         return NextResponse.json({ success: true, data: result }, { status: 201 })
     } catch (error: unknown) {
         if (error instanceof BaseApplicationError) {
-            error.log()
+            Sentry.captureException(error)
             return NextResponse.json(error.toJSON(), { status: error.httpStatus })
         }
         Sentry.captureException(error)

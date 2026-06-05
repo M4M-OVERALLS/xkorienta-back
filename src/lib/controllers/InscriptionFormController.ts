@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { InscriptionFormService } from '@/lib/services/InscriptionFormService'
 import { BaseApplicationError } from '@/lib/errors'
-import { InscriptionFormStatus, UserRole } from '@/models/enums'
+import { InscriptionFormStatus } from '@/models/enums'
+import { isSchoolOrPlatformAdmin } from '@/lib/auth/roles'
 
 type SessionUser = { id: string; role?: string; schools?: string[] }
 
@@ -51,7 +52,7 @@ export class InscriptionFormController {
      */
     static async createForm(req: Request, user: SessionUser) {
         try {
-            if (!user.role || (user.role !== UserRole.SCHOOL_ADMIN && user.role !== UserRole.PLATFORM_ADMIN)) {
+            if (!isSchoolOrPlatformAdmin(user.role)) {
                 return NextResponse.json({ success: false, message: 'Non autorise' }, { status: 403 })
             }
 
@@ -73,7 +74,7 @@ export class InscriptionFormController {
      */
     static async updateForm(req: Request, user: SessionUser, formId: string) {
         try {
-            if (!user.role || (user.role !== UserRole.SCHOOL_ADMIN && user.role !== UserRole.PLATFORM_ADMIN)) {
+            if (!isSchoolOrPlatformAdmin(user.role)) {
                 return NextResponse.json({ success: false, message: 'Non autorise' }, { status: 403 })
             }
 
@@ -90,7 +91,7 @@ export class InscriptionFormController {
      */
     static async publishForm(_req: Request, user: SessionUser, formId: string) {
         try {
-            if (!user.role || (user.role !== UserRole.SCHOOL_ADMIN && user.role !== UserRole.PLATFORM_ADMIN)) {
+            if (!isSchoolOrPlatformAdmin(user.role)) {
                 return NextResponse.json({ success: false, message: 'Non autorise' }, { status: 403 })
             }
 
@@ -106,7 +107,7 @@ export class InscriptionFormController {
      */
     static async closeForm(_req: Request, user: SessionUser, formId: string) {
         try {
-            if (!user.role || (user.role !== UserRole.SCHOOL_ADMIN && user.role !== UserRole.PLATFORM_ADMIN)) {
+            if (!isSchoolOrPlatformAdmin(user.role)) {
                 return NextResponse.json({ success: false, message: 'Non autorise' }, { status: 403 })
             }
 
@@ -122,7 +123,7 @@ export class InscriptionFormController {
      */
     static async listSchoolForms(req: Request, user: SessionUser) {
         try {
-            if (!user.role || (user.role !== UserRole.SCHOOL_ADMIN && user.role !== UserRole.PLATFORM_ADMIN)) {
+            if (!isSchoolOrPlatformAdmin(user.role)) {
                 return NextResponse.json({ success: false, message: 'Non autorise' }, { status: 403 })
             }
 

@@ -143,9 +143,9 @@ export const authOptions: NextAuthOptions = {
                             // Institution : champ direct ou nom de la première école liée
                             if (dbUser.institution) {
                                 token.institution = dbUser.institution
-                            } else if (dbUser.schools?.length > 0) {
+                            } else if ((dbUser.schools?.length ?? 0) > 0) {
                                 try {
-                                    const school = await School.findById(dbUser.schools[0]).select('name').lean() as { name?: string } | null
+                                    const school = await School.findById(dbUser.schools![0]).select('name').lean() as { name?: string } | null
                                     if (school?.name) token.institution = school.name
                                 } catch { /* ignore */ }
                             }
@@ -189,9 +189,9 @@ export const authOptions: NextAuthOptions = {
                             // Institution : champ direct ou nom de la première école liée
                             if (dbUser.institution) {
                                 token.institution = dbUser.institution
-                            } else if (dbUser.schools?.length > 0) {
+                            } else if ((dbUser.schools?.length ?? 0) > 0) {
                                 try {
-                                    const school = await School.findById(dbUser.schools[0]).select('name').lean() as { name?: string } | null
+                                    const school = await School.findById(dbUser.schools![0]).select('name').lean() as { name?: string } | null
                                     if (school?.name) token.institution = school.name
                                 } catch { /* ignore */ }
                             }

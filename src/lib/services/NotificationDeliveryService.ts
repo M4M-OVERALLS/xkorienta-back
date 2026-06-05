@@ -1,5 +1,5 @@
+import * as Sentry from '@sentry/nextjs'
 import { FCMService } from '@/lib/services/FCMService'
-import logger from '@/lib/utils/logger'
 import Notification, { INotification } from '@/models/Notification'
 import mongoose from 'mongoose'
 
@@ -23,7 +23,7 @@ export class NotificationDeliveryService {
 
         for (const notif of notifications) {
             FCMService.sendPushForNotification(notif as INotification).catch((err) =>
-                logger.error('[NotificationDeliveryService] FCM push échouée:', err)
+                Sentry.captureException(err, { extra: { context: 'FCM push delivery' } })
             )
         }
 

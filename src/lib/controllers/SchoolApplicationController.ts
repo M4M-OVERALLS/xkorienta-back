@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { SchoolApplicationService } from '@/lib/services/SchoolApplicationService'
 import { BaseApplicationError } from '@/lib/errors'
-import { ApplicationStatus, UserRole } from '@/models/enums'
+import { ApplicationStatus } from '@/models/enums'
+import { isSchoolOrPlatformAdmin } from '@/lib/auth/roles'
 
 type SessionUser = { id: string; role?: string; schools?: string[] }
 
@@ -61,7 +62,7 @@ export class SchoolApplicationController {
      */
     static async adminListApplications(req: Request, user: SessionUser) {
         try {
-            if (!user.role || (user.role !== UserRole.SCHOOL_ADMIN && user.role !== UserRole.PLATFORM_ADMIN)) {
+            if (!isSchoolOrPlatformAdmin(user.role)) {
                 return NextResponse.json({ success: false, message: 'Non autorise' }, { status: 403 })
             }
 
@@ -89,7 +90,7 @@ export class SchoolApplicationController {
      */
     static async adminUpdateApplication(req: Request, user: SessionUser, applicationId: string) {
         try {
-            if (!user.role || (user.role !== UserRole.SCHOOL_ADMIN && user.role !== UserRole.PLATFORM_ADMIN)) {
+            if (!isSchoolOrPlatformAdmin(user.role)) {
                 return NextResponse.json({ success: false, message: 'Non autorise' }, { status: 403 })
             }
 
@@ -115,7 +116,7 @@ export class SchoolApplicationController {
 
     private static handleError(error: unknown) {
         if (error instanceof BaseApplicationError) {
-            error.log()
+            Sentry.captureException(error)
             return NextResponse.json(error.toJSON(), { status: error.httpStatus })
         }
         Sentry.captureException(error)
