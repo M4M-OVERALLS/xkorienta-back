@@ -8,7 +8,8 @@ import { UserRole } from "@/models/enums";
 export async function GET(req: Request) {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id || session.user.role !== UserRole.TEACHER) {
+    const role = session?.user?.role
+    if (!session?.user?.id || (role !== UserRole.TEACHER && role !== UserRole.SCHOOL_ADMIN)) {
         return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 

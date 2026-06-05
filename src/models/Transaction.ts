@@ -88,7 +88,7 @@ const TransactionSchema = new Schema<ITransaction>(
         productModel: {
             type: String,
             required: true,
-            enum: ['Book', 'Media', 'Plan', 'Course'],
+            enum: ['Book', 'Media', 'Plan', 'Course', 'InscriptionForm'],
         },
 
         // Amounts

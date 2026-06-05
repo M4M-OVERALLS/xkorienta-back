@@ -2,8 +2,8 @@ import { publishEvent } from "@/lib/events/EventPublisher";
 import { EventType } from "@/lib/events/types";
 import { getPusherServer, getRequestsChannel } from "@/lib/pusher";
 import { RequestRepository } from "@/lib/repositories/RequestRepository";
+import { NotificationDeliveryService } from "@/lib/services/NotificationDeliveryService";
 import Class from "@/models/Class";
-import Notification from "@/models/Notification";
 import {
   RequestPriority,
   RequestStatus,
@@ -211,10 +211,10 @@ export class RequestService {
       },
     }));
     if (teacherNotifications.length > 0) {
-      await Notification.insertMany(teacherNotifications);
+      await NotificationDeliveryService.createManyAndPush(teacherNotifications);
     }
 
-    await Notification.create({
+    await NotificationDeliveryService.createAndPush({
       userId: new mongoose.Types.ObjectId(studentId),
       type: "success",
       title: "Demande envoyée",

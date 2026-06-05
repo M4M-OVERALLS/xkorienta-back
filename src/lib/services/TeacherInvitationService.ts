@@ -5,7 +5,7 @@ import User from '@/models/User';
 import Class from '@/models/Class';
 import School from '@/models/School';
 import Subject from '@/models/Subject';
-import Notification from '@/models/Notification';
+import { NotificationDeliveryService } from '@/lib/services/NotificationDeliveryService';
 import Invitation from '@/models/Invitation';
 import { UserRole, ClassTeacherRole } from '@/models/enums';
 import { ClassTeacherService } from './ClassTeacherService';
@@ -151,11 +151,12 @@ export class TeacherInvitationService {
 
                 // Create notification
                 try {
-                    await Notification.create({
+                    await NotificationDeliveryService.createAndPush({
                         userId: existingUser._id,
                         type: 'class',
                         title: 'Ajout à une classe',
                         message: `Vous avez été ajouté comme enseignant dans "${classDoc.name}" par ${inviter.name}`,
+                        read: false,
                         data: {
                             classId,
                             className: classDoc.name,

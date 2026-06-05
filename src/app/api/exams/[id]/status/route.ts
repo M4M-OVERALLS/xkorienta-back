@@ -5,7 +5,7 @@ import connectDB from "@/lib/mongodb"
 import Exam from "@/models/Exam"
 import Syllabus from "@/models/Syllabus"
 import Class from "@/models/Class"
-import Notification from "@/models/Notification"
+import { NotificationDeliveryService } from "@/lib/services/NotificationDeliveryService"
 import { ExamStatus, UserRole } from "@/models/enums"
 import { EventPublisher } from "@/lib/events/EventPublisher"
 import { EventType } from "@/lib/events/types"
@@ -167,15 +167,14 @@ async function notifyStudentsAboutExam(exam: any, teacherId: string) {
                 endTime: exam.endTime
             },
             read: false,
-            createdAt: new Date()
         }))
 
         if (notifications.length > 0) {
-            await Notification.insertMany(notifications)
+            await NotificationDeliveryService.createManyAndPush(notifications)
         }
 
         // Also notify the teacher
-        await Notification.create({
+        await NotificationDeliveryService.createAndPush({
             userId: new mongoose.Types.ObjectId(teacherId),
             type: 'success',
             title: '✅ Examen Publié',
@@ -186,7 +185,6 @@ async function notifyStudentsAboutExam(exam: any, teacherId: string) {
                 studentsNotified: studentIds.size
             },
             read: false,
-            createdAt: new Date()
         })
 
         console.log(`[Notify] Successfully created ${notifications.length + 1} notifications`)
