@@ -150,7 +150,7 @@ export class InscriptionFormController {
 
     private static handleError(error: unknown) {
         if (error instanceof BaseApplicationError) {
-            error.log()
+            Sentry.captureException(error)
             return NextResponse.json(error.toJSON(), { status: error.httpStatus })
         }
         Sentry.captureException(error)
