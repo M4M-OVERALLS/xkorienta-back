@@ -12,7 +12,10 @@ import { PayoutService } from '@/lib/services/PayoutService'
 import { SubscriptionService } from '@/lib/services/SubscriptionService'
 import { InvoiceService } from '@/lib/services/InvoiceService'
 import { transactionRepository } from '@/lib/repositories/TransactionRepository'
-import { BookPurchaseStatus, MediaPurchaseStatus, Currency, MobileMoneyProvider } from '@/models/enums'
+import { BookPurchaseStatus, MediaPurchaseStatus, ApplicationStatus, PaymentStatus, Currency, MobileMoneyProvider } from '@/models/enums'
+import SchoolApplication from '@/models/SchoolApplication'
+import InscriptionForm from '@/models/InscriptionForm'
+import { InscriptionEmailService } from '@/lib/services/InscriptionEmailService'
 
 export const paymentSDK = new PaymentSDK({
     defaultProvider: 'notchpay',
@@ -110,5 +113,74 @@ paymentSDK.events.on('payment.completed', async (e) => {
 paymentSDK.events.on('payment.completed', async (e) => {
     if (e.type === 'MEDIA_PURCHASE') {
         await mediaPurchaseRepository.updateStatusByReference(e.reference, MediaPurchaseStatus.COMPLETED)
+    }
+})
+
+/** Update SchoolApplication status to PAID after inscription payment. */
+paymentSDK.events.on('payment.completed', async (e) => {
+    if (e.type !== 'SCHOOL_INSCRIPTION') return
+    try {
+        const app = await SchoolApplication.findOne({ paymentRef: e.reference })
+        if (!app) return
+        app.appStatus = ApplicationStatus.PAID
+        app.paymentStatus = PaymentStatus.PAID
+        app.paidAt = new Date()
+        await app.save()
+    } catch (err) {
+        Sentry.captureException(err, { extra: { ref: e.reference, type: 'SCHOOL_INSCRIPTION' } })
+    }
+})
+
+/** Send inscription-specific emails after payment (confirmation + admin notification). */
+paymentSDK.events.on('payment.completed', async (e) => {
+    if (e.type !== 'SCHOOL_INSCRIPTION') return
+    try {
+        const app = await SchoolApplication.findOne({ paymentRef: e.reference })
+            .populate('userId', 'name email')
+            .populate('schoolId', 'name contactInfo')
+            .lean()
+        if (!app) return
+
+        const form = await InscriptionForm.findById(app.inscriptionFormId)
+            .populate('createdBy', 'email name')
+            .lean()
+        if (!form) return
+
+        const studentName = (app.userId as unknown as { name?: string })?.name
+            ?? (app.candidateData as Record<string, unknown>)?.nom as string
+            ?? 'Candidat'
+        const studentEmail = (app.userId as unknown as { email?: string })?.email ?? app.guestEmail
+        const schoolName = (app.schoolId as unknown as { name?: string })?.name ?? 'Etablissement'
+        const adminEmail = (form.createdBy as unknown as { email?: string })?.email
+        const commissionRate = form.commissionRate ?? 5
+        const netAmount = Math.round(form.price * (1 - commissionRate / 100))
+
+        // Email confirmation a l'etudiant
+        if (studentEmail) {
+            await InscriptionEmailService.sendApplicationConfirmation({
+                studentEmail,
+                studentName,
+                schoolName,
+                formTitle: form.title,
+                amount: form.price,
+                currency: 'FCFA',
+            })
+        }
+
+        // Notification a l'admin ecole
+        if (adminEmail) {
+            await InscriptionEmailService.notifySchoolAdmin({
+                adminEmail,
+                studentName,
+                schoolName,
+                formTitle: form.title,
+                amount: form.price,
+                netAmount,
+                currency: 'FCFA',
+            })
+        }
+    } catch (err) {
+        // Non-bloquant : on log mais on ne throw pas
+        Sentry.captureException(err, { extra: { ref: e.reference, type: 'SCHOOL_INSCRIPTION_EMAIL' } })
     }
 })
