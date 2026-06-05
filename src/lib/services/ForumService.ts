@@ -3,7 +3,7 @@ import { ClassRepository } from "@/lib/repositories/ClassRepository";
 import { ForumRepository } from "@/lib/repositories/ForumRepository";
 import { SubjectRepository } from "@/lib/repositories/SubjectRepository";
 import { ForumStatus, ForumType } from "@/models/Forum";
-import Notification from "@/models/Notification";
+import { NotificationDeliveryService } from "@/lib/services/NotificationDeliveryService";
 import { UserRole } from "@/models/enums";
 import mongoose from "mongoose";
 
@@ -204,10 +204,10 @@ export class ForumService {
         },
       }));
     if (memberNotifications.length > 0) {
-      await Notification.insertMany(memberNotifications);
+      await NotificationDeliveryService.createManyAndPush(memberNotifications);
     }
 
-    await Notification.create({
+    await NotificationDeliveryService.createAndPush({
       userId: new mongoose.Types.ObjectId(creatorId),
       type: "success",
       title: "Forum créé",

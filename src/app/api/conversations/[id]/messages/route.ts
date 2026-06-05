@@ -1,9 +1,9 @@
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import { getConversationChannel, getPusherServer } from "@/lib/pusher";
+import { NotificationDeliveryService } from "@/lib/services/NotificationDeliveryService";
 import Conversation from "@/models/Conversation";
 import Message from "@/models/Message";
-import Notification from "@/models/Notification";
 import mongoose from "mongoose";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -158,7 +158,7 @@ export async function POST(
     const recipients = participantIds.filter((id) => id !== senderId);
     if (recipients.length > 0) {
       const senderName = session.user.name || "Nouveau message";
-      await Notification.insertMany(
+      await NotificationDeliveryService.createManyAndPush(
         recipients.map((recipientId) => ({
           userId: new mongoose.Types.ObjectId(recipientId),
           type: "info",

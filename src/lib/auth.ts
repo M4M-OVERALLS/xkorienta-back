@@ -3,6 +3,7 @@ import { authStrategyManager } from "./auth/strategies/AuthStrategyManager"
 import User from "@/models/User"
 import School from "@/models/School"
 import connectDB from "@/lib/mongodb"
+import { SchoolApplicationService } from "@/lib/services/SchoolApplicationService"
 
 function sanitizeTokenImage(image?: unknown): string | undefined {
     if (typeof image !== "string" || image.length === 0) return undefined
@@ -152,6 +153,14 @@ export const authOptions: NextAuthOptions = {
                             if (dbUser.email) token.email = dbUser.email
                             // Store the real phone in token if phone-only user
                             if (isPhone) token.phone = identifier
+
+                            // Lier les candidatures anonymes (inscription) a ce compte
+                            if (dbUser.email) {
+                                SchoolApplicationService.linkGuestApplications(
+                                    dbUser.email,
+                                    dbUser._id.toString(),
+                                ).catch(() => { /* non-bloquant */ })
+                            }
                         } else {
                             console.warn(`[Auth] User not found in DB: ${identifier}`)
                         }
