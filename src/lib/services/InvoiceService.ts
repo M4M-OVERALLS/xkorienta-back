@@ -192,6 +192,75 @@ export class InvoiceService {
 
 
   /**
+   * Génère le reçu d'inscription scolaire après confirmation de paiement.
+   *
+   * Couvre les deux flux (candidat connecté et invité) car le paiement
+   * d'inscription est confirmé de façon synchrone via confirm-payment, sans
+   * forcément passer par une Transaction SDK.
+   *
+   * Idempotent : si une facture SCHOOL_INSCRIPTION existe déjà pour cette
+   * référence de paiement, elle est retournée sans en recréer une.
+   */
+  static async generateForInscription(input: {
+    paymentReference: string;
+    recipientId?: string;
+    isGuest: boolean;
+    buyerName: string;
+    buyerEmail?: string;
+    formTitle: string;
+    price: number;
+    commissionRate: number;
+    currency?: string;
+    sellerName?: string;
+  }): Promise<IInvoice> {
+    const existing = await invoiceRepository.findByPaymentReference(
+      input.paymentReference,
+    );
+    const already = existing.find(
+      (inv) => inv.productType === TransactionType.SCHOOL_INSCRIPTION,
+    );
+    if (already) return already;
+
+    const commission = Math.round(input.price * (input.commissionRate / 100));
+    const sellerAmount = input.price - commission;
+    const invoiceNumber = await invoiceRepository.generateInvoiceNumber();
+
+    const invoice = await invoiceRepository.create({
+      invoiceNumber,
+      type: InvoiceType.PURCHASE_RECEIPT,
+      recipientId: input.recipientId
+        ? new mongoose.Types.ObjectId(input.recipientId)
+        : undefined,
+      isGuestPurchase: input.isGuest,
+      paymentReference: input.paymentReference,
+      productType: TransactionType.SCHOOL_INSCRIPTION,
+      productDescription: `Inscription : ${input.formTitle}`,
+      subtotal: input.price,
+      discountAmount: 0,
+      discountPercent: 0,
+      total: input.price,
+      currency: input.currency ?? "XAF",
+      platformCommission: commission,
+      sellerAmount,
+      buyerName: input.buyerName,
+      buyerEmail: input.buyerEmail,
+      sellerName: input.sellerName,
+      status: InvoiceStatus.ISSUED,
+      issuedAt: new Date(),
+    });
+
+    if (input.buyerEmail) {
+      await InvoiceService.sendInvoiceEmail(
+        invoice,
+        input.buyerEmail,
+        input.buyerName,
+      );
+    }
+
+    return invoice;
+  }
+
+  /**
    * Historique des factures d'un utilisateur (paginé).
    * - Acheteur : voit ses reçus d'achat
    * - Vendeur : voit ses relevés de gains
