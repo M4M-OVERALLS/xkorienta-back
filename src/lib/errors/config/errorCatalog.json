@@ -434,5 +434,17 @@
       "severity": "ERROR",
       "category": "EXTERNAL_SERVICE"
     }
+  },
+  "PARENT": {
+    "PAR_001": {
+      "code": "PAR_001",
+      "message": {
+        "fr": "Compte parent introuvable",
+        "en": "Parent account not found"
+      },
+      "httpStatus": 404,
+      "severity": "WARNING",
+      "category": "NOT_FOUND"
+    }
   }
 }
