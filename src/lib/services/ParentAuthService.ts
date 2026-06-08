@@ -4,25 +4,19 @@
  */
 
 import { parentProfileRepository } from '@/lib/repositories/ParentProfileRepository';
-import User, { IUser } from '@/models/User'; // Existing User model
-import {ParentError} from "@/lib/errors/core/ParentError";
+import User from '@/models/User';
+import Invitation from '@/models/Invitation';
+import { ParentError } from "@/lib/errors/core/ParentError";
 import bcrypt from "bcryptjs";
 import jwt from 'jsonwebtoken';
 import { env } from '@/lib/utils/env';
-import {KYCLevel, UserRole} from '@/models/enums';
-import Invitation from '@/models/Invitation'; // Existing Invitation model
+import { KYCLevel, UserRole } from '@/models/enums';
 import mongoose from 'mongoose';
 
 export class ParentAuthService {
+
     /**
      * Register a new parent
-     * Steps:
-     * 1. Validate invitation token
-     * 2. Check email doesn't exist
-     * 3. Hash password
-     * 4. Create User with role=PARENT
-     * 5. Create ParentProfile
-     * 6. Mark invitation as used
      */
     async registerParent(data: {
         invitationToken: string;
@@ -36,7 +30,8 @@ export class ParentAuthService {
         parentProfileId: mongoose.Types.ObjectId;
         email: string;
     }> {
-        // Step 1: Validate invitation token
+
+        // 1. Validate invitation
         const invitation = await Invitation.findOne({
             token: data.invitationToken,
             status: 'PENDING',
@@ -44,25 +39,22 @@ export class ParentAuthService {
         });
 
         if (!invitation) {
-            throw ParentError.invalidInvitationToken();
+            throw ParentError.invitationInvalidOrExpired(); // PAR_005
         }
 
-        // Step 2: Check email doesn't exist
-        const existingUser = await User.findOne({ email: data.email.toLowerCase() });
+        // 2. Check email exists
+        const existingUser = await User.findOne({
+            email: data.email.toLowerCase()
+        });
+
         if (existingUser) {
-            throw new ParentError({
-                code: 'REG_001',
-                message: 'This email is already registered. Please login or use a different email.',
-                httpStatus: 409,
-                severity: 'WARNING',
-                category: 'CONFLICT',
-            });
+            throw ParentError.emailAlreadyExists(); // PAR_004
         }
 
-        // Step 3: Hash password
+        // 3. Hash password
         const hashedPassword = await bcrypt.hash(data.password, 12);
 
-        // Step 4: Create User
+        // 4. Create user
         const user = new User({
             name: data.name,
             email: data.email.toLowerCase(),
@@ -70,18 +62,18 @@ export class ParentAuthService {
             password: hashedPassword,
             role: UserRole.PARENT,
             emailVerified: false,
-            isActive: true, // Can login, but dashboard blocked until KYC L2
+            isActive: true,
         });
 
         await user.save();
 
-        // Step 5: Create ParentProfile
+        // 5. Create parent profile
         const parentProfile = await parentProfileRepository.create({
             user: user._id,
             preferredLanguage: data.language,
         });
 
-        // Step 6: Mark invitation as used
+        // 6. Mark invitation as used
         invitation.status = 'ACCEPTED';
         await invitation.save();
 
@@ -94,11 +86,6 @@ export class ParentAuthService {
 
     /**
      * Login parent
-     * Steps:
-     * 1. Find user by email with role=PARENT
-     * 2. Verify password
-     * 3. Generate JWT token
-     * 4. Return token + user info
      */
     async loginParent(data: {
         email: string;
@@ -113,50 +100,44 @@ export class ParentAuthService {
         expiresIn: number;
         kycLevel: KYCLevel;
     }> {
+
         const email = data.email.toLowerCase();
 
-        // Step 1: Find user by email with role=PARENT
+        // 1. Find user
         const user = await User.findOne({
             email,
             role: UserRole.PARENT,
         });
 
         if (!user) {
-            throw ParentError.parentNotFound();
+            throw ParentError.parentNotFound(); // PAR_001
         }
 
-        // Get parent profile
+        // 2. Get profile
         const parentProfile = await parentProfileRepository.findById(user._id);
+
         if (!parentProfile) {
-            throw ParentError.parentNotFound();
+            throw ParentError.parentNotFound(); // PAR_001
         }
 
-        // Step 2: Verify password
-        const passwordValid = await bcrypt.compare(data.password, user.password || '');
+        // 3. Verify password
+        const passwordValid = await bcrypt.compare(
+            data.password,
+            user.password || ''
+        );
 
         if (!passwordValid) {
-
-            throw new ParentError({
-                code: 'AUTH_002',
-                message: 'Invalid email or password',
-                httpStatus: 401,
-                severity: 'WARNING',
-                category: 'AUTHENTICATION',
-            });
+            throw ParentError.invalidCredentials(); // PAR_002
         }
 
-        // Check if account is disabled
+        // 4. Account status check
         if (!user.isActive || parentProfile.accountDisabledAt) {
-            throw new ParentError({
-                code: 'AUTH_003',
-                message: `Your account has been disabled. Reason: ${parentProfile.accountDisabledReason || 'contact support'}`,
-                httpStatus: 403,
-                severity: 'WARNING',
-                category: 'AUTHORIZATION',
-            });
+            throw ParentError.accountDisabled(
+                parentProfile.accountDisabledReason
+            ); // PAR_003
         }
 
-        // Step 4: Generate JWT token
+        // 5. Tokens
         const accessToken = this.generateAccessToken({
             userId: user._id.toString(),
             parentProfileId: parentProfile._id.toString(),
@@ -170,7 +151,6 @@ export class ParentAuthService {
             parentProfileId: parentProfile._id.toString(),
         });
 
-        // return User Token and Info
         return {
             userId: user._id,
             parentProfileId: parentProfile._id,
@@ -178,13 +158,13 @@ export class ParentAuthService {
             name: user.name,
             accessToken,
             refreshToken,
-            expiresIn: 3600, // 1 hour
+            expiresIn: 3600,
             kycLevel: parentProfile.kycLevel,
         };
     }
 
     /**
-     * Generate JWT access token (short-lived, 1 hour)
+     * JWT Access Token
      */
     private generateAccessToken(payload: {
         userId: string;
@@ -201,7 +181,7 @@ export class ParentAuthService {
     }
 
     /**
-     * Generate JWT refresh token (long-lived, 7 days)
+     * JWT Refresh Token
      */
     private generateRefreshToken(payload: {
         userId: string;
@@ -215,29 +195,16 @@ export class ParentAuthService {
     }
 
     /**
-     * Verify and decode JWT token
+     * Verify token
      */
-    verifyToken(token: string): {
-        userId: string;
-        parentProfileId: string;
-        email: string;
-        role: UserRole;
-        kycLevel: number;
-    } | null {
+    verifyToken(token: string) {
         try {
-            const decoded = jwt.verify(token, env.NEXTAUTH_SECRET) as any;
-            return {
-                userId: decoded.userId,
-                parentProfileId: decoded.parentProfileId,
-                email: decoded.email,
-                role: decoded.role,
-                kycLevel: decoded.kycLevel,
-            };
-        } catch (error) {
+            return jwt.verify(token, env.NEXTAUTH_SECRET) as any;
+        } catch {
             return null;
         }
     }
 }
 
-// Export singleton instance
+// Singleton
 export const parentAuthService = new ParentAuthService();

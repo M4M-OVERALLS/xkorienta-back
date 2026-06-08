@@ -575,7 +575,7 @@ export enum LinkStatus {
 }
 
 export enum KYCLevel {
-  NONE = "NONE",
+  NONE = 0,
   LEVEL_1 = 1,
   LEVEL_2 = 2,
 }
