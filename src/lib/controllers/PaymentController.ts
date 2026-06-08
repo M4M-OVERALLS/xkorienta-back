@@ -6,7 +6,8 @@ import { bookRepository } from '@/lib/repositories/BookRepository'
 import { mediaRepository } from '@/lib/repositories/MediaRepository'
 import { planRepository } from '@/lib/repositories/PlanRepository'
 import { transactionRepository } from '@/lib/repositories/TransactionRepository'
-import { TransactionType, TransactionStatus, MediaStatus, SubscriptionInterval } from '@/models/enums'
+import { TransactionType, TransactionStatus, MediaStatus, SubscriptionInterval, InscriptionFormStatus } from '@/models/enums'
+import InscriptionForm from '@/models/InscriptionForm'
 import { BookConfigService } from '@/lib/services/BookConfigService'
 import { bookConfigRepository } from '@/lib/repositories/BookConfigRepository'
 
@@ -121,6 +122,19 @@ export class PaymentController {
                 ) ?? plan.prices.find((p) => p.interval === subscriptionInterval)
                 if (!price) throw new Error(`No price found for currency ${paymentCurrency}`)
                 return { amount: price.amount, originalCurrency: price.currency, description: `Abonnement ${plan.name} (${subscriptionInterval.toLowerCase()})` }
+            }
+            case TransactionType.SCHOOL_INSCRIPTION: {
+                const form = await InscriptionForm.findById(productId).lean()
+                if (!form) throw new Error('Inscription form not found')
+                if (form.status !== InscriptionFormStatus.PUBLISHED) throw new Error('Form is not available')
+                if (form.price === 0) throw new Error('This inscription is free')
+                const createdById = form.createdBy as unknown
+                const sellerId = createdById
+                    ? typeof createdById === 'object' && '_id' in (createdById as object)
+                        ? String((createdById as { _id: unknown })._id)
+                        : String(createdById)
+                    : undefined
+                return { amount: form.price, originalCurrency: 'XAF', description: `Inscription: ${form.title}`, sellerId }
             }
             default:
                 throw new Error(`Unsupported transaction type: ${type}`)

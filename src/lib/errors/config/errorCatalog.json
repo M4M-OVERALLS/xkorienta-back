@@ -7,7 +7,7 @@
         "en": "Identifier and password are required"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "AUTH_002": {
@@ -17,7 +17,7 @@
         "en": "No user found with this email"
       },
       "httpStatus": 404,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "NOT_FOUND"
     },
     "AUTH_003": {
@@ -27,7 +27,7 @@
         "en": "No account found with this phone number"
       },
       "httpStatus": 404,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "NOT_FOUND"
     },
     "AUTH_004": {
@@ -37,7 +37,7 @@
         "en": "Incorrect password"
       },
       "httpStatus": 401,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "AUTHENTICATION"
     },
     "AUTH_005": {
@@ -47,7 +47,7 @@
         "en": "This account uses a different login method"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "AUTHENTICATION"
     },
     "AUTH_006": {
@@ -57,7 +57,7 @@
         "en": "Invalid or expired authentication token"
       },
       "httpStatus": 401,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "AUTHENTICATION"
     },
     "AUTH_007": {
@@ -67,7 +67,7 @@
         "en": "Session expired, please log in again"
       },
       "httpStatus": 401,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "AUTHENTICATION"
     },
     "AUTH_008": {
@@ -77,7 +77,7 @@
         "en": "Access denied. Insufficient permissions"
       },
       "httpStatus": 403,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "AUTHORIZATION"
     },
     "AUTH_009": {
@@ -87,7 +87,7 @@
         "en": "Email already in use"
       },
       "httpStatus": 409,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "CONFLICT"
     },
     "AUTH_010": {
@@ -97,7 +97,7 @@
         "en": "Phone number already in use"
       },
       "httpStatus": 409,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "CONFLICT"
     },
     "AUTH_011": {
@@ -107,7 +107,7 @@
         "en": "Invalid email format"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "AUTH_012": {
@@ -117,7 +117,7 @@
         "en": "Invalid phone number format"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "AUTH_013": {
@@ -127,7 +127,7 @@
         "en": "Password must contain at least 8 characters"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "AUTH_014": {
@@ -137,7 +137,7 @@
         "en": "Invalid or expired verification code"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "AUTH_015": {
@@ -157,7 +157,7 @@
         "en": "Account disabled. Contact the administrator"
       },
       "httpStatus": 403,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "AUTHORIZATION"
     },
     "AUTH_017": {
@@ -167,7 +167,7 @@
         "en": "Email not verified. Please verify your email"
       },
       "httpStatus": 403,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "AUTHORIZATION"
     },
     "AUTH_018": {
@@ -177,7 +177,7 @@
         "en": "Invalid or expired reset token"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "AUTH_019": {
@@ -197,7 +197,7 @@
         "en": "OAuth provider not configured"
       },
       "httpStatus": 500,
-      "severity": "ERROR",
+      "severity": "CRITICAL",
       "category": "CONFIGURATION"
     },
     "AUTH_021": {
@@ -217,7 +217,7 @@
         "en": "Google account already linked to another user"
       },
       "httpStatus": 409,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "CONFLICT"
     },
     "AUTH_023": {
@@ -227,7 +227,7 @@
         "en": "GitHub account already linked to another user"
       },
       "httpStatus": 409,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "CONFLICT"
     },
     "AUTH_024": {
@@ -269,7 +269,7 @@
         "en": "Invalid request body"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "XOR_003": {
@@ -279,7 +279,7 @@
         "en": "Invalid conversation parameters"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "XOR_004": {
@@ -329,7 +329,7 @@
         "en": "Unrecognised education level"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "XOR_009": {
@@ -361,7 +361,7 @@
         "en": "FCM token is required"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "NOTIF_002": {
@@ -371,7 +371,7 @@
         "en": "Platform must be android, ios or web"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "NOTIF_003": {
@@ -381,7 +381,7 @@
         "en": "Invalid request body"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "NOTIF_004": {
@@ -391,7 +391,7 @@
         "en": "Invalid time format — expected HH:mm (e.g. 22:00)"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "NOTIF_005": {
@@ -401,7 +401,7 @@
         "en": "Invalid IANA timezone (e.g. Africa/Douala, Europe/Paris)"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "NOTIF_006": {
@@ -411,7 +411,7 @@
         "en": "At least one field is required: channels, types or quietHours"
       },
       "httpStatus": 400,
-      "severity": "ERROR",
+      "severity": "WARNING",
       "category": "VALIDATION"
     },
     "NOTIF_007": {
@@ -433,6 +433,108 @@
       "httpStatus": 500,
       "severity": "ERROR",
       "category": "EXTERNAL_SERVICE"
+    }
+  },
+  "INSCRIPTION": {
+    "INS_001": {
+      "code": "INS_001",
+      "message": {
+        "fr": "Fiche d'inscription introuvable",
+        "en": "Inscription form not found"
+      },
+      "httpStatus": 404,
+      "severity": "WARNING",
+      "category": "NOT_FOUND"
+    },
+    "INS_002": {
+      "code": "INS_002",
+      "message": {
+        "fr": "Cette inscription est fermée ou expirée",
+        "en": "This inscription is closed or expired"
+      },
+      "httpStatus": 400,
+      "severity": "WARNING",
+      "category": "VALIDATION"
+    },
+    "INS_003": {
+      "code": "INS_003",
+      "message": {
+        "fr": "Capacité maximale atteinte pour cette inscription",
+        "en": "Maximum capacity reached for this inscription"
+      },
+      "httpStatus": 409,
+      "severity": "WARNING",
+      "category": "CONFLICT"
+    },
+    "INS_004": {
+      "code": "INS_004",
+      "message": {
+        "fr": "Vous avez déjà soumis une candidature pour cet établissement",
+        "en": "You have already submitted an application to this institution"
+      },
+      "httpStatus": 409,
+      "severity": "WARNING",
+      "category": "CONFLICT"
+    },
+    "INS_005": {
+      "code": "INS_005",
+      "message": {
+        "fr": "Seul un brouillon peut être modifié",
+        "en": "Only a draft can be modified"
+      },
+      "httpStatus": 400,
+      "severity": "WARNING",
+      "category": "VALIDATION"
+    },
+    "INS_006": {
+      "code": "INS_006",
+      "message": {
+        "fr": "Transition de statut invalide",
+        "en": "Invalid status transition"
+      },
+      "httpStatus": 400,
+      "severity": "WARNING",
+      "category": "VALIDATION"
+    },
+    "INS_007": {
+      "code": "INS_007",
+      "message": {
+        "fr": "Champs obligatoires manquants pour la publication",
+        "en": "Required fields missing for publication"
+      },
+      "httpStatus": 400,
+      "severity": "WARNING",
+      "category": "VALIDATION"
+    },
+    "INS_008": {
+      "code": "INS_008",
+      "message": {
+        "fr": "Accès non autorisé à cette fiche d'inscription",
+        "en": "Unauthorized access to this inscription form"
+      },
+      "httpStatus": 403,
+      "severity": "WARNING",
+      "category": "AUTHORIZATION"
+    },
+    "INS_009": {
+      "code": "INS_009",
+      "message": {
+        "fr": "Document requis manquant dans la candidature",
+        "en": "Required document missing in the application"
+      },
+      "httpStatus": 400,
+      "severity": "WARNING",
+      "category": "VALIDATION"
+    },
+    "INS_010": {
+      "code": "INS_010",
+      "message": {
+        "fr": "Cet établissement n'a pas de fiche d'inscription publiée",
+        "en": "This institution has no published inscription form"
+      },
+      "httpStatus": 404,
+      "severity": "WARNING",
+      "category": "NOT_FOUND"
     }
   },
   "PARENT": {

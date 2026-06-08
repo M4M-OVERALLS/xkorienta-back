@@ -1,7 +1,9 @@
 import { NextAuthOptions } from "next-auth"
 import { authStrategyManager } from "./auth/strategies/AuthStrategyManager"
 import User from "@/models/User"
+import School from "@/models/School"
 import connectDB from "@/lib/mongodb"
+import { SchoolApplicationService } from "@/lib/services/SchoolApplicationService"
 
 function sanitizeTokenImage(image?: unknown): string | undefined {
     if (typeof image !== "string" || image.length === 0) return undefined
@@ -94,6 +96,7 @@ export const authOptions: NextAuthOptions = {
                     session.user.name = token.name as string
                     session.user.image = token.picture as string
                     session.user.schools = token.schools || []
+                    session.user.institution = token.institution as string | undefined
                     // email est requis par les providers de paiement (NotchPay)
                     if (token.email) session.user.email = token.email as string
                 }
@@ -137,10 +140,27 @@ export const authOptions: NextAuthOptions = {
                             token.name = dbUser.name
                             token.picture = sanitizeTokenImage(dbUser.image || dbUser.metadata?.avatar)
                             token.schools = dbUser.schools?.map((id: any) => id.toString()) || []
+                            // Institution : champ direct ou nom de la première école liée
+                            if (dbUser.institution) {
+                                token.institution = dbUser.institution
+                            } else if ((dbUser.schools?.length ?? 0) > 0) {
+                                try {
+                                    const school = await School.findById(dbUser.schools![0]).select('name').lean() as { name?: string } | null
+                                    if (school?.name) token.institution = school.name
+                                } catch { /* ignore */ }
+                            }
                             // Toujours stocker l'email DB dans le token (requis pour le paiement NotchPay)
                             if (dbUser.email) token.email = dbUser.email
                             // Store the real phone in token if phone-only user
                             if (isPhone) token.phone = identifier
+
+                            // Lier les candidatures anonymes (inscription) a ce compte
+                            if (dbUser.email) {
+                                SchoolApplicationService.linkGuestApplications(
+                                    dbUser.email,
+                                    dbUser._id.toString(),
+                                ).catch(() => { /* non-bloquant */ })
+                            }
                         } else {
                             console.warn(`[Auth] User not found in DB: ${identifier}`)
                         }
@@ -166,6 +186,15 @@ export const authOptions: NextAuthOptions = {
                             token.name = dbUser.name
                             token.picture = sanitizeTokenImage(dbUser.image || dbUser.metadata?.avatar)
                             token.schools = dbUser.schools?.map((id: any) => id.toString()) || []
+                            // Institution : champ direct ou nom de la première école liée
+                            if (dbUser.institution) {
+                                token.institution = dbUser.institution
+                            } else if ((dbUser.schools?.length ?? 0) > 0) {
+                                try {
+                                    const school = await School.findById(dbUser.schools![0]).select('name').lean() as { name?: string } | null
+                                    if (school?.name) token.institution = school.name
+                                } catch { /* ignore */ }
+                            }
                             // Toujours synchroniser l'email depuis la DB
                             if (dbUser.email) token.email = dbUser.email
                         }

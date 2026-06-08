@@ -457,6 +457,7 @@ export enum TransactionType {
   SUBSCRIPTION = "SUBSCRIPTION",
   COURSE = "COURSE",
   TOP_UP = "TOP_UP",
+  SCHOOL_INSCRIPTION = "SCHOOL_INSCRIPTION",
 }
 
 export enum TransactionStatus {
@@ -498,6 +499,7 @@ export enum Currency {
 export enum InvoiceType {
   PURCHASE_RECEIPT = "PURCHASE_RECEIPT",
   EARNINGS_STATEMENT = "EARNINGS_STATEMENT",
+  SCHOOL_INSCRIPTION = "SCHOOL_INSCRIPTION",
 }
 
 export enum InvoiceStatus {
@@ -521,6 +523,40 @@ export enum MobileMoneyProvider {
   ORANGE = "orange",
   MTN = "mtn",
   OTHER = "other",
+}
+
+// ==========================================
+// INSCRIPTION MODULE
+// ==========================================
+
+export enum InscriptionFormStatus {
+  DRAFT = "DRAFT",
+  PUBLISHED = "PUBLISHED",
+  CLOSED = "CLOSED",
+  ARCHIVED = "ARCHIVED",
+}
+
+export enum ApplicationStatus {
+  DRAFT = "DRAFT",
+  SUBMITTED = "SUBMITTED",
+  PAID = "PAID",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+  CANCELLED = "CANCELLED",
+}
+
+export enum PaymentStatus {
+  PENDING = "PENDING",
+  PAID = "PAID",
+  FAILED = "FAILED",
+  REFUNDED = "REFUNDED",
+}
+
+export enum FormFieldType {
+  TEXT = "TEXT",
+  SELECT = "SELECT",
+  CHECKBOX_GROUP = "CHECKBOX_GROUP",
+  FILE = "FILE",
 }
 
 /**

@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { IBookPurchase } from '@/models/BookPurchase'
 import { BookPurchaseStatus, MediaStatus, TransactionType } from '@/models/enums'
 import { bookRepository } from '@/lib/repositories/BookRepository'
@@ -169,6 +170,32 @@ export class BookPurchaseService {
 
                 if (guestStatus === 'COMPLETED') {
                     await GuestBookPurchaseService.handleGuestPurchaseCompleted(guestPurchase)
+                }
+            }
+
+            // Handle guest inscription payments (INS-GUEST-* references)
+            if (reference.startsWith('INS-GUEST-')) {
+                try {
+                    const { default: SchoolApplication } = await import('@/models/SchoolApplication')
+                    const { ApplicationStatus, PaymentStatus } = await import('@/models/enums')
+
+                    const app = await SchoolApplication.findOne({ paymentRef: reference })
+                    if (app && app.appStatus !== ApplicationStatus.PAID) {
+                        const isCompleted = providerStatus === 'complete' || providerStatus === 'completed'
+                        const isFailed = providerStatus === 'failed' || providerStatus === 'cancelled'
+
+                        if (isCompleted) {
+                            app.appStatus = ApplicationStatus.PAID
+                            app.paymentStatus = PaymentStatus.PAID
+                            app.paidAt = new Date()
+                            await app.save()
+                        } else if (isFailed) {
+                            app.paymentStatus = PaymentStatus.FAILED
+                            await app.save()
+                        }
+                    }
+                } catch (err) {
+                    Sentry.captureException(err, { extra: { context: 'guest inscription webhook', reference } })
                 }
             }
         }
