@@ -13,8 +13,12 @@ import logger from '@/lib/utils/logger'
 const HH_MM_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/
 
 /**
- * Mapping type de notification backend → catégorie de préférence utilisateur.
- * Les types absents du mapping déclenchent toujours la push (safe default).
+ * Mapping catégorie/type → clé de préférence utilisateur.
+ *
+ * Depuis l'ajout du champ `category` au modèle Notification, les nouvelles
+ * notifications utilisent directement la catégorie sémantique (ex: "exam_result").
+ * Ce mapping conserve aussi les anciens types UI ("xp", "badge", "level_up")
+ * pour la rétro-compatibilité avec les notifications déjà en base sans `category`.
  */
 const TYPE_TO_PREF_CATEGORY: Record<string, keyof ITypePrefs> = {
     exam_result: 'exam_result',
@@ -23,6 +27,7 @@ const TYPE_TO_PREF_CATEGORY: Record<string, keyof ITypePrefs> = {
     new_message: 'new_message',
     forum_reply: 'forum_reply',
     assistance_response: 'assistance_response',
+    rewards: 'rewards',
     xp: 'rewards',
     level_up: 'rewards',
     badge: 'rewards',

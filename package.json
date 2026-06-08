@@ -13,7 +13,8 @@
     "migrate:book-purchases": "node scripts/migrate-book-purchases.js",
     "admin:create": "node scripts/create-platform-admin.js",
     "migrate:add-subjects": "node scripts/add-missing-subjects.js",
-    "migrate:isimma-s2": "node scripts/add-isimma-s2-subjects.js"
+    "migrate:isimma-s2": "node scripts/add-isimma-s2-subjects.js",
+    "backfill:inscription-invoices": "npx tsx scripts/backfill-inscription-invoices.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",
@@ -77,6 +78,7 @@
     "supertest": "^7.2.2",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.9",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "tsx": "^4.22.4"
   }
 }
