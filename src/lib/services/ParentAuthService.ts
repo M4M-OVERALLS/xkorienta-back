@@ -1,7 +1,6 @@
 /**
  * Parent Authentication Service
  * Handles parent registration and login logic
- * Uses ParentProfileRepository and User model from existing system
  */
 
 import { parentProfileRepository } from '@/lib/repositories/ParentProfileRepository';

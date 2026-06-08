@@ -114,7 +114,7 @@ const parseEnv = () => {
 
     if (!parsed.success) {
         const errors = parsed.error.flatten().fieldErrors;
-        console.error('❌ Invalid environment variables:');
+        console.error('Invalid environment variables:');
         Object.entries(errors).forEach(([key, messages]) => {
             console.error(`  ${key}:`);
             messages?.forEach(msg => console.error(`    - ${msg}`));

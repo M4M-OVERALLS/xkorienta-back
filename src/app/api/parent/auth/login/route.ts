@@ -1,7 +1,6 @@
 /**
  * Parent Login Endpoint
  * POST /api/parent/auth/login
- * XKT-002
  */
 
 import { NextRequest } from 'next/server';

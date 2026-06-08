@@ -7,9 +7,7 @@
 import {z} from 'zod';
 import {isValidObjectId} from 'mongoose';
 
-// ============================================================================
 // REUSABLE COMPONENTS
-// ============================================================================
 
 const mongoIdSchema = z
     .string()

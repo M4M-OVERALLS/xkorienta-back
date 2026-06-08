@@ -1,7 +1,6 @@
 /**
  * Parent Registration Endpoint
  * POST /api/parent/auth/register
- * XKT-001
  */
 
 import { NextRequest } from 'next/server';
