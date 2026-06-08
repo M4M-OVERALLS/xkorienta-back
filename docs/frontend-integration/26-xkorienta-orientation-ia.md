@@ -1,98 +1,110 @@
 # Module 26 — Xkorienta Orientation IA
 
-> **Audience** : Équipe frontend  
-> **Base URL backend** : `{{baseUrl}}` (ex: `http://localhost:3001`)  
-> **Auth** : Aucune sur l'endpoint chat — public (rate-limit IP)  
-> **Feature flag requis** : `FF_ORIENTATION_AI` (env var backend) + `ORIENTATION_AI` (feature plan) pour l'accès dashboard  
+> **Audience** : Équipe frontend (web Xkorienta, mobile Flutter, intégrations externes)  
+> **Base URL backend** : `{{baseUrl}}`  
+> **Exemples** : `http://localhost:3001` (dev) · `https://xkorienta.com/xkorienta/backend` (prod)  
+> **Auth sur le chat** : Aucune — endpoint public, protégé par rate-limit IP  
+> **Paywall rapport complet** : géré **côté client** (abonnement) — le backend génère toujours le texte  
+> **Dépendance abonnement** : Module 25 (`ORIENTATION_AI` sur le plan) pour la page dashboard  
 > **Dernière mise à jour** : juin 2026
 
-### Fichiers clés backend (`xkorienta-api`)
+---
 
-| Fichier | Rôle |
-|---|---|
-| `src/app/api/xkorienta/chat/route.ts` | Endpoint SSE — rate limit 40/min/IP, model switching, context trimming |
-| `src/lib/ai/prompts/xkorientaSystemPrompt.ts` | System prompt (2 phases) + constantes modèles + `cleanOutput()` |
-| `src/lib/ai/orientation/reportPhase.ts` | Détection phase rapport payant (Sonnet vs Haiku) |
+## En bref
 
-### Fichiers clés frontend (`xkorienta-app`)
+**Xkorienta** est un conseiller d'orientation scolaire et professionnelle pour le Cameroun. L'élève discute avec une IA (Claude) qui :
 
-| Fichier | Rôle |
-|---|---|
-| `src/types/orientation.ts` | Types + `LEVEL_CONFIGS` (6 niveaux) + `ProfileData` |
-| `src/components/orientation/LevelSelector.tsx` | Grille 6 boutons animés (détection auto franco/anglo) |
-| `src/components/orientation/XkorientaChat.tsx` | Chat streaming + buffering rapports + commande `/rapport` |
-| `src/components/orientation/ReportDisplay.tsx` | `ReportDisplay` (payant, paywall) + `FreeReportDisplay` (gratuit, toujours visible) |
-| `src/components/orientation/parseReport.ts` | Parsing des 2 rapports (marqueurs, modules, Xkorin score) |
-| `src/components/orientation/generateReportPdf.ts` | `generateReportPdf()` (payant) + `generateFreeReportPdf()` (gratuit) |
-| `src/components/orientation/ProfileSidebar.tsx` | Sidebar profil temps réel (dimensions détectées) |
-| `src/components/orientation/useProfileDetection.ts` | Hook extraction profil depuis les messages |
-| `src/components/orientation/ConversationHistory.tsx` | Historique conversations (localStorage) |
-| `src/components/orientation/Toast.tsx` | Notifications toast |
-| `src/components/orientation/index.ts` | Barrel exports |
-| `src/app/(dashboard)/student/orientation/ai/page.tsx` | Page protégée dashboard |
-| `src/app/orientation/page.tsx` | Landing publique + pricing |
+1. pose un **test de personnalité** (9 questions A/B/C/D) ;
+2. génère un **rapport gratuit** (profil + domaines recommandés) ;
+3. collecte **7 informations** (ville, série, notes, aspiration, budget, mobilité, contraintes) ;
+4. génère un **rapport complet payant** (9 modules, score Xkorin, plan d'action).
+
+Le frontend n'appelle qu'**un seul endpoint** en boucle : `POST /api/xkorienta/chat`.  
+Chaque message utilisateur = une requête HTTP avec **tout l'historique** de la conversation. La réponse arrive en **streaming SSE** (mot par mot).
 
 ---
 
-## Vue d'ensemble
+## Qui fait quoi ?
 
-Xkorienta est un agent IA conseiller d'orientation scolaire et professionnelle au Cameroun, ancré dans les programmes officiels **BTS/HND MINESUP 2023**.
-
-La conversation se déroule en **2 phases** et produit **2 rapports** :
-
-| Phase | Contenu | Modèle | Rapport | Accès |
-|---|---|---|---|---|
-| **Phase 1** — Test de personnalité | 9 questions A/B/C/D, **une par message** | Haiku | `---RAPPORT-GRATUIT---` | Gratuit (tous) |
-| **Phase 2** — Orientation détaillée | 7 dimensions (ville, série, notes, aspiration, budget, mobilité, contraintes) | Haiku → Sonnet (rapport) | `---RAPPORT---` (9 modules) | Payant (abonnés) |
-
-### Flux utilisateur complet
-
-```
-/orientation (landing publique)
-  └─ CTA → /checkout?plan=ELEVE
-       └─ après paiement → /student/orientation/ai
-
-/student/orientation/ai  [feature gate: ORIENTATION_AI]
-  1. Sélection du niveau (6 boutons)
-  2. Message initial envoyé automatiquement
-  3. PHASE 1 : Test personnalité (9 questions A/B/C/D, une à la fois)
-  4. → Rapport gratuit (profil + domaines + employabilité) — visible par tous, téléchargeable en PDF
-  5. PHASE 2 : Conversation orientation (7 dimensions, ~5-7 échanges)
-  6. → Rapport payant (9 modules complets) — paywall si non abonné, téléchargeable en PDF
-```
-
-### Commande dev `/rapport`
-
-Taper `/rapport` dans le chat injecte un profil fictif complet (Phase 1 + Phase 2) et déclenche la génération des 2 rapports. Le profil fictif inclut :
-- 3 lots de réponses personnalité + rapport gratuit simulé dans l'historique
-- 7 dimensions pré-remplies (Douala, Terminale C, 14/20, Génie Logiciel, etc.)
-- Bypass paywall automatique pour le dev
+| Responsabilité | Backend (`xkorienta-api`) | Frontend (vous) |
+|---|---|---|
+| Conversation IA | ✅ Prompt, modèles, trimming | Envoyer `messages` + `level` + `language` |
+| Streaming SSE | ✅ | Lire le flux, afficher le texte |
+| Détection rapport payant (Sonnet) | ✅ `reportPhase.ts` | Optionnel : timeout UI plus long |
+| Rapport gratuit | ✅ Généré par l'IA | Parser `---RAPPORT-GRATUIT---` |
+| Rapport payant (9 modules) | ✅ Généré par l'IA | Parser `---RAPPORT---` + **paywall** si non abonné |
+| PDF | — | Générer côté client (`jsPDF` sur le web) |
+| Choix du niveau scolaire | — | UI + envoi de `level` |
+| Abonnement / accès dashboard | ✅ Module 25 | `useFeatures().can('ORIENTATION_AI')` |
+| Persistance conversation | — | `sessionStorage` / `localStorage` (web) ou stockage local (mobile) |
 
 ---
 
-## 1. Endpoint Chat
+## URL à appeler selon la plateforme
 
-### POST /api/xkorienta/chat
+| Plateforme | URL du chat |
+|---|---|
+| **Web Xkorienta** (Next.js) | `/api/xkorienta/chat` (proxy via `next.config.ts` → backend) |
+| **Mobile / web externe** | `{{baseUrl}}/api/xkorienta/chat` directement |
+| **Prod** | `https://xkorienta.com/xkorienta/backend/api/xkorienta/chat` |
 
-Endpoint de chat conversationnel avec réponse en **Server-Sent Events (SSE)**.
+> **CORS** : le backend n'autorise que certaines origines web (`xkorienta.com`, `gradeforcast.com`, `localhost:3000`…). Une app **mobile native** n'est pas soumise au CORS. Un **site web tiers** doit demander l'ajout de son domaine dans `xkorienta-api/src/middleware.ts`.
+
+---
+
+## Parcours utilisateur
+
+### Chat public (accessible sans compte)
+
+Le endpoint chat est **public**. N'importe qui peut converser et obtenir le **rapport gratuit**.  
+Le **rapport payant** est généré par l'API mais son **affichage** peut être masqué côté client si l'utilisateur n'est pas abonné.
 
 ```
-POST /api/xkorienta/chat
+Landing /orientation
+  └─ Inscription ou connexion
+       └─ /student/orientation/ai  [gate ORIENTATION_AI pour le dashboard]
+            1. Choisir un niveau (6 boutons)
+            2. Message initial envoyé automatiquement
+            3. Phase 1 — test personnalité (9 × A/B/C/D)
+            4. Rapport gratuit affiché + PDF
+            5. Phase 2 — 7 dimensions (D1→D7)
+            6. Rapport payant (9 modules) — paywall si !abonné
+```
+
+### Abonnement (dashboard)
+
+Voir **Module 25**. Résumé :
+
+- Feature plan : `ORIENTATION_AI` (ex. plan `ELEVE`)
+- Vérification : `GET /api/subscriptions/mine` → `planId.features`
+- Le chat API reste public ; seul le **paywall UI** du rapport complet dépend de l'abonnement
+
+---
+
+## 1. Chat — `POST /api/xkorienta/chat`
+
+Endpoint principal. **Aucune authentification.**
+
+```
+POST {{baseUrl}}/api/xkorienta/chat
 Content-Type: application/json
+Accept: text/event-stream
 ```
 
-**Auth** : Aucune  
-**Rate limit** : 40 requêtes / minute / IP  
-**Réponse** : `text/event-stream`
+| Propriété | Valeur |
+|---|---|
+| Rate limit | **40 requêtes / minute / IP** |
+| Durée max serveur | **300 s** (5 min) — important pour le rapport Sonnet |
+| Réponse | `text/event-stream` (SSE) |
 
-#### Body
+### Body
 
 ```json
 {
   "messages": [
-    { "role": "user", "content": "Bonjour ! Je suis en Terminale..." },
-    { "role": "assistant", "content": "Avant ton orientation, un test rapide 🎯 Q1..." },
-    { "role": "user", "content": "A, B, A" }
+    { "role": "user", "content": "Bonjour ! Je suis en Terminale C..." },
+    { "role": "assistant", "content": "Salut ! Avant ton orientation..." },
+    { "role": "user", "content": "A" }
   ],
   "level": "TERMINALE_BAC",
   "language": "fr"
@@ -101,34 +113,36 @@ Content-Type: application/json
 
 | Champ | Type | Contraintes | Description |
 |---|---|---|---|
-| `messages` | `array` | 1–100 items | Historique complet de la conversation |
+| `messages` | `array` | 1–100 items, requis | Historique **complet** de la conversation |
 | `messages[].role` | `string` | `"user"` \| `"assistant"` | Rôle du message |
-| `messages[].content` | `string` | 1–32000 chars | Contenu du message |
-| `level` | `string` | voir valeurs ci-dessous | Niveau scolaire sélectionné |
-| `language` | `string` | `"fr"` \| `"en"` | Langue de la conversation |
+| `messages[].content` | `string` | 1–32 000 caractères | Texte du message |
+| `level` | `string` | 1–50 caractères | Identifiant du niveau scolaire (voir tableau ci-dessous) |
+| `language` | `string` | `"fr"` \| `"en"` | Langue de la conversation (défaut : `"fr"`) |
 
-**Valeurs `level`** :
+> Le backend **ne valide pas** l'enum `level` — c'est au frontend d'envoyer une des 6 valeurs documentées. Le `language` pilote le catalogue BTS (fr) ou HND (en) dans le prompt système.
 
-| Valeur | Label | Système | Langue |
+### Niveaux scolaires (`level`)
+
+| Valeur | Label UI | Système | `language` à envoyer |
 |---|---|---|---|
 | `BEPC_3EME` | 3ème / BEPC | Francophone | `fr` |
 | `SECONDE` | Seconde | Francophone | `fr` |
 | `TERMINALE_BAC` | Terminale / BAC | Francophone | `fr` |
 | `GCE_OL` | GCE O/Level | Anglophone | `en` |
 | `GCE_AL` | GCE A/Level | Anglophone | `en` |
-| `UNIVERSITE_BTS` | Université / BTS | Les deux | `fr` |
+| `UNIVERSITE_BTS` | Université / BTS / HND | Les deux | `fr` (par défaut dans l'app) |
 
----
+**Message initial recommandé** (envoyé automatiquement à la sélection du niveau) — voir `xkorienta-app/src/types/orientation.ts` → `LEVEL_CONFIGS[].initialMessage`.
 
-#### Format de réponse SSE
+### Réponse SSE
 
-Le stream envoie des événements `data:` séparés par `\n\n`.
+Chaque chunk est une ligne `data: …` suivie d'une ligne vide.
 
-**Événement texte** :
+**Texte en streaming** :
 ```
 data: {"text":"Félicitations pour"}
 
-data: {"text":" ton BEPC ! Pour bien"}
+data: {"text":" ton BEPC !"}
 ```
 
 **Fin du stream** :
@@ -136,12 +150,12 @@ data: {"text":" ton BEPC ! Pour bien"}
 data: [DONE]
 ```
 
-**Erreur dans le stream** :
+**Erreur dans le flux** (stream interrompu côté serveur) :
 ```
-data: {"error":"Stream error message"}
+data: {"error":"Erreur lors du streaming de la réponse"}
 ```
 
-**Headers de réponse** :
+**Headers utiles** :
 ```
 Content-Type: text/event-stream
 Cache-Control: no-cache, no-transform
@@ -149,66 +163,254 @@ Connection: keep-alive
 X-Accel-Buffering: no
 ```
 
-#### Codes d'erreur HTTP
+### Erreurs HTTP (avant le stream)
 
-| Status | Cas |
-|---|---|
-| `400` | Body invalide / JSON malformé / champ manquant |
-| `429` | Rate limit dépassé (40 msg/min/IP) |
-| `503` | `ANTHROPIC_API_KEY` non configurée |
-| `500` | Erreur serveur |
+Format JSON standard de l'API :
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "XOR_003",
+    "message": "Paramètres de conversation invalides",
+    "severity": "WARNING",
+    "category": "VALIDATION",
+    "timestamp": "2026-06-08T10:00:00.000Z"
+  }
+}
+```
+
+| Status | Code | Cause |
+|---|---|---|
+| `400` | `XOR_002` | JSON malformé |
+| `400` | `XOR_003` | Validation Zod (`messages` vide, `language` invalide…) |
+| `429` | — | Rate limit (body générique + header `Retry-After`) |
+| `502` | `XOR_005` | Erreur Anthropic |
+| `503` | `XOR_001` | `ANTHROPIC_API_KEY` manquante |
+| `500` | `XOR_006` | Erreur pendant le streaming |
 
 ---
 
-## 2. Les 2 rapports — Marqueurs et format
+## 2. Intégration SSE — guide pas à pas
 
-### 2.1 Rapport gratuit (personnalité)
+### Algorithme côté client
 
-Généré par **Haiku** à la fin de la Phase 1 (test de personnalité).  
-Visible par **tous les utilisateurs** — pas de paywall.
+```
+1. L'utilisateur envoie un message
+2. Ajouter { role: "user", content } à l'historique local
+3. POST /api/xkorienta/chat avec TOUT l'historique (sans le message assistant vide)
+4. Lire response.body en stream
+5. Pour chaque ligne "data: …" :
+     - "[DONE]"           → fin
+     - {"error":"…"}      → afficher erreur
+     - {"text":"…"}       → concaténer au message assistant en cours
+6. À la fin, ajouter le message assistant complet à l'historique
+7. Détecter les marqueurs de rapport dans le contenu (voir section Rapports)
+```
+
+### Règles importantes
+
+| Règle | Détail |
+|---|---|
+| Historique complet | Toujours renvoyer tous les messages user/assistant — le backend trim automatiquement (30 max) |
+| Un POST par tour | Chaque message utilisateur = une nouvelle requête |
+| Timeout 1er token | **12 s** en conversation normale · **90 s** si phase rapport détectée |
+| Retry réseau | 1 retry silencieux recommandé si coupure avant le 1er token |
+| Rapport = long stream | Ne pas couper la connexion avant `[DONE]` — peut durer 1–2 minutes |
+
+### Détection « phase rapport » côté UI (timeouts)
+
+Aligné sur `xkorienta-api/src/lib/ai/orientation/reportPhase.ts` :
+
+- Dernier message user contient : `/rapport`, `mon rapport`, `bilan complet`, `orientation finale`, etc.
+- Un des **3 derniers** messages assistant contient :
+  - le marqueur **`(D7/7)`** (dernière dimension posée), ou
+  - une phrase du type « je vais construire ton rapport », « j'ai toutes les informations », etc.
+
+→ Utiliser un timeout plus long (90 s) et afficher un loader « Rapport en préparation… ».
+
+### Exemple JavaScript (fetch + ReadableStream)
+
+```javascript
+async function sendChatMessage({ baseUrl, messages, level, language }) {
+  const response = await fetch(`${baseUrl}/api/xkorienta/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, level, language }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err?.error?.message ?? `HTTP ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullText = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') return fullText;
+
+      const parsed = JSON.parse(data);
+      if (parsed.error) throw new Error(parsed.error);
+      if (parsed.text) {
+        fullText += parsed.text;
+        onToken?.(fullText); // callback UI
+      }
+    }
+  }
+  return fullText;
+}
+```
+
+### Exemple Flutter (http + stream)
+
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+Future<String> sendChatMessage({
+  required String baseUrl,
+  required List<Map<String, String>> messages,
+  required String level,
+  required String language,
+  void Function(String partial)? onPartial,
+}) async {
+  final request = http.Request(
+    'POST',
+    Uri.parse('$baseUrl/api/xkorienta/chat'),
+  );
+  request.headers['Content-Type'] = 'application/json';
+  request.headers['Accept'] = 'text/event-stream';
+  request.body = jsonEncode({
+    'messages': messages,
+    'level': level,
+    'language': language,
+  });
+
+  final response = await http.Client().send(request);
+  if (response.statusCode != 200) {
+    final body = await response.stream.bytesToString();
+    throw Exception('HTTP ${response.statusCode}: $body');
+  }
+
+  var buffer = '';
+  var fullText = '';
+
+  await for (final chunk in response.stream.transform(utf8.decoder)) {
+    buffer += chunk;
+    final lines = buffer.split('\n');
+    buffer = lines.removeLast();
+
+    for (final line in lines) {
+      if (!line.startsWith('data: ')) continue;
+      final data = line.substring(6).trim();
+      if (data == '[DONE]') return fullText;
+
+      final parsed = jsonDecode(data) as Map<String, dynamic>;
+      if (parsed['error'] != null) throw Exception(parsed['error']);
+      if (parsed['text'] != null) {
+        fullText += parsed['text'] as String;
+        onPartial?.call(fullText);
+      }
+    }
+  }
+  return fullText;
+}
+```
+
+---
+
+## 3. Les deux phases de conversation
+
+### Phase 1 — Test de personnalité (gratuit)
+
+| | |
+|---|---|
+| Durée | 9 questions, **une par message** |
+| Réponses | Une lettre : `A`, `B`, `C` ou `D` (clic bouton recommandé) |
+| Modèle backend | Haiku |
+| Sortie | Rapport entre `---RAPPORT-GRATUIT---` et `---FIN-GRATUIT---` |
+
+**Questions (thèmes)** :
+
+| # | Thème |
+|---|---|
+| Q1 | Face à un problème |
+| Q2 | En groupe |
+| Q3 | Motivation |
+| Q4 | Apprentissage |
+| Q5 | Face à un défi |
+| Q6 | Futur |
+| Q7 | Peur après examens |
+| Q8 | École idéale |
+| Q9 | Phrase qui te ressemble |
+
+**Profils possibles** (lettre dominante sur 9 réponses) :
+
+| Lettre | Profil | Employabilité |
+|---|---|---|
+| A | 🔵 Builder / Entrepreneur Impact | 🟢🟢 Très élevé |
+| B | 🟣 Analyste / Expert | 🟢🟢 Très élevé |
+| C | 🟢 Leader / Influence | 🟢 Élevé |
+| D | 🟠 Structuré / Opérationnel | 🟡 Stable |
+
+Profils mixtes si 2 lettres à ≤1 d'écart : A+B Innovateur Tech · A+C Entrepreneur Leader · B+D Expert Certifié · C+D Manager Opérationnel · B+C Stratège/Consultant.
+
+### Phase 2 — 7 dimensions (avant rapport payant)
+
+L'IA pose **une dimension par message** avec un compteur `(Dx/7)` :
+
+| # | Dimension | Exemples de quick replies UI |
+|---|---|---|
+| D1 | Ville / région | 10 régions du Cameroun |
+| D2 | Série ou filière | BAC C/D/A/TI (fr) · Sciences/Arts/Commerce (en) |
+| D3 | Notes / moyennes | Tranches /20 ou grades A–F |
+| D4 | Aspiration professionnelle | Informatique, Santé, Génie civil… |
+| D5 | Budget familial (FCFA) | < 50k · 50–150k · 150–400k · > 400k |
+| D6 | Mobilité | Oui / Non |
+| D7 | Contraintes | Finances, éloignement, famille, aucune |
+
+> **`(D7/7)`** est le signal clé : une fois cette question posée et répondue, la **prochaine** réponse de l'IA est le rapport complet (Sonnet, stream long).
+
+---
+
+## 4. Les deux rapports — marqueurs et parsing
+
+### 4.1 Rapport gratuit (personnalité)
 
 **Marqueurs** :
 ```
 ---RAPPORT-GRATUIT---
 PROFIL : 🔵 Builder / Entrepreneur Impact
-
-Tu es quelqu'un qui agit vite et qui apprend en faisant...
-
-DOMAINES D'ÉTUDES RECOMMANDÉS
-1. Entrepreneuriat — ...
-2. Innovation & Management — ...
-
-POURQUOI ÇA MARCHE POUR TOI
-Tu transformes rapidement des idées en solutions concrètes...
-
+...
 SIGNAL EMPLOYABILITÉ : 🟢🟢 Très élevé
 ---FIN-GRATUIT---
 ```
 
-**Détection frontend** :
-```tsx
-import { FREE_REPORT_START, FREE_REPORT_END } from "./parseReport"
-// FREE_REPORT_START = "---RAPPORT-GRATUIT---"
-// FREE_REPORT_END   = "---FIN-GRATUIT---"
-
-const isFreeReport = message.content.includes(FREE_REPORT_START)
+**Détection** :
+```typescript
+const FREE_REPORT_START = '---RAPPORT-GRATUIT---'
+const FREE_REPORT_END   = '---FIN-GRATUIT---'
+const hasFreeReport = content.includes(FREE_REPORT_START)
 ```
 
-**Profils possibles** (basés sur le scoring A/B/C/D) :
+**Accès** : toujours visible, téléchargeable en PDF — **pas de paywall**.
 
-| Lettre dominante | Profil | Domaines | Employabilité |
-|---|---|---|---|
-| **A** | 🔵 Builder / Entrepreneur Impact | Entrepreneuriat, Innovation, Marketing digital, Gestion de projets | 🟢🟢 Très élevé |
-| **B** | 🟣 Analyste / Expert | Data & IA, Finance, Cybersécurité, IA & Dév. durable | 🟢🟢 Très élevé |
-| **C** | 🟢 Leader / Influence | Gestion, Management international, Leadership, Marketing stratégique | 🟢 Élevé |
-| **D** | 🟠 Structuré / Opérationnel | Gestion & Admin, Finance/Comptabilité, Contrôle & Qualité | 🟡 Stable |
+**Buffering UI** : pendant le stream, dès que `FREE_REPORT_START` est détecté et avant `FREE_REPORT_END`, afficher un loader au lieu du texte brut.
 
-**Profils mixtes** (2 lettres à ≤1 d'écart) : A+B Innovateur Tech · A+C Entrepreneur Leader · B+D Expert Certifié · C+D Manager Opérationnel · B+C Stratège/Consultant
-
-### 2.2 Rapport payant (orientation complète)
-
-Généré par **Sonnet** à la fin de la Phase 2 (7 dimensions collectées).  
-Visible uniquement par les **abonnés** — paywall sinon.
+### 4.2 Rapport payant (orientation complète)
 
 **Marqueurs** :
 ```
@@ -219,278 +421,208 @@ MODULE 9 — CONCLUSION D'ORIENTATION
 ---FIN---
 ```
 
-**Détection frontend** :
-```tsx
-const REPORT_START = "---RAPPORT---"
-const REPORT_END   = "---FIN---"
-
-const isReport = message.content.includes(REPORT_START)
+**Détection** :
+```typescript
+const REPORT_START = '---RAPPORT---'
+const REPORT_END   = '---FIN---'
+const hasPaidReport = content.includes(REPORT_START)
 ```
 
 **9 modules** :
 
-| # | Module | Contenu |
-|---|---|---|
-| 1 | Diagnostic du profil | Forces, faiblesses, potentiel, maturité du projet |
-| 2 | Équivalence académique | Correspondance BTS ↔ HND selon le niveau |
-| 3 | Arbre des possibles | 3 options : Ambitieuse / Réaliste / Repli |
-| 4 | Score Xkorin (/100) | Valeur cognitive, employabilité, soft skills, logistique |
-| 5 | Trust Index | Fiabilité du profil + 3 actions pour l'améliorer |
-| 6 | Recommandations stratégiques | Formation, certifications, financement, établissements |
-| 7 | Plan d'action | À 3 mois / 12 mois / 5 ans |
-| 8 | Alerte de vigilance | Filières à éviter, risques, filières saturées |
-| 9 | Conclusion d'orientation | Recommandation finale justifiée |
+| # | Module |
+|---|---|
+| 1 | Diagnostic du profil |
+| 2 | Équivalence académique (BTS ↔ HND) |
+| 3 | Arbre des possibles (Ambitieuse / Réaliste / Repli) |
+| 4 | Score Xkorin (/100) |
+| 5 | Trust Index |
+| 6 | Recommandations stratégiques |
+| 7 | Plan d'action (3 mois / 12 mois / 5 ans) |
+| 8 | Alerte de vigilance |
+| 9 | Conclusion d'orientation |
 
----
+**Paywall** : le backend **génère toujours** le rapport. Le frontend masque le contenu si `!isSubscribed` et affiche un CTA vers `/checkout?plan=ELEVE`.
 
-## 3. UX des rapports — Buffering et PDF
+**Buffering UI** : même principe que le rapport gratuit — loader jusqu'à `---FIN---`.
 
-### 3.1 Buffering pendant le streaming
+### 4.3 Utilitaires de parsing (référence web)
 
-Les rapports ne s'affichent **pas** caractère par caractère. Pendant que le rapport se génère :
+Implémentation de référence : `xkorienta-app/src/components/orientation/parseReport.ts`
 
-1. Le frontend détecte `---RAPPORT---` (ou `---RAPPORT-GRATUIT---`) dans le contenu streaming
-2. Tant que `---FIN---` (ou `---FIN-GRATUIT---`) n'est pas reçu → **`ReportGeneratingState`** s'affiche (loader animé + étapes progressives)
-3. Le curseur clignotant est masqué pendant la génération
-4. Dès que la balise de fin arrive → le rapport complet s'affiche d'un coup
-
-**Composant `ReportGeneratingState`** :
-- Rapport payant : étapes "Diagnostic du profil", "Calcul du Score Xkorin", "Arbre des possibles", "Plan d'action à 5 ans"
-- Rapport gratuit : étapes "Analyse des réponses", "Identification du profil", "Recommandations"
-
-### 3.2 Téléchargement PDF
-
-Les **deux rapports** sont téléchargeables en PDF :
-
-| Rapport | Fonction | Fichier généré | Thème |
-|---|---|---|---|
-| Gratuit | `generateFreeReportPdf(body, level)` | `Xkorienta_Profil_[niveau]_[date].pdf` | Vert/Teal |
-| Payant | `generateReportPdf(body, level)` | `Xkorienta_Rapport_[niveau]_[date].pdf` | Bleu/Vert |
-
-Les deux utilisent `jsPDF` (import dynamique pour ne pas alourdir le bundle initial).
-
----
-
-## 4. Optimisations tokens (v3.0)
-
-L'endpoint applique des optimisations automatiques — transparentes pour le frontend.
-
-### 4.1 Model switching
-
-| Phase | Modèle | max_tokens | Déclencheur |
-|---|---|---|---|
-| Conversation + rapport gratuit | `claude-haiku-4-5-20251001` | 1200 | Par défaut |
-| Rapport payant (9 modules) | `claude-sonnet-4-6` | 5000 | Mots-clés rapport dans les derniers messages |
-
-**Mots-clés déclencheurs du mode rapport** (derniers messages user/assistant) :
-`/rapport`, `rapport d'orientation`, `mon rapport`, `bilan complet`, `orientation finale`, `analyse complète`, `full report`, `my report`, `generate my report`
-
-### 4.2 Context window trimming
-
-Pour les conversations longues (> 30 messages), le backend garde :
-- **4 premiers messages** (ancre contextuelle)
-- **26 derniers messages** (fenêtre glissante)
-
-→ Le frontend doit toujours envoyer l'**historique complet** — le trimming est côté serveur.
-
-### 4.3 System prompt filtré par langue
-
-- `language="fr"` → prompt avec catalogue **BTS uniquement** (~25% moins de tokens)
-- `language="en"` → prompt avec catalogue **HND uniquement** (~35% moins de tokens)
-
-### 4.4 Économie estimée
-
-| | Avant | Après (v3.0) |
-|---|---|---|
-| Coût par session | ~$0.35 (tout sonnet) | ~$0.03 (~91% économie) |
-| Modèle conversationnel | sonnet | haiku (20× moins cher) |
-| Tokens système | ~4500/requête | ~3000/requête |
-
----
-
-## 5. Composants frontend
-
-### 5.1 `LevelSelector`
-
-Grille 6 boutons animés. Détecte automatiquement le sous-système et applique la couleur :
-- **Bleu** → francophone (`BEPC_3EME`, `SECONDE`, `TERMINALE_BAC`)
-- **Vert** → anglophone (`GCE_OL`, `GCE_AL`)
-- **Violet** → les deux (`UNIVERSITE_BTS`)
-
-```tsx
-import { LevelSelector } from "@/components/orientation"
-
-<LevelSelector onSelect={(level: EducationLevel) => setSelectedLevel(level)} />
-```
-
-### 5.2 `XkorientaChat`
-
-Interface de chat complète avec streaming SSE, buffering des rapports, et commande `/rapport`.
-
-```tsx
-import { XkorientaChat } from "@/components/orientation"
-
-<XkorientaChat
-  level={selectedLevel}   // EducationLevel
-  onReset={() => setSelectedLevel(null)}
-  isSubscribed={hasSubscription}  // boolean — contrôle le paywall du rapport payant
-/>
-```
-
-**Comportement** :
-- Au montage, envoie automatiquement `config.initialMessage`
-- Phase 1 : test personnalité (1 question par tour, boutons A/B/C/D avec envoi immédiat au clic)
-- Rapport gratuit affiché dans une carte verte avec bouton PDF
-- Phase 2 : 7 dimensions d'orientation (quick replies contextuels)
-- Rapport payant affiché en 9 module cards avec jauge Xkorin + bouton PDF
-- Les rapports sont bufferisés pendant le streaming (loader animé, pas de rendu partiel)
-- Auto-scroll, sauvegarde sessionStorage, historique localStorage
-
-### 5.3 `ReportDisplay` + `FreeReportDisplay`
-
-```tsx
-import { ReportDisplay, FreeReportDisplay } from "@/components/orientation"
-
-// Rapport payant (avec paywall)
-<ReportDisplay
-  reportBody={reportBody}
-  isSubscribed={isSubscribed}
-  level={level}
-/>
-
-// Rapport gratuit (toujours visible)
-<FreeReportDisplay
-  reportBody={freeReportBody}
-  level={level}
-/>
-```
-
-### 5.4 `parseReport.ts` — Utilitaires de parsing
-
-```tsx
+```typescript
 import {
-  FREE_REPORT_START,     // "---RAPPORT-GRATUIT---"
-  FREE_REPORT_END,       // "---FIN-GRATUIT---"
+  FREE_REPORT_START,
+  FREE_REPORT_END,
   parseFreeReport,       // → { emoji, name, body }
-  parseReportModules,    // → ReportModule[]
+  parseReportModules,    // → ReportModule[] (1–9)
   extractXkorinScore,    // → number | null
   extractRecommendation, // → string | null
-} from "@/components/orientation/parseReport"
+} from './parseReport'
 ```
 
-### 5.5 `LEVEL_CONFIGS`
-
-```tsx
-import { LEVEL_CONFIGS, getLevelConfig } from "@/types/orientation"
-
-const config = getLevelConfig("TERMINALE_BAC")
-// → { level, label, sublabel, language, system, initialMessage }
-```
+Sur mobile : reproduire la même logique de split sur les marqueurs et les headers `MODULE N —`.
 
 ---
 
-## 6. Test de personnalité — 9 questions
+## 5. Inscription orientation — `POST /api/xkorienta/register`
 
-Le test « De Moi à l'Impact » comporte 9 questions A/B/C/D posées **une par une** (Q1 → Q9). L'IA compte la lettre dominante pour déterminer le profil.
+Endpoint optionnel pour enregistrer une demande d'orientation (formulaire landing / établissement).
 
-| # | Thème |
+```
+POST {{baseUrl}}/api/xkorienta/register
+Content-Type: application/json
+```
+
+**Auth** : Aucune
+
+### Body
+
+```json
+{
+  "student": {
+    "school": "Lycée de Douala",
+    "firstName": "Marie",
+    "lastName": "Ngo",
+    "phone": "+237600000000",
+    "email": "marie@example.com",
+    "neighborhood": "Akwa",
+    "class": "Terminale C",
+    "specialty": "Sciences"
+  },
+  "parent": {
+    "fullName": "Jean Ngo",
+    "phone": "+237600000001",
+    "email": "parent@example.com"
+  }
+}
+```
+
+Tous les champs sont **requis** (validation Mongoose).
+
+### Réponse 201
+
+```json
+{
+  "success": true,
+  "message": "Registration successful",
+  "data": { "_id": "...", "student": { ... }, "parent": { ... }, "createdAt": "..." }
+}
+```
+
+### Erreur
+
+| Status | Code | Cause |
+|---|---|---|
+| `500` | `XOR_007` | Erreur base de données |
+
+---
+
+## 6. Optimisations backend (transparentes pour vous)
+
+Vous n'avez rien à configurer — mais utile pour le debug.
+
+| Mécanisme | Valeur actuelle | Fichier |
+|---|---|---|
+| Modèle conversation + rapport gratuit | `claude-haiku-4-5-20251001` | `xkorientaSystemPrompt.ts` |
+| Modèle rapport payant | `claude-sonnet-4-6` | idem |
+| `max_tokens` chat | **1200** | idem |
+| `max_tokens` rapport | **5000** | idem |
+| Context trimming | **4** premiers + **26** derniers = **30** messages max | `chat/route.ts` |
+| Bascule Sonnet | `isXkorientaReportPhase()` | `reportPhase.ts` |
+| Prompt catalogue | BTS si `fr`, HND si `en` | `xkorientaSystemPrompt.ts` |
+| Durée fonction | **300 s** | `chat/route.ts` |
+
+---
+
+## 7. Implémentation de référence (web Xkorienta)
+
+Ces fichiers dans `xkorienta-app` montrent le comportement attendu :
+
+| Fichier | Rôle |
 |---|---|
-| Q1 | Face à un problème |
-| Q2 | En groupe |
-| Q3 | Motivation |
-| Q4 | Apprentissage |
-| Q5 | Face à un défi |
-| Q6 | Futur |
-| Q7 | Peur après BAC / examens |
-| Q8 | École idéale |
-| Q9 | Phrase qui te ressemble |
+| `src/types/orientation.ts` | Types + `LEVEL_CONFIGS` + messages initiaux |
+| `src/components/orientation/LevelSelector.tsx` | Grille 6 niveaux |
+| `src/components/orientation/XkorientaChat.tsx` | Chat SSE, buffering rapports, timeouts, `/rapport` |
+| `src/components/orientation/ReportDisplay.tsx` | Rapport payant + paywall |
+| `src/components/orientation/parseReport.ts` | Parsing marqueurs et modules |
+| `src/components/orientation/generateReportPdf.ts` | Export PDF |
+| `src/app/(dashboard)/student/orientation/ai/page.tsx` | Page dashboard + gate abonnement |
 
-**Scoring** : lettre la plus choisie sur 9 réponses. Si 2 lettres à ≤1 d'écart → profil mixte.
+### Commande dev `/rapport`
 
-**Format d'affichage (v3.2)** : un message = une question — compteur `**Question X sur 9**`, intitulé `**Q[N].**`, 4 options en liste Markdown. Côté frontend : boutons A/B/C/D ; **un clic envoie la lettre** (pas de bouton « Valider »). Le prompt impose un **suivi d'état strict** : l'IA avance Q1→Q9 sans jamais regrouper ni répéter une question.
+Taper exactement `/rapport` dans le chat injecte un profil fictif complet (Phase 1 + Phase 2) et déclenche la génération des 2 rapports. Utile pour tester sans parcourir les 16+ échanges.
 
-> ℹ️ Les questions sont la **seule exception** à la règle « prose sans listes » du prompt (qui reste valable pour les rapports). En Phase 2, chaque question porte un compteur `**(Dx/7) …**` pour situer l'élève et ancrer l'IA.
+### Proxy web (Next.js)
 
----
+`xkorienta-app/next.config.ts` redirige `/api/*` vers `NEXT_PUBLIC_API_URL` :
 
-## 7. 7 dimensions collectées (Phase 2)
+```typescript
+// En dev : NEXT_PUBLIC_API_URL=http://localhost:3001
+// En prod : NEXT_PUBLIC_API_URL=/xkorienta/backend
+```
 
-L'agent collecte ces informations via conversation naturelle (1 question/message). Le rapport payant est généré dès que les 7 dimensions sont couvertes.
-
-| # | Dimension | Quick replies contextuels |
-|---|---|---|
-| D1 | Ville / région | 10 régions (Centre–Yaoundé, Littoral–Douala, Ouest–Bafoussam, Nord-Ouest–Bamenda, Sud-Ouest–Buea, Nord–Garoua, Adamaoua–Ngaoundéré, Extrême-Nord–Maroua, Est–Bertoua, Sud–Ebolowa) |
-| D2 | Série ou filière | Série A, C, D, TI (fr) / Sciences, Arts, Commerce, Technical (en) |
-| D3 | Notes / moyennes | Tranches /20 (fr) ou A-F (en) |
-| D4 | Aspiration professionnelle | Informatique, Santé, Génie Civil, Finance, Enseignement |
-| D5 | Budget familial (FCFA) | < 50k, 50-150k, 150-400k, > 400k |
-| D6 | Mobilité | Oui/Non |
-| D7 | Contraintes principales | Finances, éloignement, famille, pas de contrainte |
+Le composant chat appelle `/api/xkorienta/chat` en **URL relative** — le proxy fait le reste.
 
 ---
 
-## 8. Pages & routes
+## 8. Variables d'environnement
 
-### 8.1 Landing publique — `/orientation`
+### Backend (`xkorienta-api`)
 
-Page marketing avec hero, fonctionnalités, tarifs.
-
-| État | CTA principal | CTA secondaire |
+| Variable | Défaut | Description |
 |---|---|---|
-| Non connecté | "Commencer gratuitement" → `/register?returnTo=/checkout?plan=ELEVE` | "Voir les tarifs" → `#tarifs` |
-| Connecté | "S'abonner maintenant" → `/checkout?plan=ELEVE` | "Voir le dashboard" → `/student/orientation/ai` |
+| `ANTHROPIC_API_KEY` | — | **Requis** pour le chat |
+| `XKORIENTA_MODEL` | `claude-sonnet-4-6` | Modèle rapport payant |
+| `XKORIENTA_CHAT_MODEL` | `claude-haiku-4-5-20251001` | Modèle conversation |
 
-### 8.2 Page dashboard — `/student/orientation/ai`
+### Frontend web (`xkorienta-app`)
 
-Protégée par la feature `ORIENTATION_AI` (plan abonné).
-
-| `status` | `can(ORIENTATION_AI)` | Rendu |
+| Variable | Défaut | Description |
 |---|---|---|
-| `"loading"` | — | Spinner centré |
-| `"unauthenticated"` | — | Redirect `/login?returnTo=...` |
-| `"active"` | `false` | Écran "Abonnement requis" + lien `/checkout` |
-| `"active"` | `true` | `LevelSelector` → `XkorientaChat` |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:3001` | URL backend (sans `/api`) |
+| `FF_ORIENTATION_AI` | `true` | Masquer le module si `false` |
+
+### Mobile / externe
+
+Configurer directement `{{baseUrl}}` vers l'API backend. Pas de proxy Next.js.
 
 ---
 
-## 9. Variables d'environnement
+## 9. Checklist d'intégration
 
-**Backend (`xkorienta-api/.env`)** :
+### Backend
 
-| Variable | Valeur par défaut | Description |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | — | **Requis.** Clé API Anthropic |
-| `XKORIENTA_MODEL` | `claude-sonnet-4-6` | Modèle pour le rapport payant |
-| `XKORIENTA_CHAT_MODEL` | `claude-haiku-4-5-20251001` | Modèle pour la conversation + rapport gratuit |
+- [ ] `ANTHROPIC_API_KEY` configurée
+- [ ] `POST /api/xkorienta/chat` répond en SSE sur `{{baseUrl}}`
+- [ ] Rate limit 40/min/IP accepté dans l'UX (message si 429)
 
-**Frontend (`xkorienta-app/.env`)** :
+### Client (web ou mobile)
 
-| Variable | Valeur par défaut | Description |
-|---|---|---|
-| `FF_ORIENTATION_AI` | `true` | Feature flag — désactiver pour masquer le Conseiller IA |
+- [ ] Écran de sélection des 6 niveaux + envoi du `initialMessage`
+- [ ] Boucle chat : historique complet à chaque POST
+- [ ] Parser SSE (`data: {"text":…}` → `[DONE]`)
+- [ ] Boutons A/B/C/D en Phase 1 (envoi immédiat au clic)
+- [ ] Quick replies contextuels en Phase 2 (optionnel mais recommandé)
+- [ ] Détection `---RAPPORT-GRATUIT---` / `---RAPPORT---` + buffering loader
+- [ ] Paywall sur rapport payant si `!isSubscribed` (vérifier via Module 25)
+- [ ] Timeout 12 s (chat) / 90 s (rapport) sur attente du 1er token
+- [ ] Persistance locale de la conversation (reprise après refresh)
 
----
+### Abonnement (dashboard uniquement)
 
-## 10. Checklist intégration
-
-- [ ] `ANTHROPIC_API_KEY` configurée dans `xkorienta-api/.env`
-- [ ] Backend démarré sur port 3001 (`npm run dev` dans `xkorienta-api`)
-- [ ] Frontend démarré sur port 3000 (`npm run dev` dans `xkorienta-app`)
-- [ ] Proxy `/api/xkorienta/*` → `localhost:3001` configuré dans `next.config.ts`
-- [ ] Plan `ELEVE` avec `features: ["ORIENTATION_AI"]` dans la collection MongoDB `plans`
-- [ ] `react-markdown` installé dans `xkorienta-app`
-- [ ] `jsPDF` installé dans `xkorienta-app` (pour les PDF)
-- [ ] `SubscriptionProvider` dans `/(dashboard)/layout.tsx`
-- [ ] Feature flag `FF_ORIENTATION_AI=true` dans `xkorienta-app/.env`
+- [ ] Plan avec `features: ["ORIENTATION_AI"]` en base
+- [ ] `GET /api/subscriptions/mine` pour `isSubscribed`
+- [ ] Voir Module 25 pour le checkout
 
 ---
 
-## 11. Test rapide
+## 10. Tests rapides
 
-### Sans frontend (curl)
+### curl (SSE brut)
 
 ```bash
-curl -X POST http://localhost:3001/api/xkorienta/chat \
+curl -N -X POST http://localhost:3001/api/xkorienta/chat \
   -H "Content-Type: application/json" \
   -d '{
     "messages": [{"role":"user","content":"Bonjour, je suis en Terminale C, moyenne 14/20"}],
@@ -499,6 +631,25 @@ curl -X POST http://localhost:3001/api/xkorienta/chat \
   }'
 ```
 
-### Commande dev `/rapport`
+Attendu : lignes `data: {"text":"..."}` puis `data: [DONE]`.
 
-Dans le chat, taper `/rapport` → injecte un profil fictif complet et génère les 2 rapports (gratuit + payant) en séquence.
+### Test rapport complet (dev)
+
+1. Ouvrir le chat web
+2. Sélectionner un niveau
+3. Taper `/rapport`
+4. Attendre 1–2 min le stream Sonnet
+5. Vérifier présence de `---RAPPORT-GRATUIT---` et `---RAPPORT---`
+
+---
+
+## Fichiers backend (référence)
+
+| Fichier | Rôle |
+|---|---|
+| `src/app/api/xkorienta/chat/route.ts` | Endpoint SSE, rate limit, trimming, appel Anthropic |
+| `src/lib/ai/prompts/xkorientaSystemPrompt.ts` | Prompt système (2 phases), constantes modèles |
+| `src/lib/ai/orientation/reportPhase.ts` | Détection bascule Haiku → Sonnet |
+| `src/app/api/xkorienta/register/route.ts` | Enregistrement formulaire orientation |
+| `src/models/XkorientaRegistration.ts` | Schéma MongoDB inscription |
+| `src/lib/errors/core/XOrientationError.ts` | Codes erreur `XOR_001`–`XOR_010` |

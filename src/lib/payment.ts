@@ -92,8 +92,12 @@ paymentSDK.events.on('payment.completed', async (e) => {
  * Generate buyer/seller invoices after payment.
  * We fetch the full ITransaction from the repository to provide the typed
  * document that InvoiceService.generateForTransaction() expects.
+ *
+ * Les inscriptions scolaires sont traitees par un handler dedie (ci-dessous)
+ * afin d'inclure la commission/le net et de couvrir le flux invite.
  */
 paymentSDK.events.on('payment.completed', async (e) => {
+    if (e.type === 'SCHOOL_INSCRIPTION') return
     const tx = await transactionRepository.findByReference(e.reference)
     if (!tx) return
     const buyer = tx.userId as unknown as { name?: string; email?: string }
@@ -128,6 +132,48 @@ paymentSDK.events.on('payment.completed', async (e) => {
         await app.save()
     } catch (err) {
         Sentry.captureException(err, { extra: { ref: e.reference, type: 'SCHOOL_INSCRIPTION' } })
+    }
+})
+
+/**
+ * Generate the inscription receipt invoice after payment (webhook path).
+ * Idempotent — n'en recree pas si confirm-payment l'a deja generee.
+ */
+paymentSDK.events.on('payment.completed', async (e) => {
+    if (e.type !== 'SCHOOL_INSCRIPTION') return
+    try {
+        const app = await SchoolApplication.findOne({ paymentRef: e.reference })
+            .populate('userId', 'name email')
+            .lean()
+        if (!app) return
+
+        const form = await InscriptionForm.findById(app.inscriptionFormId)
+            .select('title price commissionRate')
+            .lean()
+        if (!form) return
+
+        const buyer = app.userId as unknown as { _id?: { toString(): string }; name?: string; email?: string } | null
+        const candidate = app.candidateData ?? {}
+        const buyerName =
+            buyer?.name ??
+            (typeof candidate.nom === 'string' ? candidate.nom : undefined) ??
+            'Candidat'
+        const buyerEmail = buyer?.email ?? app.guestEmail
+        const recipientId = buyer?._id ? buyer._id.toString() : undefined
+
+        await InvoiceService.generateForInscription({
+            paymentReference: e.reference,
+            recipientId,
+            isGuest: !recipientId,
+            buyerName,
+            buyerEmail,
+            formTitle: form.title,
+            price: form.price,
+            commissionRate: form.commissionRate ?? 5,
+            currency: 'XAF',
+        })
+    } catch (err) {
+        Sentry.captureException(err, { extra: { ref: e.reference, type: 'SCHOOL_INSCRIPTION_INVOICE' } })
     }
 })
 

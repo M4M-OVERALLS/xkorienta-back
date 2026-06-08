@@ -103,10 +103,11 @@ export class FCMService {
             const devices = await NotificationDevice.find({ userId: notification.userId }).lean()
             if (devices.length === 0) return
 
-            // Gate préférences — la notif in-app est déjà créée, seule la push est filtrée
+            // Gate préférences — la notif in-app est déjà créée, seule la push est filtrée.
+            // `category` est la source de vérité ; fallback sur `type` pour les anciennes notifs sans category.
             const canSend = await NotificationPreferencesService.canSendPush(
                 String(notification.userId),
-                notification.type
+                notification.category ?? notification.type
             )
             if (!canSend) {
                 logger.info(

@@ -33,7 +33,7 @@ export class NotificationDeliveryService {
     static async createAndPush(data: NotificationInput): Promise<INotification> {
         const notification = await Notification.create(data)
         FCMService.sendPushForNotification(notification as INotification).catch((err) =>
-            logger.error('[NotificationDeliveryService] FCM push échouée:', err)
+            Sentry.captureException(err, { extra: { context: 'FCM push delivery' } })
         )
         return notification as INotification
     }

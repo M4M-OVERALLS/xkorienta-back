@@ -1,10 +1,54 @@
 import connectDB from '@/lib/mongodb'
 import { NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
+import mongoose from 'mongoose'
 import SchoolApplication from '@/models/SchoolApplication'
+import InscriptionForm from '@/models/InscriptionForm'
+import { InvoiceService } from '@/lib/services/InvoiceService'
 import { ApplicationStatus, PaymentStatus } from '@/models/enums'
 
 type RouteParams = { params: Promise<{ id: string }> }
+
+/**
+ * Genere le recu d'inscription pour une candidature payee.
+ * Idempotent et non-bloquant : les erreurs sont capturees par Sentry.
+ * Retourne l'id de facture a lier sur l'application, si creee.
+ */
+async function generateInscriptionInvoice(
+    applicationId: string,
+    reference: string,
+    userId?: { toString(): string },
+): Promise<string | undefined> {
+    const populated = await SchoolApplication.findById(applicationId)
+        .populate('userId', 'name email')
+        .lean()
+    const form = await InscriptionForm.findById(populated?.inscriptionFormId)
+        .select('title price commissionRate')
+        .lean()
+    if (!form || !populated) return undefined
+
+    const buyer = populated.userId as { name?: string; email?: string } | null | undefined
+    const candidate = populated.candidateData ?? {}
+    const buyerName =
+        buyer?.name ??
+        (typeof candidate.nom === 'string' ? candidate.nom : undefined) ??
+        'Candidat'
+    const buyerEmail = buyer?.email ?? populated.guestEmail
+
+    const invoice = await InvoiceService.generateForInscription({
+        paymentReference: reference,
+        recipientId: userId?.toString(),
+        isGuest: !userId,
+        buyerName,
+        buyerEmail,
+        formTitle: form.title,
+        price: form.price,
+        commissionRate: form.commissionRate ?? 5,
+        currency: 'XAF',
+    })
+
+    return invoice?._id?.toString()
+}
 
 /**
  * POST /api/inscriptions/applications/:id/confirm-payment
@@ -49,6 +93,18 @@ export async function POST(req: Request, { params }: RouteParams) {
         app.paymentStatus = PaymentStatus.PAID
         app.paidAt = new Date()
         await app.save()
+
+        // Generer la facture (reçu d'inscription) — non-bloquant.
+        // Idempotent : ne recree pas si une facture existe deja pour cette reference.
+        try {
+            const invoiceId = await generateInscriptionInvoice(id, reference, app.userId)
+            if (invoiceId && !app.invoiceId) {
+                app.invoiceId = new mongoose.Types.ObjectId(invoiceId)
+                await app.save()
+            }
+        } catch (invoiceError) {
+            Sentry.captureException(invoiceError)
+        }
 
         return NextResponse.json({
             success: true,
