@@ -1,4 +1,4 @@
-import Notification, { INotification } from "@/models/Notification";
+import Notification, { INotification, NotificationCategory } from "@/models/Notification";
 import User from "@/models/User";
 import { UserRole } from "@/models/enums";
 import mongoose from "mongoose";
@@ -102,6 +102,7 @@ export class NotificationObserver implements IObserver {
   private async createNotifAndPush(data: {
     userId: mongoose.Types.ObjectId | string;
     type: string;
+    category?: NotificationCategory;
     title: string;
     message: string;
     read: boolean;
@@ -121,6 +122,7 @@ export class NotificationObserver implements IObserver {
     dataArray: Array<{
       userId: string | mongoose.Types.ObjectId;
       type: string;
+      category?: NotificationCategory;
       title: string;
       message: string;
       read: boolean;
@@ -170,6 +172,7 @@ export class NotificationObserver implements IObserver {
         const notifications = Array.from(studentIds).map((studentId) => ({
           userId: studentId,
           type: "info",
+          category: 'exam_pending' as NotificationCategory,
           title: "Nouveau Syllabus Disponible 📚",
           message: `Le Syllabus de ${subjectName} "${syllabus.title}" est maintenant disponible.`,
           read: false,
@@ -183,6 +186,7 @@ export class NotificationObserver implements IObserver {
         await this.createNotifAndPush({
           userId: new mongoose.Types.ObjectId(event.data.teacherId),
           type: "success",
+          category: 'exam_pending',
           title: "Syllabus créé avec succès ✅",
           message: `Votre Syllabus "${syllabus.title}" (${subjectName}) a été créé${studentIds.size > 0 ? ` et partagé avec ${studentIds.size} étudiants` : "."}`,
           read: false,
@@ -225,6 +229,7 @@ export class NotificationObserver implements IObserver {
         const notifications = Array.from(studentIds).map((studentId) => ({
           userId: studentId,
           type: "info",
+          category: 'exam_pending' as NotificationCategory,
           title: "Syllabus mis à jour 📝",
           message: `Le Syllabus de ${subjectName} "${syllabus.title}" a été mis à jour (v${syllabus.version}).`,
           read: false,
@@ -238,6 +243,7 @@ export class NotificationObserver implements IObserver {
         await this.createNotifAndPush({
           userId: new mongoose.Types.ObjectId(event.data.teacherId),
           type: "success",
+          category: 'exam_pending',
           title: "Syllabus mis à jour ✅",
           message: `Votre Syllabus "${syllabus.title}" (${subjectName}) a été mis à jour${studentIds.size > 0 ? ` et partagé avec ${studentIds.size} étudiants` : "."}`,
           read: false,
@@ -282,6 +288,7 @@ export class NotificationObserver implements IObserver {
       const notifications = Array.from(studentIds).map((studentId) => ({
         userId: studentId,
         type: "info",
+        category: 'exam_pending' as NotificationCategory,
         title: "Nouvel Examen Planifié 📝",
         message: `Un nouvel examen de ${subjectName} "${exam.title}" a été planifié.`,
         read: false,
@@ -294,6 +301,7 @@ export class NotificationObserver implements IObserver {
         await this.createNotifAndPush({
           userId: new mongoose.Types.ObjectId(event.data.teacherId),
           type: "success",
+          category: 'exam_pending',
           title: "Examen planifié ✅",
           message: `L'examen "${exam.title}" (${subjectName}) a été notifié à ${studentIds.size} étudiants.`,
           read: false,
@@ -317,6 +325,7 @@ export class NotificationObserver implements IObserver {
     await this.createNotifAndPush({
       userId: event.userId,
       type: event.data.passed ? "success" : "info",
+      category: 'exam_result',
       title: event.data.passed ? "Examen réussi ! 🎉" : "Examen terminé",
       message: `Score: ${event.data.score}/${event.data.maxScore} (${event.data.percentage}%)`,
       read: false,
@@ -338,6 +347,7 @@ export class NotificationObserver implements IObserver {
     await this.createNotifAndPush({
       userId: event.userId,
       type: "badge",
+      category: 'rewards',
       title: "Nouveau Badge! 🏆",
       message: `Badge "${event.data.badgeName}" débloqué`,
       read: false,
@@ -354,6 +364,7 @@ export class NotificationObserver implements IObserver {
     await this.createNotifAndPush({
       userId: event.userId,
       type: "level_up",
+      category: 'rewards',
       title: "Level Up! ⬆️",
       message: `Vous êtes maintenant niveau ${event.data.newLevel}`,
       read: false,
@@ -372,6 +383,7 @@ export class NotificationObserver implements IObserver {
     await this.createNotifAndPush({
       userId: event.userId,
       type: "xp",
+      category: 'rewards',
       title: `+${event.data.amount} XP ⚡`,
       message: event.data.source,
       read: false,
@@ -394,6 +406,7 @@ export class NotificationObserver implements IObserver {
         await this.createNotifAndPush({
           userId: (exam.createdById as any)._id,
           type: "success",
+          category: 'exam_pending',
           title: "Examen publié ✅",
           message: `Votre examen "${exam.title}" est maintenant accessible aux étudiants`,
           read: false,
@@ -422,6 +435,7 @@ export class NotificationObserver implements IObserver {
       await this.createNotifAndPush({
         userId: exam.createdById,
         type: "success",
+        category: 'exam_result',
         title: "Examen validé ✅",
         message: `Votre examen "${exam.title}" a été validé par un inspecteur`,
         read: false,
@@ -455,6 +469,7 @@ export class NotificationObserver implements IObserver {
       const notifications = inspectors.map((inspector) => ({
         userId: inspector._id,
         type: "info",
+        category: 'exam_pending' as NotificationCategory,
         title: "Nouvel examen à valider 📋",
         message: `L'examen "${exam.title}" attend votre validation`,
         read: false,
@@ -479,6 +494,7 @@ export class NotificationObserver implements IObserver {
     await this.createNotifAndPush({
       userId: event.userId,
       type: "info",
+      category: 'exam_result',
       title: "Examen corrigé 📝",
       message: `Votre examen a été corrigé. Score: ${event.data.percentage}%`,
       read: false,
@@ -495,6 +511,7 @@ export class NotificationObserver implements IObserver {
     await this.createNotifAndPush({
       userId: event.userId,
       type: "alert",
+      category: 'exam_pending',
       title: "Code de retard généré ⏰",
       message: `Votre code: ${event.data.code}. Validité: ${event.data.validityMinutes} minutes`,
       read: false,
@@ -511,6 +528,7 @@ export class NotificationObserver implements IObserver {
     await this.createNotifAndPush({
       userId: event.userId,
       type: "info",
+      category: 'account',
       title: "Bienvenue sur Xkorienta! 👋",
       message:
         "Merci de vous être inscrit. Complétez votre profil pour commencer.",

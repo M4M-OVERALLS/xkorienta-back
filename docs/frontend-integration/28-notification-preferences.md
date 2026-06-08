@@ -69,15 +69,142 @@ Ce module permet à l'utilisateur de contrôler **ce qui l'interrompt** — pas 
 
 #### `types`
 
-| Champ | Défaut | Description |
-|---|---|---|
-| `exam_result` | `true` | Résultat d'examen publié, correction disponible |
-| `exam_pending` | `true` | Examen à venir, rappels |
-| `new_message` | `true` | Nouveau message d'un enseignant ou d'un pair |
-| `forum_reply` | `true` | Réponse sur un fil de forum |
-| `assistance_response` | `true` | Réponse à une demande d'assistance |
-| `rewards` | `true` | XP gagné, niveau atteint, badge débloqué |
-| `account` | `true` | Sécurité, abonnement, changements de compte |
+Les 7 clés de `types` correspondent **exactement** aux 7 valeurs possibles du champ `category` sur une notification en base. C'est cette `category` qui est consultée avant l'envoi FCM.
+
+| Clé préférence (`types.*`) | Valeur `category` | Défaut | Description courte |
+|---|---|---|---|
+| `exam_result` | `exam_result` | `true` | Résultats, corrections, validations d'examen |
+| `exam_pending` | `exam_pending` | `true` | Examens à venir, syllabus, codes de retard |
+| `new_message` | `new_message` | `true` | Messages privés / conversations |
+| `forum_reply` | `forum_reply` | `true` | Réponses sur les forums |
+| `assistance_response` | `assistance_response` | `true` | Demandes d'assistance |
+| `rewards` | `rewards` | `true` | XP, niveaux, badges |
+| `account` | `account` | `true` | Compte, sécurité, abonnement |
+
+> **Règle** : `{ "types": { "exam_result": false } }` bloque toutes les push dont `category === "exam_result"`. La notif in-app (cloche) reste créée.
+
+---
+
+### Catalogue complet des catégories
+
+Référence unique pour le frontend et le mobile : chaque ligne = une catégorie filtrable.
+
+#### 1. `exam_result`
+
+| | |
+|---|---|
+| **Clé PATCH** | `types.exam_result` |
+| **Champ notification** | `category: "exam_result"` |
+| **Événements branchés** | `EXAM_COMPLETED`, `EXAM_VALIDATED`, `ATTEMPT_GRADED` |
+| **Exemples de titres** | « Examen réussi ! », « Examen corrigé », « Examen validé » |
+| **Types UI (`notification.type`)** | `success`, `info` |
+
+#### 2. `exam_pending`
+
+| | |
+|---|---|
+| **Clé PATCH** | `types.exam_pending` |
+| **Champ notification** | `category: "exam_pending"` |
+| **Événements branchés** | `EXAM_CREATED`, `EXAM_PUBLISHED`, `EXAM_SUBMITTED_FOR_VALIDATION`, `SYLLABUS_CREATED`, `SYLLABUS_UPDATED`, `LATE_CODE_GENERATED` |
+| **Exemples de titres** | « Nouvel Examen Planifié », « Nouveau Syllabus », « Code de retard généré » |
+| **Types UI (`notification.type`)** | `info`, `success`, `alert` |
+
+#### 3. `new_message`
+
+| | |
+|---|---|
+| **Clé PATCH** | `types.new_message` |
+| **Champ notification** | `category: "new_message"` |
+| **Événements branchés** | *(pas encore implémenté — réservé messagerie)* |
+| **Événements prévus** | nouveau message conversation, message enseignant → élève |
+| **Types UI attendus** | `info` |
+
+#### 4. `forum_reply`
+
+| | |
+|---|---|
+| **Clé PATCH** | `types.forum_reply` |
+| **Champ notification** | `category: "forum_reply"` |
+| **Événements branchés** | *(pas encore implémenté)* |
+| **Événements prévus** | `FORUM_REPLY_CREATED`, `FORUM_POST_CREATED` |
+| **Types UI attendus** | `info` |
+
+#### 5. `assistance_response`
+
+| | |
+|---|---|
+| **Clé PATCH** | `types.assistance_response` |
+| **Champ notification** | `category: "assistance_response"` |
+| **Événements branchés** | *(pas encore implémenté)* |
+| **Événements prévus** | `REQUEST_ACCEPTED`, `REQUEST_REJECTED`, `REQUEST_COMPLETED` |
+| **Types UI attendus** | `info`, `success` |
+
+#### 6. `rewards`
+
+| | |
+|---|---|
+| **Clé PATCH** | `types.rewards` |
+| **Champ notification** | `category: "rewards"` |
+| **Événements branchés** | `BADGE_EARNED`, `LEVEL_UP`, `XP_GAINED` (seulement si gain ≥ 100 XP) |
+| **Exemples de titres** | « Nouveau Badge », « Level Up », « +150 XP » |
+| **Types UI (`notification.type`)** | `badge`, `level_up`, `xp` |
+
+#### 7. `account`
+
+| | |
+|---|---|
+| **Clé PATCH** | `types.account` |
+| **Champ notification** | `category: "account"` |
+| **Événements branchés** | `USER_REGISTERED` |
+| **Événements prévus** | abonnement, sécurité, changement de mot de passe |
+| **Exemples de titres** | « Bienvenue sur Xkorienta » |
+| **Types UI (`notification.type`)** | `info` |
+
+---
+
+### Liste exhaustive (copier-coller)
+
+Valeurs valides pour `category` et pour les clés de `types` :
+
+```
+exam_result
+exam_pending
+new_message
+forum_reply
+assistance_response
+rewards
+account
+```
+
+TypeScript côté API :
+
+```typescript
+type NotificationCategory =
+  | 'exam_result'
+  | 'exam_pending'
+  | 'new_message'
+  | 'forum_reply'
+  | 'assistance_response'
+  | 'rewards'
+  | 'account'
+```
+
+### Événements sans notification push (pour info)
+
+Ces `EventType` existent dans le backend mais ne créent **pas encore** de notification (donc aucune catégorie associée) :
+
+```
+EXAM_STARTED, EXAM_ARCHIVED, EXAM_STATUS_CHANGED
+ATTEMPT_STARTED, ATTEMPT_SUBMITTED
+QUESTION_ANSWERED
+STREAK_ACHIEVED
+LATE_CODE_USED
+USER_PROFILE_COMPLETED
+REQUEST_CREATED
+FORUM_CREATED
+```
+
+> **Fallback legacy** : les anciennes notifications sans `category` utilisent encore `notification.type` (`badge` → `rewards`, `xp` → `rewards`, etc.). Les nouvelles notifications doivent toujours renseigner `category`.
 
 #### `quietHours`
 

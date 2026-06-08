@@ -212,6 +212,8 @@ export class InvoiceService {
     commissionRate: number;
     currency?: string;
     sellerName?: string;
+    /** Envoi du reçu par email (défaut true). false pour les backfills en masse. */
+    sendEmailReceipt?: boolean;
   }): Promise<IInvoice> {
     const existing = await invoiceRepository.findByPaymentReference(
       input.paymentReference,
@@ -249,7 +251,7 @@ export class InvoiceService {
       issuedAt: new Date(),
     });
 
-    if (input.buyerEmail) {
+    if (input.buyerEmail && input.sendEmailReceipt !== false) {
       await InvoiceService.sendInvoiceEmail(
         invoice,
         input.buyerEmail,
