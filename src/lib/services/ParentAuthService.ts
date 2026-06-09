@@ -12,6 +12,7 @@ import jwt from 'jsonwebtoken';
 import { env } from '@/lib/utils/env';
 import { KYCLevel, UserRole } from '@/models/enums';
 import mongoose from 'mongoose';
+import connectDB from "@/lib/mongodb";
 
 export class ParentAuthService {
 
@@ -30,6 +31,8 @@ export class ParentAuthService {
         parentProfileId: mongoose.Types.ObjectId;
         email: string;
     }> {
+
+        await connectDB();
 
         // 1. Validate invitation
         const invitation = await Invitation.findOne({
@@ -101,6 +104,8 @@ export class ParentAuthService {
         kycLevel: KYCLevel;
     }> {
 
+        await connectDB();
+
         const email = data.email.toLowerCase();
 
         // 1. Find user
@@ -114,7 +119,7 @@ export class ParentAuthService {
         }
 
         // 2. Get profile
-        const parentProfile = await parentProfileRepository.findById(user._id);
+        const parentProfile = await parentProfileRepository.findByUserId(user._id);
 
         if (!parentProfile) {
             throw ParentError.parentNotFound(); // PAR_001

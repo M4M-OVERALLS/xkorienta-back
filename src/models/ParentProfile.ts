@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, {Document, Model, Schema} from 'mongoose';
 import { KYCLevel, KYCStatus } from '@/models/enums';
 
 export interface IParentProfile extends Document {
@@ -196,9 +196,7 @@ parentProfileSchema.methods.canRequestChildLink = function (): boolean {
 };
 
 
-const ParentProfile = mongoose.model<IParentProfile>(
-    'ParentProfile',
-    parentProfileSchema
-);
+const ParentProfile: Model<IParentProfile> =
+    mongoose.models.ParentProfile || mongoose.model<IParentProfile>('ParentProfile', parentProfileSchema);
 
 export default ParentProfile;

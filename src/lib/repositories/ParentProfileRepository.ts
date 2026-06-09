@@ -19,24 +19,33 @@ export class ParentProfileRepository {
             preferredLanguage: data.preferredLanguage || 'fr',
             kycLevel: KYCLevel.NONE,
             kycStatus: KYCStatus.PENDING,
-            isActive: false,
+            isActive: true,
             isVerified: false,
             notificationPreferences: {
                 sms: true,
                 email: true,
                 push: true,
             },
-            loginAttempts: 0,
+            // Remove loginAttempts if not in schema
         });
 
         return await parentProfile.save();
     }
+
     /**
      * Find parent profile by ID
      */
     async findById(id: mongoose.Types.ObjectId): Promise<IParentProfile | null> {
         await connectDB();
         return ParentProfile.findById(id);
+    }
+
+    /**
+     * Find parent profile by user ID
+     */
+    async findByUserId(userId: mongoose.Types.ObjectId | string): Promise<IParentProfile | null> {
+        await connectDB();
+        return ParentProfile.findOne({ user: userId });
     }
 
     /**

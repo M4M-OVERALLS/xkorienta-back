@@ -45,6 +45,7 @@ export class ParentAuthController {
             if (error instanceof ParentError) {
                 throw error;
             }
+            console.error('[handleRegister] unexpected error:', error);
             throw ParentError.databaseError('Registration failed');
         }
     }
@@ -93,6 +94,7 @@ export class ParentAuthController {
             if (error instanceof ParentError) {
                 throw error;
             }
+            console.error('[handleLogin] unexpected error:', error);
             throw ParentError.databaseError('Login failed');
         }
     }

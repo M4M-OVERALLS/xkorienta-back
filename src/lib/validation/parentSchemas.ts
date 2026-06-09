@@ -40,7 +40,7 @@ const nameSchema = z
 export const registerParentSchema = z.object({
     invitationToken: z
         .string()
-        .min(32, 'Invalid invitation token')
+        .min(2, 'Invalid invitation token')
         .max(128),
     name: nameSchema,
     email: emailSchema,
