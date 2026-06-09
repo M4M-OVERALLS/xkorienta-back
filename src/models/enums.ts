@@ -229,6 +229,7 @@ export enum UserRole {
   // Pédagogiques
   TEACHER = "TEACHER",
   SCHOOL_ADMIN = "SCHOOL_ADMIN",
+  PARENT = "PARENT",
   INSPECTOR = "INSPECTOR",
   SURVEILLANT = "SURVEILLANT",
   PREFET = "PREFET",
@@ -566,4 +567,35 @@ export enum FormFieldType {
 export enum ExamContext {
   SYLLABUS_BASED = 'SYLLABUS_BASED',
   PUBLIC = 'PUBLIC',
+}
+export enum LinkStatus {
+  PENDING = "PENDING",
+  ACTIVE = "ACTIVE",
+  REVOKED = "REVOKED",
+}
+
+export enum KYCLevel {
+  NONE = 0,
+  LEVEL_1 = 1,
+  LEVEL_2 = 2,
+}
+
+export enum KYCStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
+
+export enum AlertSeverity {
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH",
+  CRITICAL = "CRITICAL",
+}
+
+export enum AttemptStatus {
+  STARTED = "STARTED",
+  COMPLETED = "COMPLETED",
+  EXPIRED = "EXPIRED",
+  ABANDONED = "ABANDONED",
 }
