@@ -43,9 +43,6 @@ export const POST = async (request: NextRequest) => {
                 category: error.category,
             });
         }
-
-        // Handle unexpected errors
-        console.error('[POST /api/parent/auth/login] Error:', error);
         return ApiResponse.internalError(
             'An unexpected error occurred during login. Please try again later.'
         );

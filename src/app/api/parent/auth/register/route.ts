@@ -35,8 +35,7 @@ export const POST = async (request: NextRequest) => {
             });
         }
 
-        // Handle unexpected errors
-        console.error('[POST /api/parent/auth/register] Error:', error);
+
         return ApiResponse.internalError(
             'An unexpected error occurred during registration. Please try again later.'
         );
