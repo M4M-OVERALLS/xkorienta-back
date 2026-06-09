@@ -1,0 +1,529 @@
+{
+  "info": {
+    "name": "Xkorienta Parent Module API",
+    "description": "Complete API testing collection for Parent Module (XKT-001 to XKT-008)",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "author": "Xkorienta Team",
+    "license": "MIT"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "description": "XKT-001, 002: Registration and Login",
+      "item": [
+        {
+          "name": "1. Create Invitation (Admin)",
+          "description": "Admin creates invitation token for parent registration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expiresInDays\": 30,\n  \"maxUses\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/admin/invitations",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "admin", "invitations"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set(\"invitationToken\", jsonData.data.invitationToken);",
+                  "  pm.test(\"Invitation token captured\", function() {",
+                  "    pm.expect(jsonData.data.invitationToken).to.exist;",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Register Parent (XKT-001)",
+          "description": "Register new parent with invitation token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invitationToken\": \"{{invitationToken}}\",\n  \"name\": \"Jean-Paul Moussa\",\n  \"email\": \"jean.moussa+{{$timestamp}}@email.cm\",\n  \"phone\": \"+237691234567\",\n  \"password\": \"SecurePass123!\",\n  \"language\": \"fr\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "auth", "register"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set(\"userId\", jsonData.data.userId);",
+                  "  pm.environment.set(\"parentProfileId\", jsonData.data.parentProfileId);",
+                  "  pm.environment.set(\"parentEmail\", jsonData.data.email);",
+                  "  pm.test(\"Parent registered successfully\", function() {",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data.parentProfileId).to.exist;",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Login Parent (XKT-002)",
+          "description": "Login and receive JWT tokens",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{parentEmail}}\",\n  \"password\": \"SecurePass123!\",\n  \"rememberMe\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set(\"accessToken\", jsonData.data.accessToken);",
+                  "  pm.environment.set(\"refreshToken\", jsonData.data.refreshToken);",
+                  "  pm.environment.set(\"kycLevel\", jsonData.data.kycLevel);",
+                  "  pm.test(\"Login successful, token received\", function() {",
+                  "    pm.expect(jsonData.data.accessToken).to.exist;",
+                  "    pm.expect(jsonData.data.kycLevel).to.equal(0);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Child Linking",
+      "description": "XKT-003, 004, 005: Link parent to child",
+      "item": [
+        {
+          "name": "4. Request Child Link (XKT-003)",
+          "description": "Parent requests to link to a child",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"relationshipType\": \"FATHER\",\n  \"isPrimary\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/children/{{learnerId}}/link",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "children", "{{learnerId}}", "link"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set(\"linkId\", jsonData.data.linkId);",
+                  "  pm.test(\"Link request created (PENDING)\", function() {",
+                  "    pm.expect(jsonData.data.status).to.equal(\"PENDING\");",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Approve Link (XKT-004 - Admin)",
+          "description": "Admin approves pending parent-child link",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approve\": true,\n  \"reason\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/children/{{linkId}}/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "children", "{{linkId}}", "validate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Link approved (status: ACTIVE)\", function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.data.status).to.equal(\"ACTIVE\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. List Children (XKT-005)",
+          "description": "Get all active children for parent",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/parent/children",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "children"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Children list retrieved\", function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.success).to.be.true;",
+                  "  pm.expect(jsonData.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "KYC Verification",
+      "description": "XKT-006, 007, 008: KYC L1 and L2 verification",
+      "item": [
+        {
+          "name": "7. Submit KYC L1 Document (XKT-006)",
+          "description": "Parent uploads identity document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentType\": \"NATIONAL_ID\",\n  \"fileName\": \"national_id.jpg\",\n  \"fileSize\": 2048576,\n  \"fileMimeType\": \"image/jpeg\",\n  \"fileBase64\": \"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/kyc/level1",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "kyc", "level1"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"KYC L1 document submitted\", function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.data.kycStatus).to.equal(\"SUBMITTED\");",
+                  "  pm.environment.set(\"kycLevel\", jsonData.data.kycLevel);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Verify KYC L1 (XKT-007 - Admin)",
+          "description": "Admin approves identity document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parentId\": \"{{parentProfileId}}\",\n  \"approve\": true,\n  \"reason\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/kyc/level1/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "kyc", "level1", "verify"]
+            }
+          }
+        },
+        {
+          "name": "9. Confirm KYC L2 (XKT-008 - Admin)",
+          "description": "School admin confirms parent-child relationship (grants dashboard access)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parentId\": \"{{parentProfileId}}\",\n  \"relationshipNotes\": \"Phone verification completed. Confirmed father of student.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/kyc/level2/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "kyc", "level2", "validate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"KYC L2 confirmed - Dashboard access granted\", function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.data.kycLevel).to.equal(2);",
+                  "  pm.expect(jsonData.data.dashboardAccessGranted).to.be.true;",
+                  "  pm.environment.set(\"kycLevel\", 2);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Check KYC Status",
+          "description": "Parent checks their KYC verification status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/parent/kyc/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "kyc", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard Access",
+      "description": "XKT-009+: Access dashboard (requires KYC L2)",
+      "item": [
+        {
+          "name": "11. Get Dashboard (XKT-009)",
+          "description": "Get synthetic dashboard overview (requires KYC L2)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/parent/children/{{learnerId}}/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "children", "{{learnerId}}", "dashboard"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Dashboard data retrieved (KYC L2 required)\", function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.success).to.be.true;",
+                  "  pm.expect(jsonData.data).to.have.property('performance');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Error Cases",
+      "description": "Test error scenarios and edge cases",
+      "item": [
+        {
+          "name": "Error: Invalid Invitation Token (PAR_005)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invitationToken\": \"invalid-token\",\n  \"name\": \"Test\",\n  \"email\": \"test@example.com\",\n  \"password\": \"Pass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "auth", "register"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns PAR_005 for invalid token\", function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "  pm.expect(jsonData.error.code).to.equal(\"PAR_005\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Error: Insufficient KYC Level (PAR_012)",
+          "description": "Try to access dashboard without KYC L2",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/parent/children/{{learnerId}}/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "children", "{{learnerId}}", "dashboard"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns PAR_012 for insufficient KYC\", function() {",
+                  "  if (pm.response.code === 403) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error.code).to.equal(\"PAR_012\");",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "admin-token-here",
+      "type": "string"
+    },
+    {
+      "key": "invitationToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "parentProfileId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "learnerId",
+      "value": "507f1f77bcf86cd799439012",
+      "type": "string"
+    },
+    {
+      "key": "linkId",
+      "value": "",\n      \"type\": \"string\"\n    },\n    {\n      \"key\": \"parentEmail\",\n      \"value\": \"\",\n      \"type\": \"string\"\n    },\n    {\n      \"key\": \"kycLevel\",\n      \"value\": \"0\",\n      \"type\": \"string\"\n    }\n  ]\n}\n
