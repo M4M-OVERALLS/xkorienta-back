@@ -76,8 +76,8 @@ describe('getXkorientaSystemPrompt', () => {
         const resultFr = getXkorientaSystemPrompt('fr')
         const resultEn = getXkorientaSystemPrompt('en')
 
-        expect(resultFr).toContain('prose uniquement')
-        expect(resultEn).toContain('prose uniquement')
+        expect(resultFr).toContain('prose naturelle et humaine')
+        expect(resultEn).toContain('prose naturelle et humaine')
     })
 })
 
@@ -141,11 +141,11 @@ describe('configuration constants', () => {
         expect(XKORIENTA_TEMPERATURE).toBe(0.8)
     })
 
-    it('XKORIENTA_MAX_TOKENS should be 2500', () => {
-        expect(XKORIENTA_MAX_TOKENS).toBe(2500)
+    it('XKORIENTA_MAX_TOKENS should be 5000', () => {
+        expect(XKORIENTA_MAX_TOKENS).toBe(5000)
     })
 
-    it('XKORIENTA_CHAT_MAX_TOKENS should be 800', () => {
-        expect(XKORIENTA_CHAT_MAX_TOKENS).toBe(800)
+    it('XKORIENTA_CHAT_MAX_TOKENS should be 1200', () => {
+        expect(XKORIENTA_CHAT_MAX_TOKENS).toBe(1200)
     })
 })

@@ -32,6 +32,7 @@ jest.mock('@/lib/ai/strategies/AIParsingStrategyManager', () => {
         AIParsingStrategyManager: {
             getInstance: jest.fn().mockReturnValue({
                 getActiveStrategy: jest.fn().mockReturnValue(mockStrategy),
+                getStrategy: jest.fn().mockReturnValue({ isEnabled: () => false }),
             }),
         },
         __mockStrategy: mockStrategy,
@@ -121,7 +122,7 @@ describe('SyllabusParsingService — Edge Cases', () => {
             const file = new File([Buffer.from('img')], 'photo.png', { type: 'image/png' })
 
             await expect(SyllabusParsingService.parseFile(file)).rejects.toThrow(
-                'AI could not parse the document into a valid syllabus structure. Image parsing requires a vision-capable model.'
+                'Image parsing requires Anthropic (Claude) to be configured'
             )
             // La strategie IA ne doit PAS etre appelee pour les images
             expect(mockStrategy.parseToSyllabus).not.toHaveBeenCalled()

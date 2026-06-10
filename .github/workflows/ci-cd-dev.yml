@@ -34,8 +34,6 @@ jobs:
           context: .
           push: true
           tags: ${{ env.DOCKER_IMAGE }}:${{ github.ref_name }}
-          build-args: |
-            NODE_ENV=dev
           no-cache: true
 
       - name: Create source archive
@@ -92,12 +90,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Next.js build
-        run: npm run build
+      - name: Run build
+        run: |
+          export NODE_ENV="production"
+          export DATABASE_URL="${DATABASE_URL:-mongodb://localhost:27017/test}"
+          export NEXTAUTH_SECRET="${NEXTAUTH_SECRET:-ci-build-placeholder-secret-0123456789ab}"
+          export NEXTAUTH_URL="${NEXTAUTH_URL:-http://localhost:3001}"
+          export PUSHER_APP_ID="${PUSHER_APP_ID:-ci-build-placeholder}"
+          export PUSHER_KEY="${PUSHER_KEY:-ci-build-placeholder}"
+          export PUSHER_SECRET="${PUSHER_SECRET:-ci-build-placeholder}"
+          export PUSHER_CLUSTER="${PUSHER_CLUSTER:-eu}"
+          npm run build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          NEXTAUTH_URL: http://localhost:3001
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          PUSHER_APP_ID: ${{ secrets.PUSHER_APP_ID }}
+          PUSHER_KEY: ${{ secrets.PUSHER_KEY }}
+          PUSHER_SECRET: ${{ secrets.PUSHER_SECRET }}
+          PUSHER_CLUSTER: ${{ secrets.PUSHER_CLUSTER }}
 
   # Étape 4 : Déploiement sur le serveur Dev
   deploy:
@@ -158,6 +169,13 @@ jobs:
           cd "$DEPLOY_PATH"
           tar -xzf deploy-files.tar.gz docker-compose.yml
 
+          echo "=== Vérifications pré-déploiement ==="
+          [ -f ".env" ] || { echo "⚠️ WARNING: .env manquant dans $DEPLOY_PATH"; }
+          [ -f "docker-compose.yml" ] || { echo "❌ ERROR: docker-compose.yml manquant"; exit 43; }
+
+          echo "=== Création du network partagé (si absent) ==="
+          docker network create backend_appnet 2>/dev/null || true
+
           echo "=== Déploiement (docker compose) ==="
           if docker compose version >/dev/null 2>&1; then
             echo "✓ Utilisation de docker compose (v2 plugin)"
@@ -170,6 +188,17 @@ jobs:
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD":"$PWD" -w "$PWD" docker/compose:2.30.3 pull app
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD":"$PWD" -w "$PWD" docker/compose:2.30.3 up -d
           fi
+
+          echo "=== Sanity check ==="
+          sleep 5
+          if curl -sf http://127.0.0.1:3001/api/health >/dev/null 2>&1; then
+            echo "✅ Health check OK - API démarrée avec succès"
+          else
+            echo "⚠️ Health endpoint non disponible (vérifier les logs du container)"
+          fi
+
+          echo "=== Nettoyage Docker (dangling only — ne touche pas aux images des autres services) ==="
+          docker image prune -f || true
 
           echo "=== ✅ Déploiement DEV API terminé ==="
           REMOTE

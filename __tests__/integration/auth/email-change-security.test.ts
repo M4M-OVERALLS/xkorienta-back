@@ -8,236 +8,285 @@
  * Rapport d'intrusion : A-14 (ÉLEVÉ, CVSS 7.1)
  */
 
-import { describe, expect, it, beforeAll, afterAll, beforeEach } from "@jest/globals";
-import mongoose from "mongoose";
-import User from "@/models/User";
-import { AuthService } from "@/lib/services/AuthService";
-import { AuthRepository } from "@/lib/repositories/AuthRepository";
-import bcrypt from "bcryptjs";
-import crypto from "crypto";
-import request from "supertest";
+jest.mock('@/lib/mongodb', () => ({
+  __esModule: true,
+  default: jest.fn().mockResolvedValue(undefined),
+}))
 
-const API_URL = process.env.TEST_API_URL || "http://localhost:3001";
+jest.mock('next-auth', () => ({
+  getServerSession: jest.fn(),
+}))
 
-describe("A-14 — Changement d'email sécurisé", () => {
-  let testUser: any;
-  const ORIGINAL_EMAIL = "original-a14@test.com";
-  const NEW_EMAIL = "new-a14@test.com";
-  const PASSWORD = "SecurePass123!";
+jest.mock('@/lib/auth', () => ({
+  authOptions: {},
+}))
+
+import { describe, expect, it, beforeAll, afterAll, beforeEach } from '@jest/globals'
+import { getServerSession } from 'next-auth'
+import User from '@/models/User'
+import {
+  connectMongoMemory,
+  disconnectMongoMemory,
+} from '../../helpers/mongoMemory'
+import { AuthService } from '@/lib/services/AuthService'
+import { AuthRepository } from '@/lib/repositories/AuthRepository'
+import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
+import { POST as changeEmail } from '@/app/api/user/email/change/route'
+import { POST as confirmEmail } from '@/app/api/user/email/confirm/route'
+import { PUT as updateProfile } from '@/app/api/user/profile/route'
+
+const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>
+
+async function getEmailChangeFields(userId: string) {
+  return User.findById(userId)
+    .select('+emailChangeToken +emailChangeExpires +emailChangePending')
+    .lean()
+}
+
+function jsonRequest(url: string, method: string, body: unknown): Request {
+  return new Request(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+describe('A-14 — Changement d\'email sécurisé', () => {
+  let testUser: any
+  const ORIGINAL_EMAIL = 'original-a14@test.com'
+  const NEW_EMAIL = 'new-a14@test.com'
+  const PASSWORD = 'SecurePass123!'
 
   beforeAll(async () => {
-    await mongoose.connect(
-      process.env.TEST_DATABASE_URL || "mongodb://localhost:27017/Xkorienta-test",
-    );
-  });
+    await connectMongoMemory()
+  }, 30000)
 
   afterAll(async () => {
-    await mongoose.connection.close();
-  });
+    await disconnectMongoMemory()
+  })
 
   beforeEach(async () => {
-    await User.deleteMany({});
+    await User.deleteMany({})
+    jest.clearAllMocks()
 
-    const hashedPassword = await bcrypt.hash(PASSWORD, 12);
+    const hashedPassword = await bcrypt.hash(PASSWORD, 12)
     testUser = await User.create({
       email: ORIGINAL_EMAIL,
-      name: "Utilisateur A-14",
-      role: "TEACHER",
+      name: 'Utilisateur A-14',
+      role: 'TEACHER',
       password: hashedPassword,
       emailVerified: true,
-    });
-  });
+    })
+  })
 
-  describe("POST /api/user/email/change", () => {
-    it("should reject request without authentication", async () => {
-      const res = await request(API_URL)
-        .post("/api/user/email/change")
-        .send({ newEmail: NEW_EMAIL, password: PASSWORD });
+  describe('POST /api/user/email/change', () => {
+    it('should reject request without authentication', async () => {
+      mockGetServerSession.mockResolvedValue(null)
 
-      expect(res.status).toBe(401);
-    });
+      const response = await changeEmail(
+        jsonRequest('http://localhost/api/user/email/change', 'POST', {
+          newEmail: NEW_EMAIL,
+          password: PASSWORD,
+        }),
+      )
+      const body = await response.json()
 
-    it("should reject request without password", async () => {
-      const res = await request(API_URL)
-        .post("/api/user/email/change")
-        .send({ newEmail: NEW_EMAIL });
+      expect(response.status).toBe(401)
+      expect(body.success).toBe(false)
+    })
 
-      // Without auth session, returns 401 first
-      expect([400, 401]).toContain(res.status);
-    });
+    it('should reject request without password', async () => {
+      mockGetServerSession.mockResolvedValue({
+        user: { id: testUser._id.toString() },
+      } as any)
 
-    it("should reject request without newEmail", async () => {
-      const res = await request(API_URL)
-        .post("/api/user/email/change")
-        .send({ password: PASSWORD });
+      const response = await changeEmail(
+        jsonRequest('http://localhost/api/user/email/change', 'POST', {
+          newEmail: NEW_EMAIL,
+        }),
+      )
 
-      expect([400, 401]).toContain(res.status);
-    });
-  });
+      expect(response.status).toBe(400)
+    })
 
-  describe("POST /api/user/email/confirm", () => {
-    it("should reject confirmation without token", async () => {
-      const res = await request(API_URL)
-        .post("/api/user/email/confirm")
-        .send({});
+    it('should reject request without newEmail', async () => {
+      mockGetServerSession.mockResolvedValue({
+        user: { id: testUser._id.toString() },
+      } as any)
 
-      expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
-    });
+      const response = await changeEmail(
+        jsonRequest('http://localhost/api/user/email/change', 'POST', {
+          password: PASSWORD,
+        }),
+      )
 
-    it("should reject confirmation with invalid token", async () => {
-      const res = await request(API_URL)
-        .post("/api/user/email/confirm")
-        .send({ token: "invalid-token-abc123" });
+      expect(response.status).toBe(400)
+    })
+  })
 
-      expect([410, 500]).toContain(res.status);
-      expect(res.body.success).toBe(false);
-    });
+  describe('POST /api/user/email/confirm', () => {
+    it('should reject confirmation without token', async () => {
+      const response = await confirmEmail(
+        jsonRequest('http://localhost/api/user/email/confirm', 'POST', {}),
+      )
+      const body = await response.json()
 
-    it("should reject confirmation with expired token", async () => {
-      // Manually insert an expired token in DB
-      const rawToken = crypto.randomBytes(32).toString("hex");
-      const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+      expect(response.status).toBe(400)
+      expect(body.success).toBe(false)
+    })
 
-      const repo = new AuthRepository();
+    it('should reject confirmation with invalid token', async () => {
+      const response = await confirmEmail(
+        jsonRequest('http://localhost/api/user/email/confirm', 'POST', {
+          token: 'invalid-token-abc123',
+        }),
+      )
+      const body = await response.json()
+
+      expect([410, 500]).toContain(response.status)
+      expect(body.success).toBe(false)
+    })
+
+    it('should reject confirmation with expired token', async () => {
+      const rawToken = crypto.randomBytes(32).toString('hex')
+      const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex')
+
+      const repo = new AuthRepository()
       await repo.saveEmailChangeToken(
         testUser._id.toString(),
         hashedToken,
         NEW_EMAIL,
-        new Date(Date.now() - 60_000), // expired 1 min ago
-      );
+        new Date(Date.now() - 60_000),
+      )
 
-      const res = await request(API_URL)
-        .post("/api/user/email/confirm")
-        .send({ token: rawToken });
+      const response = await confirmEmail(
+        jsonRequest('http://localhost/api/user/email/confirm', 'POST', {
+          token: rawToken,
+        }),
+      )
+      const body = await response.json()
 
-      expect([410, 500]).toContain(res.status);
-      expect(res.body.success).toBe(false);
-    });
-  });
+      expect([410, 500]).toContain(response.status)
+      expect(body.success).toBe(false)
+    })
+  })
 
-  describe("AuthService.requestEmailChange — unit logic", () => {
-    const authService = new AuthService();
+  describe('AuthService.requestEmailChange — unit logic', () => {
+    const authService = new AuthService()
 
-    it("should reject if password is wrong", async () => {
+    it('should reject if password is wrong', async () => {
       await expect(
-        authService.requestEmailChange(testUser._id.toString(), NEW_EMAIL, "wrong-password"),
-      ).rejects.toThrow("Mot de passe incorrect");
-    });
+        authService.requestEmailChange(testUser._id.toString(), NEW_EMAIL, 'wrong-password'),
+      ).rejects.toThrow('Mot de passe incorrect')
+    })
 
-    it("should reject if new email equals current email", async () => {
+    it('should reject if new email equals current email', async () => {
       await expect(
         authService.requestEmailChange(testUser._id.toString(), ORIGINAL_EMAIL, PASSWORD),
-      ).rejects.toThrow("identique");
-    });
+      ).rejects.toThrow('identique')
+    })
 
-    it("should reject if new email is already taken", async () => {
+    it('should reject if new email is already taken', async () => {
       await User.create({
         email: NEW_EMAIL,
-        name: "Autre Utilisateur",
-        role: "STUDENT",
-        password: "hashed",
-      });
+        name: 'Autre Utilisateur',
+        role: 'STUDENT',
+        password: 'hashed',
+      })
 
       await expect(
         authService.requestEmailChange(testUser._id.toString(), NEW_EMAIL, PASSWORD),
-      ).rejects.toThrow("déjà utilisé");
-    });
+      ).rejects.toThrow('déjà utilisé')
+    })
 
-    it("should save token in DB on valid request", async () => {
-      await authService.requestEmailChange(testUser._id.toString(), NEW_EMAIL, PASSWORD);
+    it('should save token in DB on valid request', async () => {
+      await authService.requestEmailChange(testUser._id.toString(), NEW_EMAIL, PASSWORD)
 
-      // Verify token was saved
-      const db = mongoose.connection.db!;
-      const userDoc = await db.collection("users").findOne({ _id: testUser._id });
-      expect(userDoc?.emailChangePending).toBe(NEW_EMAIL);
-      expect(userDoc?.emailChangeToken).toBeDefined();
-      expect(userDoc?.emailChangeExpires).toBeDefined();
-      expect(new Date(userDoc!.emailChangeExpires as Date).getTime()).toBeGreaterThan(Date.now());
-    });
-  });
+      const userDoc = await getEmailChangeFields(testUser._id.toString())
+      expect(userDoc?.emailChangePending).toBe(NEW_EMAIL)
+      expect(userDoc?.emailChangeToken).toBeDefined()
+      expect(userDoc?.emailChangeExpires).toBeDefined()
+      expect(new Date(userDoc!.emailChangeExpires as Date).getTime()).toBeGreaterThan(Date.now())
+    })
+  })
 
-  describe("AuthService.confirmEmailChange — unit logic", () => {
-    const authService = new AuthService();
+  describe('AuthService.confirmEmailChange — unit logic', () => {
+    const authService = new AuthService()
 
-    it("should apply the new email on valid token", async () => {
-      // Setup: create a valid token manually
-      const rawToken = crypto.randomBytes(32).toString("hex");
-      const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+    it('should apply the new email on valid token', async () => {
+      const rawToken = crypto.randomBytes(32).toString('hex')
+      const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex')
 
-      const repo = new AuthRepository();
+      const repo = new AuthRepository()
       await repo.saveEmailChangeToken(
         testUser._id.toString(),
         hashedToken,
         NEW_EMAIL,
         new Date(Date.now() + 3600_000),
-      );
+      )
 
-      // Act
-      const result = await authService.confirmEmailChange(rawToken);
+      const result = await authService.confirmEmailChange(rawToken)
 
-      // Assert
-      expect(result.success).toBe(true);
-      expect(result.newEmail).toBe(NEW_EMAIL);
+      expect(result.success).toBe(true)
+      expect(result.newEmail).toBe(NEW_EMAIL)
 
-      // Verify the email was changed in DB
-      const updatedUser = await User.findById(testUser._id);
-      expect(updatedUser?.email).toBe(NEW_EMAIL);
-      expect(updatedUser?.emailVerified).toBe(true);
-    });
+      const updatedUser = await User.findById(testUser._id)
+      expect(updatedUser?.email).toBe(NEW_EMAIL)
+      expect(updatedUser?.emailVerified).toBe(true)
+    })
 
-    it("should clear the token fields after confirmation", async () => {
-      const rawToken = crypto.randomBytes(32).toString("hex");
-      const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+    it('should clear the token fields after confirmation', async () => {
+      const rawToken = crypto.randomBytes(32).toString('hex')
+      const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex')
 
-      const repo = new AuthRepository();
+      const repo = new AuthRepository()
       await repo.saveEmailChangeToken(
         testUser._id.toString(),
         hashedToken,
         NEW_EMAIL,
         new Date(Date.now() + 3600_000),
-      );
+      )
 
-      await authService.confirmEmailChange(rawToken);
+      await authService.confirmEmailChange(rawToken)
 
-      // Token fields should be cleared
-      const db = mongoose.connection.db!;
-      const userDoc = await db.collection("users").findOne({ _id: testUser._id });
-      expect(userDoc?.emailChangeToken).toBeUndefined();
-      expect(userDoc?.emailChangeExpires).toBeUndefined();
-      expect(userDoc?.emailChangePending).toBeUndefined();
-    });
+      const userDoc = await getEmailChangeFields(testUser._id.toString())
+      expect(userDoc?.emailChangeToken).toBeUndefined()
+      expect(userDoc?.emailChangeExpires).toBeUndefined()
+      expect(userDoc?.emailChangePending).toBeUndefined()
+    })
 
-    it("should reject a reused token (one-time use)", async () => {
-      const rawToken = crypto.randomBytes(32).toString("hex");
-      const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+    it('should reject a reused token (one-time use)', async () => {
+      const rawToken = crypto.randomBytes(32).toString('hex')
+      const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex')
 
-      const repo = new AuthRepository();
+      const repo = new AuthRepository()
       await repo.saveEmailChangeToken(
         testUser._id.toString(),
         hashedToken,
         NEW_EMAIL,
         new Date(Date.now() + 3600_000),
-      );
+      )
 
-      // First use — succeeds
-      await authService.confirmEmailChange(rawToken);
+      await authService.confirmEmailChange(rawToken)
 
-      // Second use — should fail
       await expect(
         authService.confirmEmailChange(rawToken),
-      ).rejects.toThrow("invalide ou expiré");
-    });
-  });
+      ).rejects.toThrow('invalide ou expiré')
+    })
+  })
 
-  describe("PUT /api/user/profile — email change blocked", () => {
-    it("should reject direct email change via profile endpoint", async () => {
-      const res = await request(API_URL)
-        .put("/api/user/profile")
-        .send({ email: NEW_EMAIL });
+  describe('PUT /api/user/profile — email change blocked', () => {
+    it('should reject direct email change via profile endpoint', async () => {
+      mockGetServerSession.mockResolvedValue(null)
 
-      // Either 400 (blocked) or 401 (no auth) — both are correct
-      expect(res.status).not.toBe(200);
-    });
-  });
-});
+      const response = await updateProfile(
+        jsonRequest('http://localhost/api/user/profile', 'PUT', {
+          email: NEW_EMAIL,
+        }),
+      )
+
+      expect(response.status).not.toBe(200)
+    })
+  })
+})

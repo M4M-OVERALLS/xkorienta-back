@@ -18,11 +18,15 @@ const config: Config = {
   testEnvironment: "node",
 
   // Setup files
-  setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
+  setupFilesAfterEnv: [
+    "<rootDir>/jest.setup.ts",
+    "<rootDir>/__tests__/setup.ts",
+  ],
 
   // Module paths
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
+    "^file-type$": "<rootDir>/__mocks__/file-type.js",
   },
 
   // Test match patterns

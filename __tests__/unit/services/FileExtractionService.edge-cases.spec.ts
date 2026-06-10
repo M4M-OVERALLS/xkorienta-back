@@ -11,10 +11,7 @@
 import { describe, it, expect, beforeEach } from '@jest/globals'
 import { FileExtractionService } from '@/lib/services/FileExtractionService'
 
-// Mock pdf-parse
-jest.mock('pdf-parse', () => {
-    return jest.fn()
-})
+jest.mock('pdf-parse/lib/pdf-parse.js', () => jest.fn())
 
 // Mock mammoth
 jest.mock('mammoth', () => ({
@@ -236,7 +233,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
 
     describe('extractText — PDF with valid magic bytes', () => {
         it('devrait retourner du texte whitespace si le PDF ne contient que des espaces', async () => {
-            const pdfParse = require('pdf-parse')
+            const pdfParse = require('pdf-parse/lib/pdf-parse.js')
             pdfParse.mockResolvedValue({ text: '   \n\n   \t  ' })
 
             const file = new File([pdfBuffer()], 'whitespace.pdf', {
@@ -249,7 +246,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
         })
 
         it('devrait retourner une chaine vide si pdf-parse retourne null/undefined pour text', async () => {
-            const pdfParse = require('pdf-parse')
+            const pdfParse = require('pdf-parse/lib/pdf-parse.js')
             pdfParse.mockResolvedValue({ text: null })
 
             const file = new File([pdfBuffer()], 'null.pdf', {
@@ -283,7 +280,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
 
     describe('Security — malicious content in extracted text', () => {
         it('devrait extraire le texte tel quel sans interpreter les balises HTML/XSS', async () => {
-            const pdfParse = require('pdf-parse')
+            const pdfParse = require('pdf-parse/lib/pdf-parse.js')
             const xssPayload = '<script>alert("XSS")</script><img onerror="fetch(\'http://evil.com\')" src=x>'
             pdfParse.mockResolvedValue({ text: xssPayload })
 
@@ -297,7 +294,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
         })
 
         it('devrait extraire du texte contenant des caracteres SQL injection', async () => {
-            const pdfParse = require('pdf-parse')
+            const pdfParse = require('pdf-parse/lib/pdf-parse.js')
             const sqlPayload = "Robert'); DROP TABLE students;--"
             pdfParse.mockResolvedValue({ text: sqlPayload })
 

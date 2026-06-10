@@ -2,15 +2,27 @@
  * Tests unitaires pour ExamBuilder
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals'
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from '@jest/globals'
 import { ExamBuilder } from '@/lib/builders/ExamBuilder'
 import { getTemplateById } from '@/lib/exam-templates/ExamTemplate'
-import { ExamType } from '@/models/enums'
+import { Cycle, ExamType } from '@/models/enums'
 import { createFullSetup } from '../../helpers/factories'
+import {
+    connectMongoMemory,
+    disconnectMongoMemory,
+} from '../../helpers/mongoMemory'
 
 describe('ExamBuilder', () => {
     let setup: any
     let builder: ExamBuilder
+
+    beforeAll(async () => {
+        await connectMongoMemory()
+    }, 30000)
+
+    afterAll(async () => {
+        await disconnectMongoMemory()
+    })
 
     beforeEach(async () => {
         setup = await createFullSetup()
@@ -65,21 +77,21 @@ describe('ExamBuilder', () => {
         })
 
         it('devrait détecter une incompatibilité école-niveau', async () => {
-            // Créer un niveau LYCEE pour une école COLLEGE uniquement
+            // Niveau lycée (2nde) pour une école collège uniquement
             const { createSchool, createEducationLevel } = await import('../../helpers/factories')
             const collegeOnlySchool = await createSchool({
                 type: 'SECONDARY',
-                cycles: ['COLLEGE'] // Seulement collège
+                cycles: [Cycle.SECONDAIRE_PREMIER_CYCLE],
             })
             const lyceeLevel = await createEducationLevel({
                 name: '2nde',
-                cycle: 'LYCEE'
+                cycle: Cycle.SECONDAIRE_SECOND_CYCLE,
             })
 
             builder.setContext({
                 schoolId: collegeOnlySchool._id.toString(),
                 targetLevelIds: [lyceeLevel._id.toString()],
-                schoolCycles: ['COLLEGE']
+                schoolCycles: [Cycle.SECONDAIRE_PREMIER_CYCLE],
             })
 
             const validation = await builder.validate()

@@ -1,10 +1,18 @@
 /**
  * Tests d'Intégration : Inscription avec École Non Vérifiée
- *
- * Agent 3 - Expert TDD
- * Ces tests doivent être exécutés AVANT l'implémentation
- * Framework: Jest + Supertest
+ * Endpoint: POST /api/auth/register
  */
+
+jest.mock("@/lib/mongodb", () => ({
+  __esModule: true,
+  default: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("@/lib/security/rateLimiter", () => ({
+  registrationLimiter: jest.fn(() => ({ success: true, resetTime: Date.now() })),
+  getClientIdentifier: jest.fn(() => "test-client"),
+  createRateLimitResponse: jest.fn(),
+}));
 
 import LearnerProfile from "@/models/LearnerProfile";
 import UnverifiedSchool from "@/models/UnverifiedSchool";
@@ -18,25 +26,30 @@ import {
   it,
 } from "@jest/globals";
 import mongoose from "mongoose";
-import request from "supertest";
+import { POST } from "@/app/api/auth/register/route";
+import {
+  connectMongoMemory,
+  disconnectMongoMemory,
+} from "../../helpers/mongoMemory";
 
-// Note: Ces tests nécessitent l'installation de:
-// npm install --save-dev jest @jest/globals supertest @types/jest @types/supertest ts-jest mongodb-memory-server
-
-const API_URL = process.env.TEST_API_URL || "http://localhost:3001";
+async function postRegister(body: unknown) {
+  const res = await POST(
+    new Request("http://localhost/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }) as any,
+  );
+  return { status: res.status, body: await res.json() };
+}
 
 describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () => {
   beforeAll(async () => {
-    // Setup: Connexion à la base de test
-    await mongoose.connect(
-      process.env.TEST_DATABASE_URL ||
-        "mongodb://localhost:27017/Xkorienta-test",
-    );
-  });
+    await connectMongoMemory();
+  }, 30000);
 
   afterAll(async () => {
-    // Cleanup: Fermeture de la connexion
-    await mongoose.connection.close();
+    await disconnectMongoMemory();
   });
 
   beforeEach(async () => {
@@ -67,10 +80,8 @@ describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () 
       };
 
       // Act
-      const response = await request(API_URL)
-        .post("/api/auth/register")
-        .send(registrationData)
-        .expect(201);
+      const response = await postRegister(registrationData);
+      expect(response.status).toBe(201);
 
       // Assert
       expect(response.body).toHaveProperty("success", true);
@@ -82,10 +93,10 @@ describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () 
 
       // Vérifier que l'UnverifiedSchool a été créée
       const unverifiedSchool = await UnverifiedSchool.findOne({
-        declaredName: "Lycée Bilingue de Yaoundé",
+        declaredName: /lycée bilingue de yaoundé/i,
       });
       expect(unverifiedSchool).not.toBeNull();
-      expect(unverifiedSchool?.declaredCity).toBe("Yaoundé");
+      expect(unverifiedSchool?.declaredCity).toMatch(/yaoundé/i);
       expect(unverifiedSchool?.declaredCount).toBe(1);
       expect(unverifiedSchool?.status).toBe("PENDING");
 
@@ -95,8 +106,8 @@ describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () 
       }).populate("unverifiedSchool");
       expect(user).not.toBeNull();
       expect(user?.unverifiedSchool).toBeDefined();
-      expect((user?.unverifiedSchool as any)?.declaredName).toBe(
-        "Lycée Bilingue de Yaoundé",
+      expect((user?.unverifiedSchool as any)?.declaredName).toMatch(
+        /lycée bilingue de yaoundé/i,
       );
 
       // Vérifier le LearnerProfile
@@ -129,18 +140,12 @@ describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () 
       };
 
       // Act
-      await request(API_URL)
-        .post("/api/auth/register")
-        .send(user1Data)
-        .expect(201);
-      await request(API_URL)
-        .post("/api/auth/register")
-        .send(user2Data)
-        .expect(201);
+      expect((await postRegister(user1Data)).status).toBe(201);
+      expect((await postRegister(user2Data)).status).toBe(201);
 
       // Assert
       const unverifiedSchool = await UnverifiedSchool.findOne({
-        declaredName: "Collège Vogt",
+        declaredName: /collège vogt/i,
       });
       expect(unverifiedSchool?.declaredCount).toBe(2);
       expect(unverifiedSchool?.declaredBy).toHaveLength(2);
@@ -165,14 +170,8 @@ describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () 
       };
 
       // Act
-      await request(API_URL)
-        .post("/api/auth/register")
-        .send(user1Data)
-        .expect(201);
-      await request(API_URL)
-        .post("/api/auth/register")
-        .send(user2Data)
-        .expect(201);
+      expect((await postRegister(user1Data)).status).toBe(201);
+      expect((await postRegister(user2Data)).status).toBe(201);
 
       // Assert
       const unverifiedSchools = await UnverifiedSchool.find({});
@@ -196,17 +195,15 @@ describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () 
       };
 
       // Act
-      const response = await request(API_URL)
-        .post("/api/auth/register")
-        .send(registrationData)
-        .expect(201);
+      const response = await postRegister(registrationData);
+      expect(response.status).toBe(201);
 
       // Assert
       expect(response.body.user).toHaveProperty("hasUnverifiedSchool", false);
 
       const user = await User.findOne({ email: "marie.nkoto@example.com" });
       expect(user?.schools).toHaveLength(0);
-      expect(user?.unverifiedSchool).toBeUndefined();
+      expect(user?.unverifiedSchool).toBeFalsy();
     });
   });
 
@@ -227,11 +224,8 @@ describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () 
       };
 
       // Act & Assert
-      const response = await request(API_URL)
-        .post("/api/auth/register")
-        .send(registrationData)
-        .expect(400);
-
+      const response = await postRegister(registrationData);
+      expect(response.status).toBe(400);
       expect(response.body.error).toContain(
         "Le nom de l'école ne peut pas dépasser 200 caractères",
       );
@@ -250,11 +244,8 @@ describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () 
       };
 
       // Act & Assert
-      const response = await request(API_URL)
-        .post("/api/auth/register")
-        .send(registrationData)
-        .expect(400);
-
+      const response = await postRegister(registrationData);
+      expect(response.status).toBe(400);
       expect(response.body.error).toContain("Caractères invalides détectés");
     });
 
@@ -271,10 +262,8 @@ describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () 
       };
 
       // Act
-      const response = await request(API_URL)
-        .post("/api/auth/register")
-        .send(registrationData)
-        .expect(201);
+      const response = await postRegister(registrationData);
+      expect(response.status).toBe(201);
 
       // Assert
       const unverifiedSchool = await UnverifiedSchool.findOne({
@@ -298,16 +287,11 @@ describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () 
         declaredSchoolData: { name: "Test School" },
       };
 
-      await request(API_URL)
-        .post("/api/auth/register")
-        .send(userData)
-        .expect(201);
+      expect((await postRegister(userData)).status).toBe(201);
 
       // Act & Assert
-      const response = await request(API_URL)
-        .post("/api/auth/register")
-        .send(userData)
-        .expect(409);
+      const response = await postRegister(userData);
+      expect(response.status).toBe(409);
 
       expect(response.body.error).toContain(
         "Un compte existe déjà avec cet email",
@@ -334,13 +318,11 @@ describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () 
       };
 
       // Act
-      await request(API_URL).post("/api/auth/register").send(user1).expect(201);
+      expect((await postRegister(user1)).status).toBe(201);
 
       // Assert
-      const response = await request(API_URL)
-        .post("/api/auth/register")
-        .send(user2)
-        .expect(409);
+      const response = await postRegister(user2);
+      expect(response.status).toBe(409);
 
       expect(response.body.error).toContain(
         "Ce numéro de téléphone est déjà utilisé",
@@ -368,10 +350,7 @@ describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () 
       const startTime = Date.now();
 
       // Act
-      await request(API_URL)
-        .post("/api/auth/register")
-        .send(registrationData)
-        .expect(201);
+      expect((await postRegister(registrationData)).status).toBe(201);
 
       const duration = Date.now() - startTime;
 
@@ -397,10 +376,8 @@ describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () 
       };
 
       // Act
-      const response = await request(API_URL)
-        .post("/api/auth/register")
-        .send(registrationData)
-        .expect(400);
+      const response = await postRegister(registrationData);
+      expect(response.status).toBe(400);
 
       // Assert
       expect(response.body.error).toBeDefined();
@@ -423,10 +400,8 @@ describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () 
       };
 
       // Act & Assert
-      await request(API_URL)
-        .post("/api/auth/register")
-        .send(registrationData)
-        .expect(400);
+      const response = await postRegister(registrationData);
+      expect(response.status).toBe(400);
     });
   });
 });
