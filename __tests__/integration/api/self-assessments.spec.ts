@@ -2,15 +2,20 @@
  * Tests d'intégration pour les routes API Self-Assessments
  */
 
+jest.mock('next-auth', () => ({
+    getServerSession: jest.fn(),
+}))
+
+jest.mock('@/lib/auth', () => ({
+    authOptions: {},
+}))
+
 import { describe, it, expect, beforeEach } from '@jest/globals'
+import { getServerSession } from 'next-auth'
 import { createFullSetup, createExamV4, createUser } from '../../helpers/factories'
 import { ExamType, ExamStatus, SelfAssessmentLevel } from '@/models/enums'
 
-// Mock de l'authentification
-const mockAuth = jest.fn()
-jest.mock('@/lib/auth', () => ({
-    auth: mockAuth
-}))
+const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>
 
 // Import des handlers
 import { POST as submit } from '@/app/api/self-assessments/submit/route'
@@ -48,9 +53,9 @@ describe('API Self-Assessments', () => {
         setup = await createFullSetup()
         student = setup.user
 
-        mockAuth.mockResolvedValue({
-            user: { id: student._id.toString() }
-        })
+        mockGetServerSession.mockResolvedValue({
+            user: { id: student._id.toString() },
+        } as any)
 
         // Créer un examen d'auto-évaluation publié
         exam = await createExamV4(student._id.toString(), {
@@ -196,7 +201,7 @@ describe('API Self-Assessments', () => {
         })
 
         it('devrait rejeter sans authentification', async () => {
-            mockAuth.mockResolvedValue(null)
+            mockGetServerSession.mockResolvedValue(null)
 
             const request = createMockRequest({
                 method: 'POST',
@@ -327,7 +332,7 @@ describe('API Self-Assessments', () => {
 
             // Chaque élève fait une auto-évaluation
             for (const s of [student, student2, student3]) {
-                mockAuth.mockResolvedValue({
+                mockGetServerSession.mockResolvedValue({
                     user: { id: s._id.toString() }
                 })
 
@@ -347,7 +352,7 @@ describe('API Self-Assessments', () => {
         })
 
         it('devrait récupérer les analytics de classe', async () => {
-            mockAuth.mockResolvedValue({
+            mockGetServerSession.mockResolvedValue({
                 user: { id: student._id.toString() }
             })
 

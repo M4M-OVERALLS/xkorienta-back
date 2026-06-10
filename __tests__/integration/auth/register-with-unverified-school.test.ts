@@ -17,8 +17,11 @@ import {
   expect,
   it,
 } from "@jest/globals";
-import mongoose from "mongoose";
 import request from "supertest";
+import {
+  connectMongoMemory,
+  disconnectMongoMemory,
+} from "../../helpers/mongoMemory";
 
 // Note: Ces tests nécessitent l'installation de:
 // npm install --save-dev jest @jest/globals supertest @types/jest @types/supertest ts-jest mongodb-memory-server
@@ -27,16 +30,11 @@ const API_URL = process.env.TEST_API_URL || "http://localhost:3001";
 
 describe("POST /api/auth/register - Inscription avec École Non Vérifiée", () => {
   beforeAll(async () => {
-    // Setup: Connexion à la base de test
-    await mongoose.connect(
-      process.env.TEST_DATABASE_URL ||
-        "mongodb://localhost:27017/Xkorienta-test",
-    );
-  });
+    await connectMongoMemory();
+  }, 30000);
 
   afterAll(async () => {
-    // Cleanup: Fermeture de la connexion
-    await mongoose.connection.close();
+    await disconnectMongoMemory();
   });
 
   beforeEach(async () => {

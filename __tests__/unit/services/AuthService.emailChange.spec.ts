@@ -5,13 +5,16 @@
  * Utilise MongoDB in-memory via le setup global.
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals'
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from '@jest/globals'
 import { AuthService } from '@/lib/services/AuthService'
 import { AuthRepository } from '@/lib/repositories/AuthRepository'
 import User from '@/models/User'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
-import mongoose from 'mongoose'
+import {
+  connectMongoMemory,
+  disconnectMongoMemory,
+} from '../../helpers/mongoMemory'
 
 describe('AuthService — Email Change (A-14)', () => {
   const authService = new AuthService()
@@ -21,8 +24,18 @@ describe('AuthService — Email Change (A-14)', () => {
   const NEW_EMAIL = 'new@test.com'
   let userId: string
 
+  beforeAll(async () => {
+    await connectMongoMemory()
+  }, 30000)
+
+  afterAll(async () => {
+    await disconnectMongoMemory()
+  })
+
   beforeEach(async () => {
-    const hashed = await bcrypt.hash(PASSWORD, 10)
+    await User.deleteMany({})
+
+    const hashed = await bcrypt.hash(PASSWORD, 1)
     const user = await User.create({
       email: ORIGINAL_EMAIL,
       name: 'Test User',

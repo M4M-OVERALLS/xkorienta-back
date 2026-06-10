@@ -9,6 +9,10 @@
 
 import { describe, expect, it, beforeAll, afterAll, beforeEach } from "@jest/globals";
 import mongoose from "mongoose";
+import {
+  connectMongoMemory,
+  disconnectMongoMemory,
+} from "../../helpers/mongoMemory";
 import Exam from "@/models/Exam";
 import Question from "@/models/Question";
 import Option from "@/models/Option";
@@ -94,13 +98,11 @@ describe("A-10 — /api/student/exams/[id]/take ne doit pas exposer les réponse
   let examId: string;
 
   beforeAll(async () => {
-    await mongoose.connect(
-      process.env.TEST_DATABASE_URL || "mongodb://localhost:27017/Xkorienta-test",
-    );
-  });
+    await connectMongoMemory();
+  }, 30000);
 
   afterAll(async () => {
-    await mongoose.connection.close();
+    await disconnectMongoMemory();
   });
 
   beforeEach(async () => {
