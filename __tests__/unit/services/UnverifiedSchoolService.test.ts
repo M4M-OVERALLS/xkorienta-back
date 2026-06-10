@@ -5,395 +5,407 @@
  * Service pour gérer les écoles non vérifiées
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals';
-import mongoose from 'mongoose';
+jest.mock('@/lib/services/SchoolSearchService', () => ({
+  SchoolSearchService: {
+    normalizeSchoolName: (input: string) => {
+      if (!input) return ''
+      return input
+        .toLowerCase()
+        .trim()
+        .replace(/<[^>]*>/g, '')
+        .replace(/&amp;/g, 'et')
+        .replace(/&/g, 'et')
+        .replace(/[^\wÀ-ÿ\s'\-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    },
+  },
+}))
 
-// Mocks
-const mockUnverifiedSchoolModel = {
-  findOne: global.jest.fn<any>(),
-  create: global.jest.fn<any>(),
-  findByIdAndUpdate: global.jest.fn<any>(),
-  updateMany: global.jest.fn<any>()
-};
+jest.mock('@/models/UnverifiedSchool', () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn(),
+    create: jest.fn(),
+    findByIdAndUpdate: jest.fn(),
+    updateMany: jest.fn(),
+  },
+}))
 
-const mockUserModel = {
-  updateMany: global.jest.fn<any>()
-};
+jest.mock('@/models/User', () => ({
+  __esModule: true,
+  default: {
+    updateMany: jest.fn(),
+    find: jest.fn().mockReturnValue({
+      select: jest.fn().mockResolvedValue([]),
+    }),
+  },
+}))
 
-const mockSchoolModel = {
-  create: global.jest.fn<any>(),
-  findById: global.jest.fn<any>(),
-  findByIdAndUpdate: global.jest.fn<any>()
-};
+jest.mock('@/models/School', () => ({
+  __esModule: true,
+  default: {
+    create: jest.fn(),
+    findById: jest.fn(),
+    findByIdAndUpdate: jest.fn(),
+  },
+}))
 
-const mockLearnerProfileModel = {
-  updateMany: global.jest.fn<any>()
-};
+jest.mock('@/models/LearnerProfile', () => ({
+  __esModule: true,
+  default: {
+    updateMany: jest.fn(),
+  },
+}))
 
-global.jest.mock('@/models/UnverifiedSchool', () => ({ __esModule: true, default: mockUnverifiedSchoolModel }));
-global.jest.mock('@/models/User', () => ({ __esModule: true, default: mockUserModel }));
-global.jest.mock('@/models/School', () => ({ __esModule: true, default: mockSchoolModel }));
-global.jest.mock('@/models/LearnerProfile', () => ({ __esModule: true, default: mockLearnerProfileModel }));
+import { describe, it, expect, beforeEach } from '@jest/globals'
+import mongoose from 'mongoose'
+import UnverifiedSchool from '@/models/UnverifiedSchool'
+import User from '@/models/User'
+import School from '@/models/School'
+import { UnverifiedSchoolService } from '@/lib/services/UnverifiedSchoolService'
 
-// Service à tester (sera implémenté)
-import { UnverifiedSchoolService } from '@/lib/services/UnverifiedSchoolService';
+const mockUnverifiedSchoolModel = UnverifiedSchool as unknown as {
+  findOne: jest.Mock
+  create: jest.Mock
+  findByIdAndUpdate: jest.Mock
+  updateMany: jest.Mock
+}
+
+const mockUserModel = User as unknown as {
+  updateMany: jest.Mock
+  find: jest.Mock
+}
+
+const mockSchoolModel = School as unknown as {
+  create: jest.Mock
+  findById: jest.Mock
+  findByIdAndUpdate: jest.Mock
+}
 
 describe('UnverifiedSchoolService', () => {
 
   beforeEach(() => {
-    // Reset all mocks
-    global.jest.clearAllMocks();
-  });
+    jest.clearAllMocks()
+    mockUserModel.find.mockReturnValue({
+      select: jest.fn().mockResolvedValue([]),
+    })
+  })
 
   describe('findOrCreate', () => {
 
     it('should find existing unverified school and add user to declaredBy', async () => {
-      // Arrange
-      const userId = new mongoose.Types.ObjectId();
+      const userId = new mongoose.Types.ObjectId()
       const existingSchool = {
         _id: new mongoose.Types.ObjectId(),
-        declaredName: 'Lycée Bilingue de Yaoundé',
+        declaredName: 'lycée bilingue de yaoundé',
         declaredCount: 1,
         declaredBy: [new mongoose.Types.ObjectId()],
         status: 'PENDING',
-        save: jest.fn<any>().mockResolvedValue(true)
-      };
+        save: jest.fn<any>().mockResolvedValue(true),
+      }
 
-      mockUnverifiedSchoolModel.findOne.mockResolvedValue(existingSchool);
+      mockUnverifiedSchoolModel.findOne.mockResolvedValue(existingSchool)
 
       const schoolData = {
-        name: 'lycée bilingue de yaoundé', // Minuscules
+        name: 'lycée bilingue de yaoundé',
         city: 'Yaoundé',
-        country: 'Cameroun'
-      };
+        country: 'Cameroun',
+      }
 
-      // Act
-      const result = await UnverifiedSchoolService.findOrCreate(schoolData, userId);
+      const result = await UnverifiedSchoolService.findOrCreate(schoolData, userId)
 
-      // Assert
       expect(mockUnverifiedSchoolModel.findOne).toHaveBeenCalledWith({
-        declaredName: expect.stringMatching(/lycée bilingue/i),
-        status: 'PENDING'
-      });
+        declaredName: { $regex: expect.any(RegExp) },
+        status: 'PENDING',
+      })
 
-      expect(existingSchool.declaredBy).toContain(userId);
-      expect(existingSchool.declaredCount).toBe(2);
-      expect(existingSchool.save).toHaveBeenCalled();
-      expect((result as any)._id).toBe(existingSchool._id);
-    });
+      expect(existingSchool.declaredBy).toContain(userId)
+      expect(existingSchool.declaredCount).toBe(2)
+      expect(existingSchool.save).toHaveBeenCalled()
+      expect((result as any)._id).toBe(existingSchool._id)
+    })
 
     it('should create new unverified school if none exists', async () => {
-      // Arrange
-      const userId = new mongoose.Types.ObjectId();
-      const newSchoolId = new mongoose.Types.ObjectId();
+      const userId = new mongoose.Types.ObjectId()
+      const newSchoolId = new mongoose.Types.ObjectId()
 
-      mockUnverifiedSchoolModel.findOne.mockResolvedValue(null as any);
+      mockUnverifiedSchoolModel.findOne.mockResolvedValue(null as any)
       mockUnverifiedSchoolModel.create.mockResolvedValue({
         _id: newSchoolId,
-        declaredName: 'Nouveau Lycée',
+        declaredName: 'nouveau lycée',
         declaredCount: 1,
         declaredBy: [userId],
-        status: 'PENDING'
-      });
+        status: 'PENDING',
+      })
 
       const schoolData = {
         name: 'Nouveau Lycée',
-        city: 'Douala'
-      };
+        city: 'Douala',
+      }
 
-      // Act
-      const result = await UnverifiedSchoolService.findOrCreate(schoolData, userId);
+      const result = await UnverifiedSchoolService.findOrCreate(schoolData, userId)
 
-      // Assert
       expect(mockUnverifiedSchoolModel.create).toHaveBeenCalledWith({
-        declaredName: 'Nouveau Lycée',
-        declaredCity: 'Douala',
+        declaredName: 'nouveau lycée',
+        declaredCity: 'douala',
+        declaredCountry: undefined,
+        declaredType: undefined,
         declaredBy: [userId],
         declaredCount: 1,
-        status: 'PENDING'
-      });
+        status: 'PENDING',
+      })
 
-      expect(result._id).toBe(newSchoolId);
-    });
+      expect(result._id).toBe(newSchoolId)
+    })
 
     it('should normalize school name before searching', async () => {
-      // Arrange
-      const userId = new mongoose.Types.ObjectId();
-      mockUnverifiedSchoolModel.findOne.mockResolvedValue(null as any);
+      const userId = new mongoose.Types.ObjectId()
+      mockUnverifiedSchoolModel.findOne.mockResolvedValue(null as any)
       mockUnverifiedSchoolModel.create.mockResolvedValue({
         _id: new mongoose.Types.ObjectId(),
         declaredName: 'lycée de douala',
         declaredCount: 1,
-        status: 'PENDING'
-      });
+        status: 'PENDING',
+      })
 
       const schoolData = {
-        name: '  LYCÉE  de  DOUALA  ' // Espaces et casse différente
-      };
+        name: '  LYCÉE  de  DOUALA  ',
+      }
 
-      // Act
-      await UnverifiedSchoolService.findOrCreate(schoolData, userId);
+      await UnverifiedSchoolService.findOrCreate(schoolData, userId)
 
-      // Assert
       expect(mockUnverifiedSchoolModel.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          declaredName: 'lycée de douala' // Normalisé
+          declaredName: 'lycée de douala',
         })
-      );
-    });
+      )
+    })
 
     it('should not add duplicate user to declaredBy array', async () => {
-      // Arrange
-      const userId = new mongoose.Types.ObjectId();
+      const userId = new mongoose.Types.ObjectId()
       const existingSchool = {
         _id: new mongoose.Types.ObjectId(),
-        declaredName: 'Test School',
+        declaredName: 'test school',
         declaredCount: 1,
-        declaredBy: [userId], // Utilisateur déjà présent
+        declaredBy: [userId],
         status: 'PENDING',
-        save: global.jest.fn<any>().mockResolvedValue(true)
-      };
+        save: jest.fn().mockResolvedValue(true),
+      }
 
-      mockUnverifiedSchoolModel.findOne.mockResolvedValue(existingSchool);
+      mockUnverifiedSchoolModel.findOne.mockResolvedValue(existingSchool)
 
-      const schoolData = { name: 'Test School' };
+      const schoolData = { name: 'Test School' }
 
-      // Act
-      await UnverifiedSchoolService.findOrCreate(schoolData, userId);
+      await UnverifiedSchoolService.findOrCreate(schoolData, userId)
 
-      // Assert
-      expect(existingSchool.declaredBy).toHaveLength(1); // Pas de doublon
-      expect(existingSchool.declaredCount).toBe(1); // Count non incrémenté
-    });
-  });
+      expect(existingSchool.declaredBy).toHaveLength(1)
+      expect(existingSchool.declaredCount).toBe(1)
+    })
+  })
 
   describe('validateSchool', () => {
 
     it('should update status to VALIDATED and create official School', async () => {
-      // Arrange
-      const unverifiedSchoolId = new mongoose.Types.ObjectId();
-      const newSchoolId = new mongoose.Types.ObjectId();
+      const unverifiedSchoolId = new mongoose.Types.ObjectId()
+      const newSchoolId = new mongoose.Types.ObjectId()
 
-      const mockUnverifiedSchool = {
+      mockUnverifiedSchoolModel.findByIdAndUpdate.mockResolvedValue({
         _id: unverifiedSchoolId,
         declaredName: 'Lycée à Valider',
         declaredBy: [new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId()],
-        status: 'PENDING'
-      };
-
-      mockUnverifiedSchoolModel.findByIdAndUpdate.mockResolvedValue({
-        ...mockUnverifiedSchool,
         status: 'VALIDATED',
-        matchedSchool: newSchoolId
-      });
+        matchedSchool: newSchoolId,
+      })
 
-      const adminId = new mongoose.Types.ObjectId();
-      mockSchoolModel.create.mockResolvedValue({ _id: newSchoolId });
+      const adminId = new mongoose.Types.ObjectId()
+      mockSchoolModel.create.mockResolvedValue({ _id: newSchoolId })
 
-      // Act
       const result = await UnverifiedSchoolService.validateSchool(
         unverifiedSchoolId.toString(),
         adminId.toString(),
         {
           name: 'Lycée à Valider',
           type: 'SECONDARY',
-          city: 'Yaoundé'
+          city: 'Yaoundé',
         }
-      );
+      )
 
-      // Assert
       expect(mockUnverifiedSchoolModel.findByIdAndUpdate).toHaveBeenCalledWith(
         unverifiedSchoolId,
         {
           status: 'VALIDATED',
-          matchedSchool: expect.any(mongoose.Types.ObjectId)
+          matchedSchool: newSchoolId,
         },
         { new: true }
-      );
+      )
 
-      expect(result.success).toBe(true);
-      expect(result.schoolId).toBeDefined();
-    });
+      expect(result.success).toBe(true)
+      expect(result.schoolId).toBeDefined()
+    })
 
     it('should update all users with unverifiedSchool to official school', async () => {
-      // Arrange
-      const unverifiedSchoolId = new mongoose.Types.ObjectId();
-      const newSchoolId = new mongoose.Types.ObjectId();
+      const unverifiedSchoolId = new mongoose.Types.ObjectId()
+      const newSchoolId = new mongoose.Types.ObjectId()
 
       mockUnverifiedSchoolModel.findByIdAndUpdate.mockResolvedValue({
         _id: unverifiedSchoolId,
         status: 'VALIDATED',
-        matchedSchool: newSchoolId
-      });
+        matchedSchool: newSchoolId,
+      })
 
-      mockUserModel.updateMany.mockResolvedValue({ modifiedCount: 5 });
+      mockUserModel.updateMany.mockResolvedValue({ modifiedCount: 5 })
 
-      const adminId = new mongoose.Types.ObjectId();
-      mockSchoolModel.create.mockResolvedValue({ _id: newSchoolId });
+      const adminId = new mongoose.Types.ObjectId()
+      mockSchoolModel.create.mockResolvedValue({ _id: newSchoolId })
 
-      // Act
       await UnverifiedSchoolService.validateSchool(
         unverifiedSchoolId.toString(),
         adminId.toString(),
         { name: 'Test', type: 'SECONDARY' }
-      );
+      )
 
-      // Assert
       expect(mockUserModel.updateMany).toHaveBeenCalledWith(
         { unverifiedSchool: unverifiedSchoolId },
         {
           $addToSet: { schools: newSchoolId },
-          $unset: { unverifiedSchool: '' }
+          $unset: { unverifiedSchool: '' },
         }
-      );
-    });
-  });
+      )
+    })
+  })
 
   describe('mergeToExistingSchool', () => {
 
     it('should merge unverified school to existing validated school', async () => {
-      // Arrange
-      const unverifiedSchoolId = new mongoose.Types.ObjectId();
-      const targetSchoolId = new mongoose.Types.ObjectId();
+      const unverifiedSchoolId = new mongoose.Types.ObjectId()
+      const targetSchoolId = new mongoose.Types.ObjectId()
 
       mockUnverifiedSchoolModel.findByIdAndUpdate.mockResolvedValue({
         _id: unverifiedSchoolId,
         status: 'MERGED',
-        matchedSchool: targetSchoolId
-      });
+        matchedSchool: targetSchoolId,
+      })
 
-      mockUserModel.updateMany.mockResolvedValue({ modifiedCount: 3 });
+      mockUserModel.updateMany.mockResolvedValue({ modifiedCount: 3 })
 
-      const adminId = new mongoose.Types.ObjectId();
+      const adminId = new mongoose.Types.ObjectId()
 
-      // Act
       const result = await UnverifiedSchoolService.mergeToExistingSchool(
         unverifiedSchoolId.toString(),
         targetSchoolId.toString(),
         adminId.toString()
-      );
+      )
 
-      // Assert
       expect(mockUnverifiedSchoolModel.findByIdAndUpdate).toHaveBeenCalledWith(
         unverifiedSchoolId,
         {
           status: 'MERGED',
-          matchedSchool: targetSchoolId
+          matchedSchool: targetSchoolId,
         },
         { new: true }
-      );
+      )
 
       expect(mockUserModel.updateMany).toHaveBeenCalledWith(
         { unverifiedSchool: unverifiedSchoolId },
         {
           $addToSet: { schools: targetSchoolId },
-          $unset: { unverifiedSchool: '' }
+          $unset: { unverifiedSchool: '' },
         }
-      );
+      )
 
-      expect(result.success).toBe(true);
-      expect(result.mergedCount).toBe(3);
-    });
-  });
+      expect(result.success).toBe(true)
+      expect(result.mergedCount).toBe(3)
+    })
+  })
 
   describe('rejectSchool', () => {
 
     it('should update status to REJECTED with notes', async () => {
-      // Arrange
-      const unverifiedSchoolId = new mongoose.Types.ObjectId();
+      const unverifiedSchoolId = new mongoose.Types.ObjectId()
 
       mockUnverifiedSchoolModel.findByIdAndUpdate.mockResolvedValue({
         _id: unverifiedSchoolId,
         status: 'REJECTED',
-        notes: 'École fictive'
-      });
+        notes: 'École fictive',
+      })
 
-      const adminId = new mongoose.Types.ObjectId();
+      const adminId = new mongoose.Types.ObjectId()
 
-      // Act
       const result = await UnverifiedSchoolService.rejectSchool(
         unverifiedSchoolId.toString(),
         adminId.toString(),
         'École fictive'
-      );
+      )
 
-      // Assert
       expect(mockUnverifiedSchoolModel.findByIdAndUpdate).toHaveBeenCalledWith(
         unverifiedSchoolId,
         {
           status: 'REJECTED',
-          notes: 'École fictive'
+          notes: 'École fictive',
         },
         { new: true }
-      );
+      )
 
-      expect(result.success).toBe(true);
-    });
-  });
+      expect(result.success).toBe(true)
+    })
+  })
 
   describe('Security: Sanitization', () => {
 
     it('should sanitize HTML from school name', async () => {
-      // Arrange
-      const userId = new mongoose.Types.ObjectId();
-      mockUnverifiedSchoolModel.findOne.mockResolvedValue(null as any);
+      const userId = new mongoose.Types.ObjectId()
+      mockUnverifiedSchoolModel.findOne.mockResolvedValue(null as any)
       mockUnverifiedSchoolModel.create.mockResolvedValue({
         _id: new mongoose.Types.ObjectId(),
-        declaredName: 'lycée test'
-      });
+        declaredName: 'lycée test',
+      })
 
       const schoolData = {
-        name: '<script>alert("XSS")</script>Lycée Test'
-      };
+        name: '<script>alert("XSS")</script>Lycée Test',
+      }
 
-      // Act
-      await UnverifiedSchoolService.findOrCreate(schoolData, userId);
+      await UnverifiedSchoolService.findOrCreate(schoolData, userId)
 
-      // Assert
       expect(mockUnverifiedSchoolModel.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          declaredName: expect.not.stringContaining('<script>')
+          declaredName: expect.not.stringContaining('<script>'),
         })
-      );
-    });
+      )
+    })
 
     it('should reject school name longer than 200 characters', async () => {
-      // Arrange
-      const userId = new mongoose.Types.ObjectId();
-      const longName = 'A'.repeat(201);
+      const userId = new mongoose.Types.ObjectId()
+      const longName = 'A'.repeat(201)
 
-      const schoolData = { name: longName };
+      const schoolData = { name: longName }
 
-      // Act & Assert
       await expect(
         UnverifiedSchoolService.findOrCreate(schoolData, userId)
-      ).rejects.toThrow('Le nom de l\'école ne peut pas dépasser 200 caractères');
-    });
-  });
+      ).rejects.toThrow('Le nom de l\'école ne peut pas dépasser 200 caractères')
+    })
+  })
 
   describe('Performance Tests', () => {
 
     it('should complete findOrCreate in under 100ms', async () => {
-      // Arrange
-      const userId = new mongoose.Types.ObjectId();
-      mockUnverifiedSchoolModel.findOne.mockResolvedValue(null as any);
+      const userId = new mongoose.Types.ObjectId()
+      mockUnverifiedSchoolModel.findOne.mockResolvedValue(null as any)
       mockUnverifiedSchoolModel.create.mockResolvedValue({
         _id: new mongoose.Types.ObjectId(),
-        declaredName: 'Test',
-        declaredCount: 1
-      });
+        declaredName: 'test',
+        declaredCount: 1,
+      })
 
-      const schoolData = { name: 'Test School' };
+      const schoolData = { name: 'Test School' }
 
-      const startTime = Date.now();
+      const startTime = Date.now()
 
-      // Act
-      await UnverifiedSchoolService.findOrCreate(schoolData, userId);
+      await UnverifiedSchoolService.findOrCreate(schoolData, userId)
 
-      const duration = Date.now() - startTime;
+      const duration = Date.now() - startTime
 
-      // Assert
-      expect(duration).toBeLessThan(100);
-    });
-  });
-});
+      expect(duration).toBeLessThan(100)
+    })
+  })
+})

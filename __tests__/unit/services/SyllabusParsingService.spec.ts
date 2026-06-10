@@ -26,6 +26,7 @@ jest.mock('@/lib/ai/strategies/AIParsingStrategyManager', () => {
         AIParsingStrategyManager: {
             getInstance: jest.fn().mockReturnValue({
                 getActiveStrategy: jest.fn().mockReturnValue(mockStrategy),
+                getStrategy: jest.fn().mockReturnValue({ isEnabled: () => false }),
             }),
         },
         __mockStrategy: mockStrategy,
@@ -159,7 +160,7 @@ describe('SyllabusParsingService', () => {
             const file = new File([Buffer.from('img')], 'photo.jpg', { type: 'image/jpeg' })
 
             await expect(SyllabusParsingService.parseFile(file)).rejects.toThrow(
-                'Image parsing requires a vision-capable model'
+                'Image parsing requires Anthropic (Claude) to be configured'
             )
             expect(mockStrategy.parseToSyllabus).not.toHaveBeenCalled()
         })

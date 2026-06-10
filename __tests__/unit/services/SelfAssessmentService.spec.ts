@@ -2,17 +2,29 @@
  * Tests unitaires pour SelfAssessmentService
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals'
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from '@jest/globals'
 import { SelfAssessmentService } from '@/lib/services/SelfAssessmentService'
 import { ExamType, SelfAssessmentLevel, ExamStatus } from '@/models/enums'
 import { createFullSetup, createExamV4, createUser } from '../../helpers/factories'
 import SelfAssessmentResult from '@/models/SelfAssessmentResult'
 import Exam from '@/models/Exam'
+import {
+    connectMongoMemory,
+    disconnectMongoMemory,
+} from '../../helpers/mongoMemory'
 
 describe('SelfAssessmentService', () => {
     let setup: any
     let exam: any
     let student: any
+
+    beforeAll(async () => {
+        await connectMongoMemory()
+    }, 30000)
+
+    afterAll(async () => {
+        await disconnectMongoMemory()
+    })
 
     beforeEach(async () => {
         setup = await createFullSetup()

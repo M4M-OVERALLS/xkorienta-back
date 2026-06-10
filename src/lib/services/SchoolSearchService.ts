@@ -191,7 +191,7 @@ export class SchoolSearchService {
     static suggestCorrections(
         query: string,
         availableSchools: string[],
-        threshold = 30,
+        threshold = 50,
         limit = 5
     ): SchoolSuggestion[] {
         const scored = availableSchools.map(name => ({

@@ -19,8 +19,11 @@ import {
   expect,
   it,
 } from "@jest/globals";
-import mongoose from "mongoose";
 import request from "supertest";
+import {
+  connectMongoMemory,
+  disconnectMongoMemory,
+} from "../../helpers/mongoMemory";
 
 const API_URL = process.env.TEST_API_URL || "http://localhost:3001";
 
@@ -32,14 +35,11 @@ describe("GET /api/exams/public - Liste des examens publics", () => {
   let level2nde: any;
 
   beforeAll(async () => {
-    await mongoose.connect(
-      process.env.TEST_DATABASE_URL ||
-        "mongodb://localhost:27017/Xkorienta-test",
-    );
-  });
+    await connectMongoMemory();
+  }, 30000);
 
   afterAll(async () => {
-    await mongoose.connection.close();
+    await disconnectMongoMemory();
   });
 
   beforeEach(async () => {

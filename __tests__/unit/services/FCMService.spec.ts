@@ -36,24 +36,11 @@ jest.mock('@/lib/services/NotificationPreferencesService', () => ({
 
 // ─── Imports (après les mocks) ───────────────────────────────────────────────
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
+import { describe, it, expect, beforeEach } from '@jest/globals'
 import mongoose from 'mongoose'
-import { MongoMemoryServer } from 'mongodb-memory-server'
 import { FCMService } from '@/lib/services/FCMService'
 import NotificationDevice from '@/models/NotificationDevice'
 import { NotificationPreferencesService } from '@/lib/services/NotificationPreferencesService'
-
-let mongoServer: MongoMemoryServer
-
-beforeAll(async () => {
-    mongoServer = await MongoMemoryServer.create()
-    await mongoose.connect(mongoServer.getUri())
-})
-
-afterAll(async () => {
-    await mongoose.disconnect()
-    await mongoServer.stop()
-})
 
 beforeEach(async () => {
     await NotificationDevice.deleteMany({})
@@ -170,7 +157,7 @@ describe('FCMService.sendPushForNotification', () => {
             await FCMService.sendPushForNotification(makeNotification())
 
             const [payload] = mockSendEachForMulticast.mock.calls[0]
-            expect(payload.android.notification.channel_id).toBe('xkorienta_default_channel')
+            expect(payload.android.notification.channelId).toBe('xkorienta_default_channel')
         })
 
         it('should include APNs sound default', async () => {

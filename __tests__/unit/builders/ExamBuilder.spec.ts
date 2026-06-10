@@ -2,15 +2,27 @@
  * Tests unitaires pour ExamBuilder
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals'
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from '@jest/globals'
 import { ExamBuilder } from '@/lib/builders/ExamBuilder'
 import { getTemplateById } from '@/lib/exam-templates/ExamTemplate'
 import { ExamType } from '@/models/enums'
 import { createFullSetup } from '../../helpers/factories'
+import {
+    connectMongoMemory,
+    disconnectMongoMemory,
+} from '../../helpers/mongoMemory'
 
 describe('ExamBuilder', () => {
     let setup: any
     let builder: ExamBuilder
+
+    beforeAll(async () => {
+        await connectMongoMemory()
+    }, 30000)
+
+    afterAll(async () => {
+        await disconnectMongoMemory()
+    })
 
     beforeEach(async () => {
         setup = await createFullSetup()

@@ -34,8 +34,6 @@ jobs:
           context: .
           push: true
           tags: ${{ env.DOCKER_IMAGE }}:${{ github.ref_name }}
-          build-args: |
-            NODE_ENV=dev
           no-cache: true
 
       - name: Create source archive

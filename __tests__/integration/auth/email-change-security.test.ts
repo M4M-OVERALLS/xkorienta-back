@@ -9,8 +9,11 @@
  */
 
 import { describe, expect, it, beforeAll, afterAll, beforeEach } from "@jest/globals";
-import mongoose from "mongoose";
 import User from "@/models/User";
+import {
+  connectMongoMemory,
+  disconnectMongoMemory,
+} from "../../helpers/mongoMemory";
 import { AuthService } from "@/lib/services/AuthService";
 import { AuthRepository } from "@/lib/repositories/AuthRepository";
 import bcrypt from "bcryptjs";
@@ -26,13 +29,11 @@ describe("A-14 — Changement d'email sécurisé", () => {
   const PASSWORD = "SecurePass123!";
 
   beforeAll(async () => {
-    await mongoose.connect(
-      process.env.TEST_DATABASE_URL || "mongodb://localhost:27017/Xkorienta-test",
-    );
-  });
+    await connectMongoMemory();
+  }, 30000);
 
   afterAll(async () => {
-    await mongoose.connection.close();
+    await disconnectMongoMemory();
   });
 
   beforeEach(async () => {
