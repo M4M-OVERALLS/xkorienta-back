@@ -92,12 +92,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Next.js build
-        run: npm run build
+      - name: Run build
+        run: |
+          export NODE_ENV="${NODE_ENV:-production}"
+          export DATABASE_URL="${DATABASE_URL:-mongodb://localhost:27017/test}"
+          export NEXTAUTH_SECRET="${NEXTAUTH_SECRET:-ci-build-placeholder-secret-0123456789ab}"
+          export NEXTAUTH_URL="${NEXTAUTH_URL:-http://localhost:3001}"
+          export PUSHER_APP_ID="${PUSHER_APP_ID:-ci-build-placeholder}"
+          export PUSHER_KEY="${PUSHER_KEY:-ci-build-placeholder}"
+          export PUSHER_SECRET="${PUSHER_SECRET:-ci-build-placeholder}"
+          export PUSHER_CLUSTER="${PUSHER_CLUSTER:-eu}"
+          npm run build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          NEXTAUTH_URL: http://localhost:3001
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          PUSHER_APP_ID: ${{ secrets.PUSHER_APP_ID }}
+          PUSHER_KEY: ${{ secrets.PUSHER_KEY }}
+          PUSHER_SECRET: ${{ secrets.PUSHER_SECRET }}
+          PUSHER_CLUSTER: ${{ secrets.PUSHER_CLUSTER }}
 
   # Étape 4 : Déploiement sur le serveur Dev
   deploy:
