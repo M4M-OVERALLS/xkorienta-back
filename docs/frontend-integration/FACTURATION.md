@@ -1,106 +1,146 @@
-# Processus de Facturation — Xkorienta
+# Module — Facturation & Paiements (Livres, Vendeurs)
 
-**Version :** 1.0  
-**Date :** Mai 2026  
-**Concerne :** Module invoices, commissions, virements vendeurs
+> **Audience** : Équipe frontend (web, mobile Flutter, intégrations externes)  
+> **Base URL backend** : `{{baseUrl}}` (ex: `http://localhost:3001` · prod `https://xkorienta.com/xkorienta/backend`)  
+> **Auth** : Cookie session NextAuth (`credentials: 'include'`) pour les routes protégées  
+> **Dernière mise à jour** : juin 2026
+
+---
+
+## En bref
+
+Après chaque achat de livre (compte ou invité), le backend génère automatiquement :
+
+| Type facture | Destinataire | Usage UI |
+|---|---|---|
+| `PURCHASE_RECEIPT` | Acheteur | Reçu d'achat — historique « Mes achats » |
+| `EARNINGS_STATEMENT` | Vendeur (enseignant) | Relevé de gains — dashboard vendeur |
+| `SCHOOL_INSCRIPTION` | Établissement | Facture inscription scolaire (module inscriptions) |
+
+Les factures sont consultables en **JSON** ou **HTML** (impression / export PDF côté client).
 
 ---
 
 ## Table des matières
 
-1. [Vue d'ensemble](#1-vue-densemble)
-2. [Modèles de données](#2-modèles-de-données)
+1. [Enums & types (kit d'implémentation)](#1-enums--types-kit-dimplémentation)
+2. [Vue d'ensemble des flux](#2-vue-densemble-des-flux)
 3. [Flux acheteur avec compte](#3-flux-acheteur-avec-compte)
-4. [Flux acheteur invité (sans compte)](#4-flux-acheteur-invité-sans-compte)
-5. [Commissions et virements vendeurs](#5-commissions-et-virements-vendeurs)
+4. [Flux acheteur invité](#4-flux-acheteur-invité)
+5. [Commissions & virements vendeurs](#5-commissions--virements-vendeurs)
 6. [Accès aux factures](#6-accès-aux-factures)
 7. [API Reference](#7-api-reference)
-8. [Variables d'environnement](#8-variables-denvironnement)
+8. [Kit d'intégration frontend](#8-kit-dintégration-frontend)
+9. [Variables d'environnement](#9-variables-denvironnement)
 
 ---
 
-## 1. Vue d'ensemble
+## 1. Enums & types (kit d'implémentation)
 
-La plateforme génère deux types de documents financiers après chaque achat de livre :
+### Enums
 
-| Type | Destinataire | Déclencheur |
-|---|---|---|
-| `PURCHASE_RECEIPT` | Acheteur | Paiement confirmé |
-| `EARNINGS_STATEMENT` | Vendeur (enseignant) | Paiement confirmé |
+```typescript
+type InvoiceType =
+  | 'PURCHASE_RECEIPT'
+  | 'EARNINGS_STATEMENT'
+  | 'SCHOOL_INSCRIPTION'
 
-Les deux documents sont envoyés automatiquement par email. Ils sont également consultables en HTML via des endpoints dédiés.
+type InvoiceStatus = 'ISSUED' | 'SENT' | 'VOIDED'
 
-### Deux parcours d'achat
+type Currency = 'XAF' | 'EUR' | 'USD'
 
+type PayoutStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+
+type MobileMoneyProvider = 'orange' | 'mtn' | 'other'
+
+type GuestPurchaseStatus = 'PENDING' | 'COMPLETED' | 'FAILED'
 ```
-Acheteur avec compte  → Transaction Mongoose → InvoiceService.generateForTransaction()
-Acheteur invité       → GuestPurchase         → InvoiceService.generateForGuestPurchase()
-```
 
----
+### Modèle Invoice (réponse API)
 
-## 2. Modèles de données
-
-### Invoice (`src/models/Invoice.ts`)
-
-```ts
-{
-  invoiceNumber:    string          // INV-YYYY-XXXXXX (séquentiel)
-  type:             'PURCHASE_RECEIPT' | 'EARNINGS_STATEMENT'
-
-  // Acheteur avec compte
-  recipientId?:     ObjectId        // null pour les invités
-  transactionId?:   ObjectId        // null pour les invités
-
-  // Acheteur invité
-  guestPurchaseId?: ObjectId        // référence à GuestPurchase
+```typescript
+interface Invoice {
+  _id: string
+  invoiceNumber: string          // INV-2026-000042
+  type: InvoiceType
+  recipientId?: string
+  transactionId?: string
+  guestPurchaseId?: string
   isGuestPurchase?: boolean
-
-  paymentReference: string          // ex : GUEST-E2C51E-8CBD8997
-  productType:      TransactionType
+  paymentReference: string
+  productType: string
   productDescription: string
-
-  subtotal:         number
-  discountAmount:   number
-  discountPercent:  number
-  total:            number
-  currency:         string          // XAF, EUR, USD
-
+  subtotal: number
+  discountAmount: number
+  discountPercent: number
+  total: number
+  currency: Currency
   platformCommission?: number
-  sellerAmount?:       number
-
-  buyerName:   string
+  sellerAmount?: number
+  buyerName: string
   buyerEmail?: string
   sellerName?: string
-
-  status:    'ISSUED' | 'SENT' | 'VOIDED'
-  issuedAt:  Date
-  sentAt?:   Date
+  status: InvoiceStatus
+  issuedAt: string
+  sentAt?: string
+  createdAt: string
+  updatedAt: string
 }
 ```
 
-### GuestPurchase (`src/models/GuestPurchase.ts`)
+### Pagination
 
-Représente un achat sans compte. Champs liés à la facturation :
-
-```ts
-{
-  bookId:           ObjectId
-  email:            string          // email de l'acheteur invité
-  paymentReference: string
-  finalAmount:      number
-  currency:         string
-  status:           'PENDING' | 'COMPLETED' | 'FAILED'
-
-  downloadToken?:       string      // token sécurisé pour téléchargement + accès facture
-  downloadTokenExpiry?: Date        // valide 7 jours
-
-  // Rempli après complétion
-  sellerId?:          ObjectId
-  sellerAmount?:      number
-  platformCommission?: number
+```typescript
+interface PaginatedInvoices {
+  invoices: Invoice[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
 }
 ```
+
+### Wallet vendeur
+
+```typescript
+interface SellerWallet {
+  balance: number
+  totalEarned: number
+  totalWithdrawn: number
+  currency: Currency
+  lastUpdatedAt: string | null
+}
+```
+
+### Payout
+
+```typescript
+interface Payout {
+  _id: string
+  userId: string
+  amount: number
+  currency: Currency
+  recipientPhone: string
+  recipientName: string
+  recipientProvider: MobileMoneyProvider
+  status: PayoutStatus
+  payoutReference: string
+  providerTransferId?: string
+  failureReason?: string
+  processedAt?: string
+}
+```
+
+---
+
+## 2. Vue d'ensemble des flux
+
+```
+Acheteur avec compte  → Transaction → InvoiceService.generateForTransaction()
+Acheteur invité       → GuestPurchase → InvoiceService.generateForGuestPurchase()
+```
+
+Les deux parcours passent par **NotchPay** (Mobile Money / carte). La facturation est déclenchée **après confirmation du paiement** (webhook ou vérification statut invité).
 
 ---
 
@@ -109,127 +149,86 @@ Représente un achat sans compte. Champs liés à la facturation :
 ```mermaid
 sequenceDiagram
     participant A as Acheteur
-    participant API as API Next.js
+    participant API as API
     participant NP as NotchPay
     participant DB as MongoDB
     participant Mail as Email
 
     A->>API: POST /api/books/:id/purchase
-    API->>NP: initiatePayment(amount, email, reference)
-    NP-->>API: { paymentUrl }
-    API-->>A: redirect → paymentUrl
+    API->>NP: initiatePayment
+    NP-->>API: paymentUrl
+    API-->>A: redirect paymentUrl
 
-    A->>NP: Paiement effectué
+    A->>NP: Paiement
     NP->>API: POST /api/books/purchase/webhook
-    API->>API: verifySignature (HMAC SHA-256)
-    API->>DB: Transaction.status = COMPLETED
-    API->>DB: BookPurchase.status = COMPLETED
-    API->>DB: WalletService.creditSeller() ou PayoutService.transferImmediately()
+    API->>DB: Transaction COMPLETED
     API->>DB: InvoiceService.generateForTransaction()
-    API->>Mail: Email reçu acheteur (PURCHASE_RECEIPT)
-    API->>Mail: Email relevé vendeur (EARNINGS_STATEMENT)
+    API->>Mail: PURCHASE_RECEIPT (acheteur)
+    API->>Mail: EARNINGS_STATEMENT (vendeur)
 ```
 
-**Service déclencheur :** `src/lib/payment.ts` (EventBus `payment.completed`)
-
-**Calcul de la commission :**
+**Commission :**
 ```
-subtotal    = finalAmount / (1 - discountPercent / 100)
-sellerAmount = finalAmount * (1 - commissionRate / 100)
+sellerAmount       = finalAmount × (1 - commissionRate / 100)
 platformCommission = finalAmount - sellerAmount
 ```
+(`commissionRate` défaut : 5 % — voir `BookConfig`)
 
 ---
 
-## 4. Flux acheteur invité (sans compte)
+## 4. Flux acheteur invité
 
 ```mermaid
 sequenceDiagram
     participant A as Visiteur
-    participant APP as App (Next.js)
-    participant API as API Next.js
+    participant UI as Frontend
+    participant API as API
     participant NP as NotchPay
-    participant DB as MongoDB
-    participant Mail as Email
 
-    A->>APP: Clic "Acheter maintenant" → entre son email
-    APP->>API: POST /api/books/:id/purchase/guest { email }
-    API->>DB: GuestPurchase.create({ status: PENDING })
-    API->>NP: initiatePayment(amount, email, reference, callbackUrl)
-    NP-->>API: { paymentUrl }
-    API-->>APP: { paymentUrl }
-    APP->>A: redirect → paymentUrl (NotchPay)
+    A->>UI: Saisit email + « Acheter »
+    UI->>API: POST /api/books/:id/purchase/guest
+    API-->>UI: 201 { paymentUrl, reference }
+    UI->>A: redirect paymentUrl
 
-    A->>NP: Paiement effectué
-    NP->>A: redirect → /bibliotheque/:id?trxref=...&status=complete
+    A->>NP: Paiement
+    NP->>A: redirect callbackUrl
 
-    Note over A,APP: Page de confirmation
-    APP->>API: GET /api/books/purchase/guest/status/:trxref?providerRef=...
-    API->>NP: provider.verifyPayment(providerRef)
-    NP-->>API: { status: 'complete' }
-    API->>DB: GuestPurchase.status = COMPLETED
+    UI->>API: GET /api/books/purchase/guest/status/:reference?providerRef=...
+    API->>API: verifyPayment NotchPay
     API->>API: handleGuestPurchaseCompleted()
-    API->>DB: setDownloadToken(token, expiry: +7j)
-    API->>DB: updateCommission(sellerId, sellerAmount, platformCommission)
-    API->>DB: PayoutService.transferImmediately() ou WalletService.creditSeller()
-    API->>DB: InvoiceService.generateForGuestPurchase()
-    API->>Mail: Email reçu acheteur + lien "Voir ma facture"
-    API->>Mail: Email relevé vendeur
-    API->>Mail: Email lien de téléchargement (downloadToken)
+    API-->>UI: { status: COMPLETED }
+
+    Note over A,UI: Email envoyé avec downloadToken + lien facture HTML
 ```
 
-**Service déclencheur :** `GuestBookPurchaseService.handleGuestPurchaseCompleted()`
+### Points clés côté client
 
-**Fichiers clés :**
-```
-src/lib/services/GuestBookPurchaseService.ts   ← logique métier
-src/app/api/books/[id]/purchase/guest/route.ts ← initiation
-src/app/api/books/purchase/guest/status/[reference]/route.ts ← vérification statut
-src/app/api/books/guest-download/route.ts      ← téléchargement via token
-```
+1. **`callbackUrl` optionnel** — si absent, le backend utilise `{APP_URL}/bibliotheque/:id?payment=return&mode=guest`
+2. Après retour NotchPay, extraire `trxref` / `reference` et `providerRef` des query params
+3. Poller `GET .../guest/status/:reference?providerRef=...` jusqu'à `status !== 'PENDING'`
+4. Le **téléchargement** et la **facture HTML** utilisent le `downloadToken` reçu par email (valide 7 jours)
 
 ---
 
-## 5. Commissions et virements vendeurs
+## 5. Commissions & virements vendeurs
 
-### Calcul
-
-```
-commissionRate  = BookConfig.commissionRate (défaut : 5%)
-sellerAmount    = finalAmount * (1 - commissionRate / 100)
-platformCommission = finalAmount - sellerAmount
-```
-
-Implémenté dans `BookConfigService.calculatePricing()`.
-
-### Stratégie de versement (Option A — NotchPay direct)
-
-À chaque vente, le système vérifie si le vendeur a configuré son mobile money (`User.paymentInfo`) :
+### Versement automatique à chaque vente
 
 ```
 Vendeur a paymentInfo.mobileMoneyPhone ?
-  ├── OUI → PayoutService.transferImmediately()
-  │          POST https://api.notchpay.co/transfers
-  │          Payout créé (référence EARN-xxx) pour audit trail
-  │          Fonds envoyés immédiatement au vendeur
-  └── NON → WalletService.creditSeller()
-             Crédit du wallet interne Mongoose
-             Le vendeur demande un virement manuel via /api/seller/payout
+  ├── OUI → PayoutService.transferImmediately() (NotchPay transfer)
+  └── NON → WalletService.creditSeller() (solde interne)
 ```
 
-### Configuration mobile money vendeur
+### Configuration mobile money (profil enseignant)
 
-L'enseignant renseigne ces champs dans son profil (`User.paymentInfo`) :
-
-```ts
-paymentInfo: {
-  mobileMoneyPhone:    string   // ex: "+237699123456"
-  mobileMoneyProvider: 'orange' | 'mtn' | 'other'
-  mobileMoneyName:     string   // nom complet du compte Mobile Money
+```typescript
+interface PaymentInfo {
+  mobileMoneyPhone: string      // "+237699123456"
+  mobileMoneyProvider: MobileMoneyProvider
+  mobileMoneyName: string
 }
 ```
-
-### Mappage canal NotchPay
 
 | `mobileMoneyProvider` | Canal NotchPay |
 |---|---|
@@ -237,99 +236,126 @@ paymentInfo: {
 | `mtn` | `cm.mtn` |
 | `other` | `cm.mobile` |
 
-### Audit trail (modèle Payout)
+### Virement manuel (wallet → Mobile Money)
 
-Chaque virement crée un document `Payout` :
-
-```ts
-{
-  userId:            ObjectId         // vendeur
-  amount:            number
-  currency:          Currency
-  recipientPhone:    string
-  recipientName:     string
-  recipientProvider: MobileMoneyProvider
-  status:            'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
-  payoutReference:   string           // EARN-xxx (auto) ou PAY-xxx (manuel)
-  providerTransferId?: string         // ID retourné par NotchPay
-  failureReason?:    string
-  processedAt?:      Date
-}
-```
+`POST /api/seller/payout` — le vendeur demande un retrait depuis son solde wallet.
 
 ---
 
 ## 6. Accès aux factures
 
-### Acheteur avec compte
+### Utilisateur connecté
 
-- Liste : `GET /api/invoices?type=PURCHASE_RECEIPT&page=1`
-- Détail JSON : `GET /api/invoices/:invoiceNumber`
-- HTML (impression) : `GET /api/invoices/:invoiceNumber/html`
+| Action | Endpoint |
+|---|---|
+| Liste reçus d'achat | `GET /api/invoices?type=PURCHASE_RECEIPT&page=1` |
+| Liste relevés gains | `GET /api/invoices?type=EARNINGS_STATEMENT&page=1` |
+| Détail JSON | `GET /api/invoices/:invoiceNumber` |
+| HTML (impression) | `GET /api/invoices/:invoiceNumber/html` |
 
-Accès protégé par session NextAuth. L'utilisateur ne voit que ses propres factures (`invoice.recipientId === session.user.id`).
+Règle : `invoice.recipientId === session.user.id` (admins `DG_M4M`, `TECH_SUPPORT` : accès étendu).
 
-### Acheteur invité
-
-Pas de session. L'accès se fait via le **downloadToken** reçu par email :
+### Acheteur invité (sans session)
 
 ```
 GET /api/invoices/:invoiceNumber/html?token=<downloadToken>
 ```
 
-**Validation :**
-1. `GuestPurchase.findOne({ downloadToken: token, status: 'COMPLETED' })`
-2. `invoice.guestPurchaseId === guestPurchase._id`
-3. Si valide → HTML servi sans authentification
+Validation : token lié à la `GuestPurchase` complétée + `invoice.guestPurchaseId` correspondant.
 
-Le lien est inclus automatiquement dans l'email de reçu invité (bouton « Voir / Imprimer ma facture »).
+### Téléchargement livre invité
 
-### Vendeur (relevé de gains)
+```
+GET /api/books/guest-download?token=<downloadToken>
+```
 
-- Liste : `GET /api/invoices?type=EARNINGS_STATEMENT`
-- HTML : `GET /api/invoices/:invoiceNumber/html`
-
-Accès protégé par session. Le vendeur ne voit que ses relevés (`invoice.recipientId === session.user.id`).
+Réponse : fichier binaire (`application/pdf` ou `application/epub+zip`).  
+Erreurs : `400` token manquant · `403` invalide/expiré/limité.
 
 ---
 
 ## 7. API Reference
 
-### Factures
+### 7.1 Factures
 
-| Méthode | URL | Auth | Description |
+#### `GET {{baseUrl}}/api/invoices`
+
+**Auth** : Session
+
+| Query | Type | Défaut | Description |
 |---|---|---|---|
-| `GET` | `/api/invoices` | Session | Liste paginée des factures de l'utilisateur |
-| `GET` | `/api/invoices/:invoiceNumber` | Session | Détail JSON d'une facture |
-| `GET` | `/api/invoices/:invoiceNumber/html` | Session ou `?token=` | Facture HTML (impression / PDF) |
+| `type` | `InvoiceType` | — | Filtre optionnel |
+| `page` | `number` | `1` | Page |
+| `limit` | `number` | `20` | Max 50 |
 
-**Query params `GET /api/invoices` :**
+**Réponse 200**
 
-| Param | Type | Défaut | Description |
-|---|---|---|---|
-| `type` | `PURCHASE_RECEIPT \| EARNINGS_STATEMENT` | — | Filtre par type |
-| `page` | `number` | `1` | Numéro de page |
-| `limit` | `number` | `20` | Résultats par page (max 50) |
-
-### Achat invité
-
-| Méthode | URL | Auth | Description |
-|---|---|---|---|
-| `POST` | `/api/books/:id/purchase/guest` | Aucune | Initier un achat invité |
-| `GET` | `/api/books/purchase/guest/status/:trxref` | Aucune | Vérifier le statut après retour NotchPay |
-| `GET` | `/api/books/guest-download?token=` | Token | Télécharger le livre |
-
-**Body `POST /api/books/:id/purchase/guest` :**
-```json
-{ "email": "acheteur@example.com" }
-```
-
-**Response :**
 ```json
 {
   "success": true,
   "data": {
-    "paymentUrl": "https://pay.notchpay.co/...",
+    "invoices": [
+      {
+        "invoiceNumber": "INV-2026-000042",
+        "type": "PURCHASE_RECEIPT",
+        "total": 2500,
+        "currency": "XAF",
+        "productDescription": "Mathématiques Tle C",
+        "issuedAt": "2026-06-01T10:00:00.000Z",
+        "status": "SENT"
+      }
+    ],
+    "total": 12,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 1
+  }
+}
+```
+
+#### `GET {{baseUrl}}/api/invoices/:invoiceNumber`
+
+**Auth** : Session (destinataire ou admin)
+
+**Réponse 200** : `{ success: true, data: Invoice }`  
+**404** : facture introuvable ou accès refusé
+
+#### `GET {{baseUrl}}/api/invoices/:invoiceNumber/html`
+
+**Auth** : Session **ou** `?token=<downloadToken>` (invité)
+
+**Réponse 200** : `Content-Type: text/html` — document imprimable  
+**401** / **403** / **404** : texte plain (pas JSON)
+
+---
+
+### 7.2 Achat invité
+
+#### `POST {{baseUrl}}/api/books/:id/purchase/guest`
+
+**Auth** : Aucune
+
+**Body**
+
+```json
+{
+  "email": "acheteur@example.com",
+  "callbackUrl": "https://xkorienta.com/bibliotheque/abc123?payment=return&mode=guest"
+}
+```
+
+| Champ | Requis | Description |
+|---|---|---|
+| `email` | ✅ | Email acheteur (reçu facture + lien téléchargement) |
+| `callbackUrl` | ❌ | URL retour NotchPay — défaut généré côté serveur |
+
+**Réponse 201**
+
+```json
+{
+  "success": true,
+  "data": {
+    "paymentUrl": "https://pay.notchpay.co/pay/...",
     "reference": "GUEST-E2C51E-8CBD8997",
     "finalAmount": 2500,
     "currency": "XAF"
@@ -337,16 +363,67 @@ Accès protégé par session. Le vendeur ne voit que ses relevés (`invoice.reci
 }
 ```
 
-### Wallet & virements vendeurs
+**Erreurs** : `400` email invalide / livre gratuit · `404` livre · `409` déjà acheté
 
-| Méthode | URL | Auth | Description |
-|---|---|---|---|
-| `GET` | `/api/seller/wallet` | Session | Solde et statistiques du wallet |
-| `GET` | `/api/seller/earnings` | Session | Historique des gains |
-| `POST` | `/api/seller/payout` | Session | Demander un virement manuel |
-| `GET` | `/api/seller/payout` | Session | Historique des virements |
+#### `GET {{baseUrl}}/api/books/purchase/guest/status/:reference`
 
-**Body `POST /api/seller/payout` :**
+**Auth** : Aucune
+
+| Query | Description |
+|---|---|
+| `providerRef` | Référence NotchPay (`trxref` du retour paiement) — recommandé |
+
+**Réponse 200**
+
+```json
+{
+  "success": true,
+  "data": {
+    "reference": "GUEST-E2C51E-8CBD8997",
+    "status": "COMPLETED",
+    "email": "acheteur@example.com"
+  }
+}
+```
+
+`status` : `PENDING` | `COMPLETED` | `FAILED`  
+Si `PENDING`, l'API tente une vérification NotchPay à la volée.
+
+#### `GET {{baseUrl}}/api/books/guest-download?token=`
+
+**Auth** : Token uniquement — fichier binaire en réponse.
+
+---
+
+### 7.3 Wallet & virements vendeur
+
+#### `GET {{baseUrl}}/api/seller/wallet`
+
+**Auth** : Session (enseignant)
+
+```json
+{
+  "success": true,
+  "data": {
+    "balance": 15000,
+    "totalEarned": 45000,
+    "totalWithdrawn": 30000,
+    "currency": "XAF",
+    "lastUpdatedAt": "2026-06-01T..."
+  }
+}
+```
+
+Sans vente : `balance: 0`, `lastUpdatedAt: null`.
+
+#### `GET {{baseUrl}}/api/seller/earnings`
+
+**Auth** : Session — alias de `GET /api/invoices?type=EARNINGS_STATEMENT`.
+
+#### `POST {{baseUrl}}/api/seller/payout`
+
+**Auth** : Session
+
 ```json
 {
   "amount": 5000,
@@ -357,32 +434,136 @@ Accès protégé par session. Le vendeur ne voit que ses relevés (`invoice.reci
 }
 ```
 
----
+**Réponse 201** : `{ success: true, data: Payout }`  
+**400** : solde insuffisant / validation Zod
 
-## 8. Variables d'environnement
+#### `GET {{baseUrl}}/api/seller/payout`
 
-| Variable | Description | Obligatoire |
-|---|---|---|
-| `NOTCHPAY_PUBLIC_KEY` | Clé publique NotchPay (initiation) | Oui |
-| `NOTCHPAY_SECRET_KEY` | Clé secrète NotchPay (transfers) | Oui |
-| `NOTCHPAY_HASH` | Hash webhook HMAC SHA-256 | Oui |
-| `NEXT_PUBLIC_APP_URL` | URL base de l'app (liens emails) | Oui |
-| `NEXT_PUBLIC_API_URL` | URL base de l'API (si différente) | Non |
-| `EXCHANGE_RATE_API_KEY` | Taux de change multi-devises | Non |
+**Auth** : Session — historique paginé (`?page=1&limit=20`).
 
 ---
 
-## Annexe — Architecture des couches
+## 8. Kit d'intégration frontend
 
+### 8.1 Liste des factures (écran « Mes achats »)
+
+```typescript
+async function fetchPurchaseReceipts(
+  baseUrl: string,
+  page = 1
+): Promise<PaginatedInvoices> {
+  const res = await fetch(
+    `${baseUrl}/api/invoices?type=PURCHASE_RECEIPT&page=${page}&limit=20`,
+    { credentials: 'include' }
+  )
+  if (!res.ok) throw new Error('Impossible de charger les factures')
+  const json = await res.json()
+  return json.data
+}
 ```
-Route Handler
-    └── InvoiceService / GuestBookPurchaseService / PayoutService
-            └── invoiceRepository / guestPurchaseRepository / payoutRepository
-                    └── MongoDB (Mongoose)
-                    └── NotchPay API (via PaymentSDK)
-                    └── Email (via NodemailerAdapter)
+
+### 8.2 Afficher / imprimer une facture
+
+**Utilisateur connecté** — ouvrir dans un nouvel onglet ou WebView :
+
+```typescript
+const url = `${baseUrl}/api/invoices/${invoiceNumber}/html`
+// fetch avec credentials: 'include' puis afficher le HTML
+// ou window.open(url) si même domaine / cookies partagés
 ```
 
-**Principe :** Aucun accès à la base de données ni appel API externe dans les route handlers. Tout passe par les services.
+**Invité** (token depuis email) :
 
-**Gestion des erreurs :** Les blocs commission et facturation sont enveloppés en `try/catch` indépendants — un échec de facturation ne bloque pas l'envoi du lien de téléchargement.
+```typescript
+const url = `${baseUrl}/api/invoices/${invoiceNumber}/html?token=${downloadToken}`
+```
+
+Pour export PDF mobile : rendre le HTML puis utiliser le module d'impression natif (share / print).
+
+### 8.3 Flow checkout invité complet
+
+```typescript
+async function guestCheckout(
+  baseUrl: string,
+  bookId: string,
+  email: string,
+  callbackUrl: string
+) {
+  const res = await fetch(`${baseUrl}/api/books/${bookId}/purchase/guest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, callbackUrl }),
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.message)
+  window.location.href = json.data.paymentUrl
+}
+
+async function pollGuestStatus(
+  baseUrl: string,
+  reference: string,
+  providerRef?: string
+): Promise<'COMPLETED' | 'FAILED' | 'PENDING'> {
+  const qs = providerRef ? `?providerRef=${encodeURIComponent(providerRef)}` : ''
+  const res = await fetch(
+    `${baseUrl}/api/books/purchase/guest/status/${reference}${qs}`
+  )
+  const json = await res.json()
+  return json.data.status
+}
+```
+
+**Page retour paiement** : lire `trxref` / `reference` et `providerRef` depuis l'URL NotchPay, poller toutes les 2–3 s jusqu'à `COMPLETED` ou `FAILED`, afficher message « Vérifiez votre email ».
+
+### 8.4 Dashboard vendeur
+
+```typescript
+// Solde
+const walletRes = await fetch(`${baseUrl}/api/seller/wallet`, { credentials: 'include' })
+
+// Relevés de gains (factures)
+const earningsRes = await fetch(`${baseUrl}/api/seller/earnings?page=1`, { credentials: 'include' })
+
+// Demande de virement
+await fetch(`${baseUrl}/api/seller/payout`, {
+  method: 'POST',
+  credentials: 'include',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    amount: 5000,
+    currency: 'XAF',
+    recipientPhone: '+237699123456',
+    recipientName: 'Jean Dupont',
+    recipientProvider: 'mtn',
+  }),
+})
+```
+
+### 8.5 États UI recommandés
+
+| Écran | États |
+|---|---|
+| Liste factures | `loading` · `empty` · `error` · `data` |
+| Checkout invité | `form` · `initiating` · `redirecting` · `polling` · `success` · `failed` |
+| Wallet vendeur | `loading` · `zero-balance` · `data` · `payout-pending` |
+
+---
+
+## 9. Variables d'environnement
+
+| Variable | Rôle |
+|---|---|
+| `NOTCHPAY_PUBLIC_KEY` | Initiation paiements |
+| `NOTCHPAY_SECRET_KEY` | Transfers vendeurs |
+| `NOTCHPAY_HASH` | Signature webhook HMAC SHA-256 |
+| `NEXT_PUBLIC_APP_URL` | Liens emails + `callbackUrl` par défaut |
+| `NEXTAUTH_URL` | Fallback URL app |
+
+---
+
+## Liens
+
+| Module | Sujet |
+|---|---|
+| **25** | Abonnements & feature flags (plans premium) |
+| **29** | Inscriptions établissements (`SCHOOL_INSCRIPTION`) |

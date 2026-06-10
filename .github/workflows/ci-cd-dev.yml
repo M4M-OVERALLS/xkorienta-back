@@ -158,6 +158,13 @@ jobs:
           cd "$DEPLOY_PATH"
           tar -xzf deploy-files.tar.gz docker-compose.yml
 
+          echo "=== Vérifications pré-déploiement ==="
+          [ -f ".env" ] || { echo "⚠️ WARNING: .env manquant dans $DEPLOY_PATH"; }
+          [ -f "docker-compose.yml" ] || { echo "❌ ERROR: docker-compose.yml manquant"; exit 43; }
+
+          echo "=== Création du network partagé (si absent) ==="
+          docker network create backend_appnet 2>/dev/null || true
+
           echo "=== Déploiement (docker compose) ==="
           if docker compose version >/dev/null 2>&1; then
             echo "✓ Utilisation de docker compose (v2 plugin)"
@@ -170,6 +177,17 @@ jobs:
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD":"$PWD" -w "$PWD" docker/compose:2.30.3 pull app
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD":"$PWD" -w "$PWD" docker/compose:2.30.3 up -d
           fi
+
+          echo "=== Sanity check ==="
+          sleep 5
+          if curl -sf http://127.0.0.1:3001/api/health >/dev/null 2>&1; then
+            echo "✅ Health check OK - API démarrée avec succès"
+          else
+            echo "⚠️ Health endpoint non disponible (vérifier les logs du container)"
+          fi
+
+          echo "=== Nettoyage Docker (dangling only — ne touche pas aux images des autres services) ==="
+          docker image prune -f || true
 
           echo "=== ✅ Déploiement DEV API terminé ==="
           REMOTE

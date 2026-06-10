@@ -132,7 +132,7 @@ Accept: text/event-stream
 | `GCE_AL` | GCE A/Level | Anglophone | `en` |
 | `UNIVERSITE_BTS` | Université / BTS / HND | Les deux | `fr` (par défaut dans l'app) |
 
-**Message initial recommandé** (envoyé automatiquement à la sélection du niveau) — voir `xkorienta-app/src/types/orientation.ts` → `LEVEL_CONFIGS[].initialMessage`.
+**Message initial recommandé** (envoyé automatiquement à la sélection du niveau) — voir section **7.4 `LEVEL_CONFIGS`**.
 
 ### Réponse SSE
 
@@ -446,22 +446,22 @@ const hasPaidReport = content.includes(REPORT_START)
 
 **Buffering UI** : même principe que le rapport gratuit — loader jusqu'à `---FIN---`.
 
-### 4.3 Utilitaires de parsing (référence web)
+### 4.3 Parsing côté client
 
-Implémentation de référence : `xkorienta-app/src/components/orientation/parseReport.ts`
+Algorithmes complets en section **7.9**. Résumé des fonctions à implémenter :
 
+| Fonction | Entrée | Sortie |
+|---|---|---|
+| `extractBetween` | contenu + marqueurs START/END | corps du rapport |
+| `parseFreeReport` | corps rapport gratuit | `{ emoji, name, body }` |
+| `parseReportModules` | corps rapport payant | `ReportModule[]` (1–9) |
+| `extractXkorinScore` | contenu module 4 | `number \| null` (0–100) |
+| `extractRecommendation` | corps rapport | formation recommandée ou `null` |
+
+Regex recommandation (module 9) :
 ```typescript
-import {
-  FREE_REPORT_START,
-  FREE_REPORT_END,
-  parseFreeReport,       // → { emoji, name, body }
-  parseReportModules,    // → ReportModule[] (1–9)
-  extractXkorinScore,    // → number | null
-  extractRecommendation, // → string | null
-} from './parseReport'
+/la\s+meilleure\s+voie\s+pour\s+cet\s+apprenant\s+est\s+(.+?)(?:\s+parce\s+que|\.|\n|$)/i
 ```
-
-Sur mobile : reproduire la même logique de split sur les marqueurs et les headers `MODULE N —`.
 
 ---
 
@@ -535,40 +535,567 @@ Vous n'avez rien à configurer — mais utile pour le debug.
 
 ---
 
-## 7. Implémentation de référence (web Xkorienta)
+## 7. Kit d'implémentation client (from scratch)
 
-Ces fichiers dans `xkorienta-app` montrent le comportement attendu :
+Cette section contient **tout le nécessaire** pour implémenter le module sans lire un autre repo. Copiez/adaptez ces types, constantes et algorithmes dans votre app (Flutter, React Native, Vue, etc.).
 
-| Fichier | Rôle |
-|---|---|
-| `src/types/orientation.ts` | Types + `LEVEL_CONFIGS` + messages initiaux |
-| `src/components/orientation/LevelSelector.tsx` | Grille 6 niveaux |
-| `src/components/orientation/XkorientaChat.tsx` | Chat SSE, buffering rapports, timeouts, `/rapport` |
-| `src/components/orientation/ReportDisplay.tsx` | Rapport payant + paywall |
-| `src/components/orientation/parseReport.ts` | Parsing marqueurs et modules |
-| `src/components/orientation/generateReportPdf.ts` | Export PDF |
-| `src/app/(dashboard)/student/orientation/ai/page.tsx` | Page dashboard + gate abonnement |
+---
 
-### Commande dev `/rapport`
-
-Taper exactement `/rapport` dans le chat injecte un profil fictif complet (Phase 1 + Phase 2) et déclenche la génération des 2 rapports. Utile pour tester sans parcourir les 16+ échanges.
-
-### Proxy web (Next.js)
-
-`xkorienta-app/next.config.ts` redirige `/api/*` vers `NEXT_PUBLIC_API_URL` :
+### 7.1 Types TypeScript (référence)
 
 ```typescript
-// En dev : NEXT_PUBLIC_API_URL=http://localhost:3001
-// En prod : NEXT_PUBLIC_API_URL=/xkorienta/backend
+/** Valeurs `level` acceptées par POST /api/xkorienta/chat */
+type EducationLevel =
+  | 'BEPC_3EME'
+  | 'GCE_OL'
+  | 'SECONDE'
+  | 'TERMINALE_BAC'
+  | 'GCE_AL'
+  | 'UNIVERSITE_BTS'
+
+type OrientationLanguage = 'fr' | 'en'
+type EducationSystem = 'francophone' | 'anglophone' | 'both'
+type ChatRole = 'user' | 'assistant'
+
+/** Message API (body POST /chat) */
+interface ApiChatMessage {
+  role: ChatRole
+  content: string
+}
+
+/** Message UI (avec id local + état streaming) */
+interface OrientationMessage {
+  id: string
+  role: ChatRole
+  content: string
+  isStreaming?: boolean
+}
+
+interface LevelConfig {
+  level: EducationLevel
+  label: string
+  sublabel: string
+  language: OrientationLanguage
+  system: EducationSystem
+  /** Envoyé automatiquement quand l'utilisateur choisit ce niveau */
+  initialMessage: string
+}
+
+interface FreeReportProfile {
+  emoji: string
+  name: string
+  body: string
+}
+
+interface ReportModule {
+  number: number      // 1–9
+  title: string
+  content: string
+}
+
+interface ConversationEntry {
+  id: string
+  level: EducationLevel
+  language: OrientationLanguage
+  messageCount: number
+  hasReport: boolean
+  preview: string
+  createdAt: string   // ISO 8601
+  messages: OrientationMessage[]
+}
+
+/** Formulaire POST /api/xkorienta/register */
+interface XkorientaRegistration {
+  student: {
+    school: string
+    firstName: string
+    lastName: string
+    phone: string
+    email: string
+    neighborhood: string
+    class: string
+    specialty: string
+  }
+  parent: {
+    fullName: string
+    phone: string
+    email: string
+  }
+}
 ```
 
-Le composant chat appelle `/api/xkorienta/chat` en **URL relative** — le proxy fait le reste.
+---
+
+### 7.2 Constantes — marqueurs de rapports
+
+```typescript
+const FREE_REPORT_START = '---RAPPORT-GRATUIT---'
+const FREE_REPORT_END   = '---FIN-GRATUIT---'
+const REPORT_START      = '---RAPPORT---'
+const REPORT_END        = '---FIN---'
+
+/** Regex module payant : "MODULE 1 — DIAGNOSTIC DU PROFIL" */
+const MODULE_HEADER_RE = /MODULE\s+(\d)\s*[—–-]+\s*(.+?)(?:\n|$)/g
+
+/** Regex score Xkorin : "SCORE TOTAL : 72/100" */
+const XKORIN_SCORE_RE = /SCORE\s*TOTAL\s*[:：]\s*\[?(\d{1,3})\s*[/／]\s*100\]?/i
+
+/** Regex dimension Phase 2 : "(D3/7)", "D7 / 7", etc. */
+const DIMENSION_MARKER_RE = /\bD\s*([1-7])\s*\/\s*7\b/gi
+const LAST_DIMENSION_RE   = /\bD\s*7\s*\/\s*7\b/i
+
+/** Regex ligne profil gratuit : "PROFIL : 🔵 Builder / Entrepreneur Impact" */
+const PROFIL_LINE_RE = /^PROFIL\s*:\s*(\S+)\s+(.+)/i
+```
+
+---
+
+### 7.3 Constantes — timeouts et limites UI
+
+```typescript
+const FIRST_TOKEN_TIMEOUT_MS        = 12_000   // conversation normale
+const FIRST_TOKEN_TIMEOUT_REPORT_MS = 90_000   // phase rapport (Sonnet lent)
+const SLOW_CONNECTION_THRESHOLD_MS  = 3_000    // afficher "connexion lente" après 3s
+const CHAT_API_PATH                 = '/api/xkorienta/chat'
+const MAX_MESSAGES_PER_REQUEST      = 100      // limite backend Zod
+```
+
+---
+
+### 7.4 `LEVEL_CONFIGS` — les 6 niveaux (source de vérité)
+
+```json
+[
+  {
+    "level": "BEPC_3EME",
+    "label": "3ème / BEPC",
+    "sublabel": "Francophone",
+    "language": "fr",
+    "system": "francophone",
+    "initialMessage": "Bonjour ! Je suis en 3ème et je viens d'obtenir mon BEPC. J'ai besoin de conseils pour choisir la bonne série au lycée et préparer mon orientation professionnelle."
+  },
+  {
+    "level": "GCE_OL",
+    "label": "GCE O/Level",
+    "sublabel": "Anglophone",
+    "language": "en",
+    "system": "anglophone",
+    "initialMessage": "Hello! I just completed my GCE Ordinary Level exams. I need guidance on choosing the right subjects for A/Level and planning my future career path."
+  },
+  {
+    "level": "SECONDE",
+    "label": "Seconde",
+    "sublabel": "Francophone",
+    "language": "fr",
+    "system": "francophone",
+    "initialMessage": "Bonjour ! Je suis en classe de Seconde. J'ai besoin d'aide pour confirmer ou changer ma série et bien me préparer pour l'orientation post-bac."
+  },
+  {
+    "level": "TERMINALE_BAC",
+    "label": "Terminale / BAC",
+    "sublabel": "Francophone",
+    "language": "fr",
+    "system": "francophone",
+    "initialMessage": "Bonjour ! Je suis en Terminale et je prépare mon BAC. J'ai besoin d'aide pour choisir la meilleure formation après le BAC : BTS, grande école ou université."
+  },
+  {
+    "level": "GCE_AL",
+    "label": "GCE A/Level",
+    "sublabel": "Anglophone",
+    "language": "en",
+    "system": "anglophone",
+    "initialMessage": "Hello! I am in Upper Sixth preparing for my GCE Advanced Level exams. I need guidance on choosing between HND programs, universities, and career paths after A/Levels."
+  },
+  {
+    "level": "UNIVERSITE_BTS",
+    "label": "Université / BTS",
+    "sublabel": "BTS · HND · Licence",
+    "language": "fr",
+    "system": "both",
+    "initialMessage": "Bonjour ! Je suis déjà étudiant(e) à l'université ou en formation BTS/HND. Je souhaite confirmer mon orientation ou explorer une réorientation vers une filière plus porteuse."
+  }
+]
+```
+
+**Couleurs UI suggérées par `system`** :
+
+| `system` | Usage |
+|---|---|
+| `francophone` | Bleu — BEPC, Seconde, Terminale |
+| `anglophone` | Vert — GCE O/L, GCE A/L |
+| `both` | Violet — Université / BTS |
+
+---
+
+### 7.5 Profils de personnalité (Phase 1)
+
+Scoring : lettre la plus choisie sur 9 réponses (A/B/C/D). Si 2 lettres à ≤1 d'écart → profil mixte.
+
+| Lettre dominante | Emoji | Nom du profil | Employabilité |
+|---|---|---|---|
+| A | 🔵 | Builder / Entrepreneur Impact | 🟢🟢 Très élevé |
+| B | 🟣 | Analyste / Expert | 🟢🟢 Très élevé |
+| C | 🟢 | Leader / Influence | 🟢 Élevé |
+| D | 🟠 | Structuré / Opérationnel | 🟡 Stable |
+
+**Profils mixtes** (2 lettres proches) :
+
+| Mixte | Nom | Domaines |
+|---|---|---|
+| A+B | Innovateur Tech | Entrepreneuriat, Data, Tech, Finance |
+| A+C | Entrepreneur Leader | Business, Management, Marketing |
+| B+D | Expert Certifié | Finance, Audit, Cybersécurité |
+| C+D | Manager Opérationnel | Gestion, Opérations, Administration |
+| B+C | Stratège / Consultant | Management, Data, Finance |
+
+**Boutons Phase 1** : afficher `A` `B` `C` `D` — un clic envoie **immédiatement** la lettre (pas de bouton « Valider »).
+
+---
+
+### 7.6 Quick replies Phase 2 (par dimension)
+
+Détection : parser le **dernier** `(Dx/7)` dans le dernier message assistant.  
+`x` = numéro de dimension → afficher la liste correspondante.
+
+#### D1 — Régions du Cameroun
+
+**FR** :
+```
+Centre — Yaoundé
+Littoral — Douala
+Ouest — Bafoussam
+Nord-Ouest — Bamenda
+Sud-Ouest — Buea
+Nord — Garoua
+Adamaoua — Ngaoundéré
+Extrême-Nord — Maroua
+Est — Bertoua
+Sud — Ebolowa
+```
+
+**EN** :
+```
+Centre — Yaoundé
+Littoral — Douala
+West — Bafoussam
+North-West — Bamenda
+South-West — Buea
+North — Garoua
+Adamawa — Ngaoundéré
+Far North — Maroua
+East — Bertoua
+South — Ebolowa
+```
+
+#### D2 — Série / filière (selon `level`)
+
+| Contexte | FR | EN |
+|---|---|---|
+| Lycée (tous sauf `UNIVERSITE_BTS`) | Série A, Série C, Série D, Série TI | Sciences, Arts, Commerce, Technical |
+| `UNIVERSITE_BTS` | Sciences & Techno, Génie / Ingénierie, Économie / Gestion, Droit / Sciences sociales, Santé, Lettres / Arts | Science & Tech, Engineering, Business & Mgmt, Law & Social Sci., Health Sciences, Arts & Humanities |
+
+#### D3 — Notes
+
+| FR | EN |
+|---|---|
+| < 10/20, 10–12/20, 12–14/20, 14–16/20, > 16/20 | A (Excellent), B (Very Good), C (Good), D (Credit), E/F (Pass/Fail) |
+
+#### D4 — Aspiration
+
+| FR | EN |
+|---|---|
+| Informatique/Tech, Santé/Médecine, Génie Civil/BTP, Finance/Gestion, Enseignement | IT/Software, Health/Medicine, Engineering, Finance/Business, Teaching |
+
+#### D5 — Budget
+
+| FR | EN |
+|---|---|
+| < 50k FCFA/mois, 50–150k/mois, 150–400k/mois, > 400k/mois | Below 50k CFA/month, 50k–150k/month, 150k–400k/month, Above 400k/month |
+
+#### D6 — Mobilité
+
+| FR | EN |
+|---|---|
+| Oui, je peux me déplacer, Non, je reste dans ma ville | Yes, I can relocate, No, I must stay |
+
+#### D7 — Contraintes
+
+| FR | EN |
+|---|---|
+| Contraintes financières, Éloignement, Responsabilités familiales, Pas de contrainte majeure | Financial constraints, Distance from school, Family responsibilities, No major constraint |
+
+> Ne pas afficher de quick replies si le message contient `---RAPPORT---` ou si aucun `(Dx/7)` n'est détecté.
+
+---
+
+### 7.7 Détection phase rapport (timeouts UI)
+
+Reproduire côté client pour choisir le bon timeout (12 s vs 90 s) et le loader « Rapport en cours… ».
+
+```typescript
+const USER_REPORT_PHRASES = [
+  '/rapport',
+  "rapport d'orientation",
+  'mon rapport',
+  'génère le rapport',
+  'genere le rapport',
+  'générer le rapport',
+  'donne-moi mon rapport',
+  'donne moi mon rapport',
+  'bilan complet',
+  'orientation finale',
+  'analyse complète',
+  'full report',
+  'my report',
+  'generate my report',
+]
+
+const ASSISTANT_REPORT_IMMINENT = [
+  'dernière question avant',
+  'derniere question avant',
+  'avant que je construise ton rapport',
+  'avant que je construise votre rapport',
+  'je construise ton rapport',
+  'je construis ton rapport',
+  'je vais construire ton rapport',
+  'je vais maintenant construire',
+  "construire ton rapport d'orientation",
+  'je vais générer ton rapport',
+  'je vais maintenant générer',
+  'je vais rédiger ton rapport',
+  'je construis maintenant ton rapport',
+  "voici ton rapport d'orientation",
+  'analyse complète de ton profil',
+  "j'ai maintenant toutes les informations",
+  "j'ai toutes les informations nécessaires",
+  "j'ai maintenant tous les éléments",
+  'let me build your report',
+  'let me now generate',
+  'i now have all the information',
+  'i have all the information',
+  'building your report',
+  'generating your report',
+]
+
+const REPORT_LOOKBACK = 3
+
+function isLikelyReportPhase(messages: ApiChatMessage[]): boolean {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role !== 'user') continue
+    const u = messages[i].content.trim().toLowerCase()
+    if (USER_REPORT_PHRASES.some((p) => u.includes(p))) return true
+    break
+  }
+  let assistantSeen = 0
+  for (let i = messages.length - 1; i >= 0 && assistantSeen < REPORT_LOOKBACK; i--) {
+    if (messages[i].role !== 'assistant') continue
+    assistantSeen++
+    if (LAST_DIMENSION_RE.test(messages[i].content)) return true
+    const lower = messages[i].content.toLowerCase()
+    if (ASSISTANT_REPORT_IMMINENT.some((p) => lower.includes(p))) return true
+  }
+  return false
+}
+```
+
+---
+
+### 7.8 Machine à états UI
+
+```
+[IDLE]
+  → utilisateur choisit un niveau
+[LEVEL_SELECTED]
+  → POST chat avec initialMessage seul
+[PHASE_1_PERSONALITY]
+  → afficher boutons A/B/C/D jusqu'à 9 réponses
+  → détecter FREE_REPORT_START dans le stream
+[FREE_REPORT_BUFFERING]
+  → loader jusqu'à FREE_REPORT_END
+[FREE_REPORT_DISPLAY]
+  → carte rapport gratuit + PDF optionnel
+[PHASE_2_DIMENSIONS]
+  → quick replies D1–D7 selon (Dx/7)
+  → détecter (D7/7) puis réponse utilisateur
+[PAID_REPORT_BUFFERING]
+  → loader long (90s timeout) jusqu'à REPORT_END
+[PAID_REPORT_DISPLAY]
+  → si isSubscribed : 9 modules + score Xkorin
+  → sinon : paywall (masquer contenu, CTA abonnement)
+```
+
+**Buffering rapports** : dès détection du marqueur START et avant END, ne pas afficher le texte brut — montrer un loader avec étapes :
+
+| Rapport | Étapes loader |
+|---|---|
+| Gratuit | Analyse des réponses → Identification du profil → Recommandations |
+| Payant | Diagnostic du profil → Calcul du Score Xkorin → Arbre des possibles → Plan d'action à 5 ans |
+
+---
+
+### 7.9 Algorithmes de parsing
+
+#### Extraire le corps d'un rapport
+
+```typescript
+function extractBetween(content: string, start: string, end: string): string | null {
+  const i = content.indexOf(start)
+  if (i === -1) return null
+  const j = content.indexOf(end, i + start.length)
+  if (j === -1) return null
+  return content.slice(i + start.length, j).trim()
+}
+```
+
+#### Parser rapport gratuit
+
+```typescript
+function parseFreeReport(body: string): FreeReportProfile {
+  const lines = body.trim().split('\n')
+  const profilLine = lines.find((l) => /^PROFIL\s*:/i.test(l.trim()))
+  if (profilLine) {
+    const match = profilLine.match(/PROFIL\s*:\s*(\S+)\s+(.+)/i)
+    const emoji = match?.[1] ?? '🎯'
+    const name = match?.[2]?.trim() ?? 'Profil détecté'
+    const idx = lines.indexOf(profilLine)
+    const rest = lines.slice(idx + 1).join('\n').trim()
+    return { emoji, name, body: rest }
+  }
+  return { emoji: '🎯', name: 'Profil de personnalité', body: body.trim() }
+}
+```
+
+#### Parser modules rapport payant
+
+```typescript
+function parseReportModules(reportBody: string): ReportModule[] {
+  const headerRe = /MODULE\s+(\d)\s*[—–-]+\s*(.+?)(?:\n|$)/g
+  const matches: Array<{ number: number; title: string; endIndex: number; index: number }> = []
+  let m: RegExpExecArray | null
+  while ((m = headerRe.exec(reportBody)) !== null) {
+    matches.push({
+      number: parseInt(m[1], 10),
+      title: m[2].trim(),
+      index: m.index,
+      endIndex: m.index + m[0].length,
+    })
+  }
+  if (matches.length === 0) return []
+  return matches.map((match, i) => ({
+    number: match.number,
+    title: match.title,
+    content: reportBody
+      .slice(match.endIndex, i < matches.length - 1 ? matches[i + 1].index : reportBody.length)
+      .trim(),
+  })).sort((a, b) => a.number - b.number)
+}
+```
+
+#### Extraire score Xkorin (module 4)
+
+```typescript
+function extractXkorinScore(content: string): number | null {
+  const primary = content.match(/SCORE\s*TOTAL\s*[:：]\s*\[?(\d{1,3})\s*[/／]\s*100\]?/i)
+  if (primary) {
+    const v = parseInt(primary[1], 10)
+    if (v >= 0 && v <= 100) return v
+  }
+  const fallback = content.match(/(\d{1,3})\s*[/／]\s*100/)
+  if (fallback) {
+    const v = parseInt(fallback[1], 10)
+    if (v >= 0 && v <= 100) return v
+  }
+  return null
+}
+```
+
+#### Icônes modules (optionnel UI)
+
+| # | Emoji | Titre attendu |
+|---|---|---|
+| 1 | 📊 | Diagnostic du profil |
+| 2 | 🔄 | Équivalence académique |
+| 3 | 🌳 | Arbre des possibles |
+| 4 | 🧠 | Score Xkorin |
+| 5 | 🤝 | Trust Index |
+| 6 | 🎯 | Recommandations stratégiques |
+| 7 | 📅 | Plan d'action |
+| 8 | ⚠️ | Alerte de vigilance |
+| 9 | ✅ | Conclusion d'orientation |
+
+---
+
+### 7.10 Codes erreur API (`XOR_*`)
+
+| Code | HTTP | Message FR |
+|---|---|---|
+| `XOR_001` | 503 | Service IA non configuré — clé API manquante |
+| `XOR_002` | 400 | Corps de requête invalide |
+| `XOR_003` | 400 | Paramètres de conversation invalides |
+| `XOR_004` | 429 | Limite de messages dépassée |
+| `XOR_005` | 502 | Erreur du service IA Anthropic |
+| `XOR_006` | 500 | Erreur lors du streaming |
+| `XOR_007` | 500 | Erreur enregistrement inscription |
+| `XOR_008` | 400 | Niveau scolaire non reconnu |
+| `XOR_009` | 400 | Conversation trop longue |
+| `XOR_010` | 503 | Service indisponible |
+
+Format réponse erreur :
+```json
+{
+  "success": false,
+  "error": {
+    "code": "XOR_003",
+    "message": "Paramètres de conversation invalides",
+    "severity": "WARNING",
+    "category": "VALIDATION",
+    "timestamp": "2026-06-08T10:00:00.000Z"
+  }
+}
+```
+
+---
+
+### 7.11 Persistance locale (recommandée)
+
+Clés suggérées pour reprendre une conversation après refresh :
+
+| Clé | Contenu |
+|---|---|
+| `xkorienta_level` | `EducationLevel` sélectionné |
+| `xkorienta_messages` | `OrientationMessage[]` JSON (session courante) |
+| `xkorienta_history` | `ConversationEntry[]` JSON (historique archivé) |
+
+---
+
+### 7.12 Paywall rapport payant
+
+Le backend **envoie toujours** le texte complet entre `---RAPPORT---` et `---FIN---`.  
+Le client décide d'afficher ou masquer selon l'abonnement :
+
+```typescript
+// Vérifier abonnement — Module 25
+// GET /api/subscriptions/mine → planId.features includes "ORIENTATION_AI"
+const isSubscribed = features.includes('ORIENTATION_AI') || features.includes('FULL_ACCESS')
+
+if (hasPaidReport && !isSubscribed) {
+  // Afficher teaser + CTA checkout, ne pas rendre le body complet
+} else if (hasPaidReport) {
+  // parseReportModules + extractXkorinScore + PDF
+}
+```
+
+---
+
+### 7.13 Commande dev `/rapport`
+
+Taper exactement `/rapport` peut injecter un historique fictif (Phase 1 + Phase 2 complètes) puis envoyer « génère le rapport » pour tester sans 16+ échanges. Réservé au développement — optionnel en production.
 
 ---
 
 ## 8. Variables d'environnement
 
-### Backend (`xkorienta-api`)
+### Backend
 
 | Variable | Défaut | Description |
 |---|---|---|
@@ -576,16 +1103,12 @@ Le composant chat appelle `/api/xkorienta/chat` en **URL relative** — le proxy
 | `XKORIENTA_MODEL` | `claude-sonnet-4-6` | Modèle rapport payant |
 | `XKORIENTA_CHAT_MODEL` | `claude-haiku-4-5-20251001` | Modèle conversation |
 
-### Frontend web (`xkorienta-app`)
+### Client (web, mobile, externe)
 
-| Variable | Défaut | Description |
+| Variable | Exemple | Description |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:3001` | URL backend (sans `/api`) |
-| `FF_ORIENTATION_AI` | `true` | Masquer le module si `false` |
-
-### Mobile / externe
-
-Configurer directement `{{baseUrl}}` vers l'API backend. Pas de proxy Next.js.
+| `API_BASE_URL` | `https://xkorienta.com/xkorienta/backend` | URL backend **sans** `/api` |
+| Endpoint chat | `{API_BASE_URL}/api/xkorienta/chat` | URL complète à appeler |
 
 ---
 
@@ -635,11 +1158,10 @@ Attendu : lignes `data: {"text":"..."}` puis `data: [DONE]`.
 
 ### Test rapport complet (dev)
 
-1. Ouvrir le chat web
-2. Sélectionner un niveau
-3. Taper `/rapport`
-4. Attendre 1–2 min le stream Sonnet
-5. Vérifier présence de `---RAPPORT-GRATUIT---` et `---RAPPORT---`
+1. Sélectionner un niveau et envoyer le `initialMessage`
+2. Taper `/rapport` (ou parcourir Phase 1 + Phase 2 manuellement)
+3. Attendre 1–2 min le stream Sonnet
+4. Vérifier présence de `---RAPPORT-GRATUIT---` et `---RAPPORT---` dans le dernier message assistant
 
 ---
 
