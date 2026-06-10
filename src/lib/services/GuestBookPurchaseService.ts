@@ -35,7 +35,7 @@ export class GuestBookPurchaseService {
     /**
      * Initiate a guest (unauthenticated) book purchase.
      * Does not require a userId — uses only an email address.
-     * A download [learnerId] will be sent to this email after payment confirmation.
+     * A download link will be sent to this email after payment confirmation.
      */
     static async initiateGuestPurchase(
         bookId: string,

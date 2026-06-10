@@ -7,8 +7,8 @@ import School from "@/models/School";
 
 /**
  * GET /api/student/schools/mine
- * Returns the schools the student is linked to (direct [learnerId] OR applicant).
- * Used to determine whether to show the "[learnerId] your school" banner.
+ * Returns the schools the student is linked to (direct link OR applicant).
+ * Used to determine whether to show the "link your school" banner.
  */
 export async function GET() {
     try {

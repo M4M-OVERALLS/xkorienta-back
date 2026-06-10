@@ -225,10 +225,10 @@ const QUESTIONS_DATA = [
     tags: ["html", "balises", "liens"],
     options: [
       {
-        text: "<[learnerId]>",
+        text: "<link>",
         isCorrect: false,
         explanation:
-          "Non. <[learnerId]> est utilisé dans le <head> pour lier des ressources externes (CSS).",
+          "Non. <link> est utilisé dans le <head> pour lier des ressources externes (CSS).",
         order: 0,
       },
       {

@@ -10,7 +10,7 @@ export interface IInvitation extends Document {
     status: 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED'
     expiresAt?: Date
 
-    // Enhanced fields for [learnerId] invitations
+    // Enhanced fields for link invitations
     maxUses?: number // null = unlimited
     currentUses: number
     registeredStudents: mongoose.Types.ObjectId[]

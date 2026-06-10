@@ -9,7 +9,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
  * POST /api/books/:id/purchase/guest
  * Guest checkout — no authentication required.
  * Requires: { email, callbackUrl? }
- * On successful payment (webhook), a download [learnerId] is sent by email.
+ * On successful payment (webhook), a download link is sent by email.
  */
 export async function POST(req: Request, { params }: Params) {
     try {

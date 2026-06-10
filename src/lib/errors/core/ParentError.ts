@@ -124,7 +124,7 @@ export class ParentError extends BaseApplicationError {
     static linkNotFound() {
         return new ParentError({
             code: 'PAR_008',
-            message: 'Parent-child [learnerId] not found or inactive',
+            message: 'Parent-child link not found or inactive',
             httpStatus: 403,
             severity: "WARNING" as ErrorSeverity,
             category: "AUTHORIZATION" as ErrorCategory,

@@ -84,7 +84,7 @@ export class InvitationController {
 
     /**
      * GET /api/schools/[id]/invitations
-     * Get or create an invitation [learnerId] for a school
+     * Get or create an invitation link for a school
      */
     static async getOrCreateSchoolLink(schoolId: string, userId: string) {
         try {

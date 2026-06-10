@@ -22,7 +22,7 @@ export interface CreateLinkOptions {
 export class InvitationService {
 
     /**
-     * Generate or retrieve an active invitation [learnerId] for a CLASS
+     * Generate or retrieve an active invitation link for a CLASS
      */
     static async getOrCreateLink(classId: string, teacherId: string, options?: CreateLinkOptions) {
         if (!options) {
@@ -101,7 +101,7 @@ export class InvitationService {
     }
 
     /**
-     * Revoke an invitation [learnerId]
+     * Revoke an invitation link
      */
     static async revokeInvitation(invitationId: string, userId: string) {
         const invitation = await Invitation.findById(invitationId);
@@ -142,7 +142,7 @@ export class InvitationService {
     }
 
     /**
-     * Generate or retrieve an active invitation [learnerId] for a SCHOOL
+     * Generate or retrieve an active invitation link for a SCHOOL
      */
     static async getOrCreateSchoolLink(schoolId: string, teacherId: string, role: string = 'TEACHER') {
         const existing = await Invitation.findOne({
@@ -213,7 +213,7 @@ export class InvitationService {
             email: normalizedEmail,
             password: hashedPassword,
             role: UserRole.STUDENT,
-            isActive: false, // Account is inactive until they claim it via [learnerId]
+            isActive: false, // Account is inactive until they claim it via link
             emailVerified: false,
         });
 
@@ -248,7 +248,7 @@ export class InvitationService {
             registeredStudents: []
         });
 
-        // Dynamically detect frontend URL for join [learnerId]
+        // Dynamically detect frontend URL for join link
         const joinLink = `${frontendUrl}/join/${token}`;
 
         // Send activation email WITHOUT temp password
@@ -297,7 +297,7 @@ export class InvitationService {
 
         const schoolData = await School.findById(schoolId);
 
-        // Dynamically detect frontend URL for join [learnerId]
+        // Dynamically detect frontend URL for join link
         const frontendUrl = getFrontendUrl(headers);
         const joinLink = `${frontendUrl}/join/${token}`;
 
@@ -371,7 +371,7 @@ export class InvitationService {
     }
 
     /**
-     * Register a new user via invitation [learnerId] - Enhanced with welcome email and teacher notification
+     * Register a new user via invitation link - Enhanced with welcome email and teacher notification
      */
     static async registerViaInvitation(token: string, userData: { name: string; email: string; password: string }) {
         const invitation = await this.getInvitationByToken(token);

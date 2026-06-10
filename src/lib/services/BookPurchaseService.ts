@@ -157,7 +157,7 @@ export class BookPurchaseService {
         const payload = typeof rawPayload === 'string' ? JSON.parse(rawPayload) : rawPayload
         await paymentSDK.payments.handleWebhook('notchpay', payload, signature)
 
-        // Handle guest purchases (no userId — download [learnerId] sent by email)
+        // Handle guest purchases (no userId — download link sent by email)
         if (reference) {
             const guestPurchase = await guestPurchaseRepository.findByReference(reference)
             if (guestPurchase && guestPurchase.status !== 'COMPLETED') {

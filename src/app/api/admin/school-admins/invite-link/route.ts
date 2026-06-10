@@ -9,10 +9,10 @@ import { UserRole } from '@/models/enums'
 const ADMIN_ROLES = [UserRole.SCHOOL_ADMIN, UserRole.DG_M4M, UserRole.TECH_SUPPORT]
 
 /**
- * POST /api/admin/school-admins/invite-[learnerId]
+ * POST /api/admin/school-admins/invite-link
  * Generer (ou recuperer) un lien d'invitation SCHOOL_ADMIN pour une ecole.
  * Body: { schoolId }
- * Response: { [learnerId], token, expiresAt }
+ * Response: { link, token, expiresAt }
  */
 export async function POST(req: Request) {
     try {
