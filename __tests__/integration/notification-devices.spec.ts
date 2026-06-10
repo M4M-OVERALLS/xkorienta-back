@@ -30,23 +30,22 @@ jest.mock('@/lib/auth', () => ({
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
 import mongoose from 'mongoose'
-import { MongoMemoryServer } from 'mongodb-memory-server'
 import { getServerSession } from 'next-auth'
+import {
+    connectMongoMemory,
+    disconnectMongoMemory,
+} from '../helpers/mongoMemory'
 import { POST, DELETE } from '@/app/api/notification-devices/route'
 import NotificationDevice from '@/models/NotificationDevice'
 
 const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>
 
-let mongoServer: MongoMemoryServer
-
 beforeAll(async () => {
-    mongoServer = await MongoMemoryServer.create()
-    await mongoose.connect(mongoServer.getUri())
-})
+    await connectMongoMemory()
+}, 30000)
 
 afterAll(async () => {
-    await mongoose.disconnect()
-    await mongoServer.stop()
+    await disconnectMongoMemory()
 })
 
 beforeEach(async () => {

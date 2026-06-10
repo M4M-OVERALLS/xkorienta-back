@@ -92,7 +92,7 @@ jobs:
 
       - name: Run build
         run: |
-          export NODE_ENV="${NODE_ENV:-production}"
+          export NODE_ENV="production"
           export DATABASE_URL="${DATABASE_URL:-mongodb://localhost:27017/test}"
           export NEXTAUTH_SECRET="${NEXTAUTH_SECRET:-ci-build-placeholder-secret-0123456789ab}"
           export NEXTAUTH_URL="${NEXTAUTH_URL:-http://localhost:3001}"

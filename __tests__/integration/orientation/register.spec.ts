@@ -21,31 +21,24 @@ jest.mock('@/lib/mongodb', () => ({
 }))
 
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from '@jest/globals'
-import mongoose from 'mongoose'
-import { MongoMemoryServer } from 'mongodb-memory-server'
+import {
+    connectMongoMemory,
+    disconnectMongoMemory,
+    clearMongoCollections,
+} from '../../helpers/mongoMemory'
 import { POST } from '@/app/api/xkorienta/register/route'
 import XkorientaRegistration from '@/models/XkorientaRegistration'
 
-let mongoServer: MongoMemoryServer
-
 beforeAll(async () => {
-    // Start in-memory MongoDB server for this test file
-    mongoServer = await MongoMemoryServer.create()
-    const uri = mongoServer.getUri()
-    await mongoose.connect(uri)
-})
+    await connectMongoMemory()
+}, 30000)
 
 afterAll(async () => {
-    await mongoose.disconnect()
-    await mongoServer.stop()
+    await disconnectMongoMemory()
 })
 
 beforeEach(async () => {
-    // Clean all collections between tests
-    const collections = mongoose.connection.collections
-    for (const key in collections) {
-        await collections[key].deleteMany({})
-    }
+    await clearMongoCollections()
 })
 
 /**

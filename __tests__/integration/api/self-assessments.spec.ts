@@ -10,8 +10,12 @@ jest.mock('@/lib/auth', () => ({
     authOptions: {},
 }))
 
-import { describe, it, expect, beforeEach } from '@jest/globals'
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
 import { getServerSession } from 'next-auth'
+import {
+    connectMongoMemory,
+    disconnectMongoMemory,
+} from '../../helpers/mongoMemory'
 import { createFullSetup, createExamV4, createUser } from '../../helpers/factories'
 import { ExamType, ExamStatus, SelfAssessmentLevel } from '@/models/enums'
 
@@ -48,6 +52,14 @@ describe('API Self-Assessments', () => {
     let setup: any
     let exam: any
     let student: any
+
+    beforeAll(async () => {
+        await connectMongoMemory()
+    }, 30000)
+
+    afterAll(async () => {
+        await disconnectMongoMemory()
+    })
 
     beforeEach(async () => {
         setup = await createFullSetup()
