@@ -124,7 +124,7 @@ export class ParentError extends BaseApplicationError {
     static linkNotFound() {
         return new ParentError({
             code: 'PAR_008',
-            message: 'Parent-child link not found or inactive',
+            message: 'Parent-child [learnerId] not found or inactive',
             httpStatus: 403,
             severity: "WARNING" as ErrorSeverity,
             category: "AUTHORIZATION" as ErrorCategory,
@@ -138,6 +138,34 @@ export class ParentError extends BaseApplicationError {
             httpStatus: 403,
             severity: "WARNING" as ErrorSeverity,
             category: "AUTHORIZATION" as ErrorCategory,
+        });
+    }
+
+
+    /**
+     * PAR_011: Parent already linked to this child
+     * Attempting to create duplicate parent-learner [learnerId]
+     */
+    static alreadyLinked() {
+        return new ParentError({
+            code: 'PAR_011',
+            message: 'This parent is already linked to this child',
+            httpStatus: 409,
+            severity: "WARNING" as ErrorSeverity,
+            category: "CONFLICT" as ErrorCategory,
+        });
+    }
+
+    /**
+     * PAR_012: Learner not found
+     */
+    static learnerNotFound() {
+        return new ParentError({
+            code: 'PAR_012',
+            message: 'Learner not found',
+            httpStatus: 404,
+            severity: "WARNING" as ErrorSeverity ,
+            category: "NOT_FOUND" as ErrorCategory ,
         });
     }
 

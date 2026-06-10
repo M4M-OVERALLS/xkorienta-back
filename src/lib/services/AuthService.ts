@@ -178,7 +178,7 @@ export class AuthService {
 
     /**
      * A-14: Request an email change (step 1)
-     * Verifies current password, then sends a confirmation link to the NEW email.
+     * Verifies current password, then sends a confirmation [learnerId] to the NEW email.
      */
     async requestEmailChange(userId: string, newEmail: string, password: string, headers?: Headers) {
         if (!newEmail || !password) {

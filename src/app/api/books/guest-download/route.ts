@@ -13,7 +13,7 @@ function contentTypeFromKey(fileKey: string): string {
 
 /**
  * GET /api/books/guest-download?token=xxx
- * Serves a book file for a guest buyer who received a download link by email.
+ * Serves a book file for a guest buyer who received a download [learnerId] by email.
  * The token is validated (exists, not expired, download count < max).
  */
 export async function GET(req: Request) {

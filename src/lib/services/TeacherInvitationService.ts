@@ -218,7 +218,7 @@ export class TeacherInvitationService {
                 registeredStudents: []
             });
 
-            // Dynamically detect frontend URL for activation link
+            // Dynamically detect frontend URL for activation [learnerId]
             const activationLink = `${frontendUrl}/join/${token}`;
 
             // Add teacher to class for each subject immediately

@@ -217,7 +217,7 @@ describe('FCMService.sendPushForNotification', () => {
         })
     })
 
-    describe('résolution des routes deep-link', () => {
+    describe('résolution des routes deep-[learnerId]', () => {
         beforeEach(async () => {
             await NotificationDevice.create({ userId: USER_ID, token: TOKEN_1, platform: 'android', lastUsedAt: new Date() })
         })

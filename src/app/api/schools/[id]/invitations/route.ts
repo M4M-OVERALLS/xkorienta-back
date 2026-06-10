@@ -6,7 +6,7 @@ import { InvitationController } from "@/lib/controllers/InvitationController";
 
 /**
  * GET /api/schools/[id]/invitations
- * Get or create an invitation link for a school
+ * Get or create an invitation [learnerId] for a school
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const session = await getServerSession(authOptions);

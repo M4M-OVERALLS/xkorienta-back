@@ -8,7 +8,7 @@ import { SchoolStatus, UserRole } from "@/models/enums";
 import { GamificationService, XPSource } from "@/lib/services/GamificationService";
 
 /**
- * POST /api/student/schools/link
+ * POST /api/student/schools/[learnerId]
  * Permet à un apprenant de lier son compte à une école validée.
  * Récompense : +75 XP (SCHOOL_LINKED)
  * 

@@ -9,7 +9,7 @@ const authService = new AuthService()
 /**
  * POST /api/user/email/change
  * A-14: Step 1 — Request email change (requires current password)
- * Sends a confirmation link to the new email address.
+ * Sends a confirmation [learnerId] to the new email address.
  */
 export async function POST(req: Request) {
     try {

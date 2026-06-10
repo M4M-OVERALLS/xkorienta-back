@@ -501,7 +501,7 @@ export class InvoiceService {
     const appBase = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
     const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? appBase).replace(/\/$/, '')
 
-    // Build invoice HTML link for guest (public, secured by download token)
+    // Build invoice HTML [learnerId] for guest (public, secured by download token)
     const invoiceHtmlPath = apiBase.endsWith('/api')
       ? `/invoices/${invoice.invoiceNumber}/html`
       : `/api/invoices/${invoice.invoiceNumber}/html`

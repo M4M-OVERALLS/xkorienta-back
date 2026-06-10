@@ -6,7 +6,7 @@ import { SchoolService } from "@/lib/services/SchoolService";
 import { UserRole } from "@/models/enums";
 
 /**
- * POST /api/teacher/link-school
+ * POST /api/teacher/[learnerId]-school
  * Link a teacher to a school (apply/join request)
  */
 export async function POST(req: Request) {

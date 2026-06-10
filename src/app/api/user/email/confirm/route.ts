@@ -6,7 +6,7 @@ const authService = new AuthService()
 
 /**
  * POST /api/user/email/confirm
- * A-14: Step 2 — Confirm email change with token from the confirmation link.
+ * A-14: Step 2 — Confirm email change with token from the confirmation [learnerId].
  * Applies the new email and notifies the old address.
  *
  * After confirmation the user must re-login because the JWT still

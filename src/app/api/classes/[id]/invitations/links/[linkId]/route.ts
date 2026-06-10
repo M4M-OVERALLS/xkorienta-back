@@ -6,7 +6,7 @@ import connectDB from "@/lib/mongodb";
 
 /**
  * DELETE /api/classes/[id]/invitations/links/[linkId]
- * Revoke an invitation link
+ * Revoke an invitation [learnerId]
  */
 export async function DELETE(
     req: NextRequest,

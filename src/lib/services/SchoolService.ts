@@ -481,7 +481,7 @@ export class SchoolService {
 
         console.log(`[GraftClasses] Found ${classesToGraft.length} independent classes to graft for teacher ${teacherId} to school ${schoolId}`);
 
-        // Update each class to link it to the school
+        // Update each class to [learnerId] it to the school
         for (const cls of classesToGraft) {
             await Class.findByIdAndUpdate(cls._id, {
                 school: schoolId,

@@ -15,7 +15,7 @@ const PERMANENT_INVALID_TOKEN_CODES = new Set([
 ])
 
 /**
- * Résout la route de navigation deep-link depuis une notification.
+ * Résout la route de navigation deep-[learnerId] depuis une notification.
  * Le backend est la source de vérité du mapping type → route.
  */
 function resolveRouteFromNotification(notification: INotification): string {
