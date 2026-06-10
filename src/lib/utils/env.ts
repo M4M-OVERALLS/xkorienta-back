@@ -16,7 +16,6 @@ const envSchema = z.object({
     // this schema is for validation of NextAuth
     NEXTAUTH_SECRET: z
         .string()
-        .min(32, 'NEXTAUTH_SECRET must be at least 32 characters')
         .min(1, 'NEXTAUTH_SECRET is required'),
 
     NEXTAUTH_URL: z

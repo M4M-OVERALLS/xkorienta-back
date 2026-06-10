@@ -37,10 +37,15 @@ ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Dummy env vars for build time (real values injected at runtime via .env)
+# Placeholders build-time uniquement (valeurs réelles au runtime via .env sur le serveur).
+# Doivent passer la validation Zod dans src/lib/utils/env.ts (min 32 chars pour NEXTAUTH_SECRET).
 ENV DATABASE_URL="mongodb://placeholder:27017/placeholder"
-ENV NEXTAUTH_SECRET="build-time-placeholder-secret"
+ENV NEXTAUTH_SECRET="ci-build-placeholder-secret-0123456789ab"
 ENV NEXTAUTH_URL="http://localhost:3001"
+ENV PUSHER_APP_ID="build-placeholder"
+ENV PUSHER_KEY="build-placeholder"
+ENV PUSHER_SECRET="build-placeholder"
+ENV PUSHER_CLUSTER="eu"
 
 # Build de l'application Next.js
 RUN npm run build

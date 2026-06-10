@@ -10,6 +10,7 @@
 
 import { describe, expect, it, beforeAll, afterAll, beforeEach } from "@jest/globals";
 import mongoose from "mongoose";
+import { MongoMemoryServer } from "mongodb-memory-server";
 import Exam from "@/models/Exam";
 import User from "@/models/User";
 import School from "@/models/School";
@@ -19,6 +20,7 @@ import request from "supertest";
 const API_URL = process.env.TEST_API_URL || "http://localhost:3001";
 
 describe("A-12 — GET /api/exams/v2/[id] authorization (requireExamRead)", () => {
+  let mongoServer: MongoMemoryServer;
   let schoolA: any;
   let schoolB: any;
   let teacher: any;
@@ -30,13 +32,13 @@ describe("A-12 — GET /api/exams/v2/[id] authorization (requireExamRead)", () =
   let publicDemoExamId: string;
 
   beforeAll(async () => {
-    await mongoose.connect(
-      process.env.TEST_DATABASE_URL || "mongodb://localhost:27017/Xkorienta-test",
-    );
-  });
+    mongoServer = await MongoMemoryServer.create();
+    await mongoose.connect(mongoServer.getUri());
+  }, 30000);
 
   afterAll(async () => {
-    await mongoose.connection.close();
+    await mongoose.disconnect();
+    await mongoServer.stop();
   });
 
   beforeEach(async () => {

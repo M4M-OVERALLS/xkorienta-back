@@ -9,6 +9,7 @@
 
 import { describe, expect, it, beforeAll, afterAll, beforeEach } from "@jest/globals";
 import mongoose from "mongoose";
+import { MongoMemoryServer } from "mongodb-memory-server";
 import Exam from "@/models/Exam";
 import Question from "@/models/Question";
 import Option from "@/models/Option";
@@ -22,19 +23,20 @@ import request from "supertest";
 const API_URL = process.env.TEST_API_URL || "http://localhost:3001";
 
 describe("A-01 — Mini-test /response ne doit pas exposer isCorrect", () => {
+  let mongoServer: MongoMemoryServer;
   let examId: string;
   let questionId: string;
   let correctOptionId: string;
   let wrongOptionId: string;
 
   beforeAll(async () => {
-    await mongoose.connect(
-      process.env.TEST_DATABASE_URL || "mongodb://localhost:27017/Xkorienta-test",
-    );
-  });
+    mongoServer = await MongoMemoryServer.create();
+    await mongoose.connect(mongoServer.getUri());
+  }, 30000);
 
   afterAll(async () => {
-    await mongoose.connection.close();
+    await mongoose.disconnect();
+    await mongoServer.stop();
   });
 
   beforeEach(async () => {
