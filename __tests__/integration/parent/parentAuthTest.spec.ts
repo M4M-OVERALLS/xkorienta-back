@@ -1,17 +1,24 @@
 /**
  * Integration Test - Authentication Flow (XKT-001, 002)
- * Jest + Supertest
  */
 
-import request from 'supertest';
+jest.mock('@/lib/mongodb', () => ({
+    __esModule: true,
+    default: jest.fn().mockResolvedValue(undefined),
+}));
+
 import mongoose from 'mongoose';
-import connectDB, { disconnectDB } from '@/lib/mongodb';
 import User from '@/models/User';
 import ParentProfile from '@/models/ParentProfile';
 import Invitation from '@/models/Invitation';
 import { randomBytes } from 'crypto';
+import { POST as parentRegisterRoute } from '@/app/api/parent/auth/register/route';
+import { POST as parentLoginRoute } from '@/app/api/parent/auth/login/route';
+import {
+    connectMongoMemory,
+    disconnectMongoMemory,
+} from '../../helpers/mongoMemory';
 
-const API_URL = process.env.TEST_API_URL || 'http://localhost:3001';
 const HOOK_TIMEOUT = 20000;
 const TEST_TIMEOUT = 20000;
 
@@ -41,30 +48,50 @@ async function createInvitation(expiresInMs = 24 * 60 * 60 * 1000): Promise<stri
     return token;
 }
 
+async function callParentRegister(body: Record<string, unknown>) {
+    const res = await parentRegisterRoute(
+        new Request('http://localhost/api/parent/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        }) as any,
+    );
+    return { status: res.status, body: await res.json() };
+}
+
+async function callParentLogin(body: Record<string, unknown>) {
+    const res = await parentLoginRoute(
+        new Request('http://localhost/api/parent/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        }) as any,
+    );
+    return { status: res.status, body: await res.json() };
+}
+
 /**
- * Register a parent via HTTP using a freshly created invitation.
+ * Register a parent using a freshly created invitation.
  * Accepts field overrides for negative-case tests.
  */
 async function registerParent(overrides: Record<string, unknown> = {}) {
     const invitationToken = await createInvitation();
-    return request(API_URL)
-        .post('/api/parent/auth/register')
-        .send({
-            invitationToken,
-            name: 'Test Parent',
-            email: 'test@example.com',
-            password: 'TestPass123!',
-            language: 'fr',
-            ...overrides,
-        });
+    return callParentRegister({
+        invitationToken,
+        name: 'Test Parent',
+        email: 'test@example.com',
+        password: 'TestPass123!',
+        language: 'fr',
+        ...overrides,
+    });
 }
 
 beforeAll(async () => {
-    await connectDB();
+    await connectMongoMemory();
 }, HOOK_TIMEOUT);
 
 afterAll(async () => {
-    await disconnectDB();
+    await disconnectMongoMemory();
 }, HOOK_TIMEOUT);
 
 beforeEach(async () => {
@@ -86,16 +113,14 @@ describe('Authentication Flow Integration Tests (XKT-001, 002)', () => {
         it('should register parent successfully with valid invitation', async () => {
             const invitationToken = await createInvitation();
 
-            const response = await request(API_URL)
-                .post('/api/parent/auth/register')
-                .send({
-                    invitationToken,
-                    name: 'Jean-Paul Moussa',
-                    email: 'jean.moussa@email.cm',
-                    phone: '+237691234567',
-                    password: 'SecurePass123!',
-                    language: 'fr',
-                });
+            const response = await callParentRegister({
+                invitationToken,
+                name: 'Jean-Paul Moussa',
+                email: 'jean.moussa@email.cm',
+                phone: '+237691234567',
+                password: 'SecurePass123!',
+                language: 'fr',
+            });
 
             expect(response.status).toBe(201);
             expect(response.body.success).toBe(true);
@@ -116,15 +141,13 @@ describe('Authentication Flow Integration Tests (XKT-001, 002)', () => {
         }, TEST_TIMEOUT);
 
         it('should reject invalid invitation token (PAR_005)', async () => {
-            const response = await request(API_URL)
-                .post('/api/parent/auth/register')
-                .send({
-                    invitationToken: 'invalid-token-that-does-not-exist',
-                    name: 'Jean-Paul Moussa',
-                    email: 'jean.moussa@email.cm',
-                    password: 'SecurePass123!',
-                    language: 'fr',
-                });
+            const response = await callParentRegister({
+                invitationToken: 'invalid-token-that-does-not-exist',
+                name: 'Jean-Paul Moussa',
+                email: 'jean.moussa@email.cm',
+                password: 'SecurePass123!',
+                language: 'fr',
+            });
 
             expect(response.status).toBe(400);
             expect(response.body.success).toBe(false);
@@ -135,15 +158,13 @@ describe('Authentication Flow Integration Tests (XKT-001, 002)', () => {
             // negative expiresInMs → expiresAt is 24h in the past
             const expiredToken = await createInvitation(-24 * 60 * 60 * 1000);
 
-            const response = await request(API_URL)
-                .post('/api/parent/auth/register')
-                .send({
-                    invitationToken: expiredToken,
-                    name: 'Jean-Paul Moussa',
-                    email: 'jean.moussa@email.cm',
-                    password: 'SecurePass123!',
-                    language: 'fr',
-                });
+            const response = await callParentRegister({
+                invitationToken: expiredToken,
+                name: 'Jean-Paul Moussa',
+                email: 'jean.moussa@email.cm',
+                password: 'SecurePass123!',
+                language: 'fr',
+            });
 
             expect(response.status).toBe(400);
             expect(response.body.error.code).toBe('PAR_005');
@@ -160,15 +181,13 @@ describe('Authentication Flow Integration Tests (XKT-001, 002)', () => {
 
             // Second registration with same email + fresh invitation token
             const invitationToken2 = await createInvitation();
-            const res2 = await request(API_URL)
-                .post('/api/parent/auth/register')
-                .send({
-                    invitationToken: invitationToken2,
-                    name: 'Another Parent',
-                    email: 'jean.moussa@email.cm', // same email
-                    password: 'DifferentPass123!',
-                    language: 'fr',
-                });
+            const res2 = await callParentRegister({
+                invitationToken: invitationToken2,
+                name: 'Another Parent',
+                email: 'jean.moussa@email.cm',
+                password: 'DifferentPass123!',
+                language: 'fr',
+            });
 
             expect(res2.status).toBe(409);
             expect(res2.body.error.code).toBe('PAR_004');
@@ -177,15 +196,13 @@ describe('Authentication Flow Integration Tests (XKT-001, 002)', () => {
         it('should validate email format (VAL_001)', async () => {
             const invitationToken = await createInvitation();
 
-            const response = await request(API_URL)
-                .post('/api/parent/auth/register')
-                .send({
-                    invitationToken,
-                    name: 'Jean-Paul Moussa',
-                    email: 'invalid-email-format',
-                    password: 'SecurePass123!',
-                    language: 'fr',
-                });
+            const response = await callParentRegister({
+                invitationToken,
+                name: 'Jean-Paul Moussa',
+                email: 'invalid-email-format',
+                password: 'SecurePass123!',
+                language: 'fr',
+            });
 
             expect(response.status).toBe(400);
             // Controller uses VAL_001 for all Zod validation failures
@@ -195,15 +212,13 @@ describe('Authentication Flow Integration Tests (XKT-001, 002)', () => {
         it('should validate password minimum length (VAL_001)', async () => {
             const invitationToken = await createInvitation();
 
-            const response = await request(API_URL)
-                .post('/api/parent/auth/register')
-                .send({
-                    invitationToken,
-                    name: 'Jean-Paul Moussa',
-                    email: 'jean.moussa@email.cm',
-                    password: 'short',
-                    language: 'fr',
-                });
+            const response = await callParentRegister({
+                invitationToken,
+                name: 'Jean-Paul Moussa',
+                email: 'jean.moussa@email.cm',
+                password: 'short',
+                language: 'fr',
+            });
 
             expect(response.status).toBe(400);
             // Controller uses VAL_001 for all Zod validation failures
@@ -222,15 +237,13 @@ describe('Authentication Flow Integration Tests (XKT-001, 002)', () => {
                 expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
             });
 
-            const response = await request(API_URL)
-                .post('/api/parent/auth/register')
-                .send({
-                    invitationToken: token,
-                    name: 'Jean-Paul Moussa',
-                    email: 'jean.moussa@email.cm',
-                    password: 'SecurePass123!',
-                    language: 'fr',
-                });
+            const response = await callParentRegister({
+                invitationToken: token,
+                name: 'Jean-Paul Moussa',
+                email: 'jean.moussa@email.cm',
+                password: 'SecurePass123!',
+                language: 'fr',
+            });
 
             expect(response.status).toBe(201);
 
@@ -260,12 +273,10 @@ describe('Authentication Flow Integration Tests (XKT-001, 002)', () => {
         }, HOOK_TIMEOUT);
 
         it('should login successfully with valid credentials', async () => {
-            const response = await request(API_URL)
-                .post('/api/parent/auth/login')
-                .send({
-                    email: 'test@example.com',
-                    password: 'TestPass123!',
-                });
+            const response = await callParentLogin({
+                email: 'test@example.com',
+                password: 'TestPass123!',
+            });
 
             expect(response.status).toBe(200);
             expect(response.body.success).toBe(true);
@@ -276,36 +287,30 @@ describe('Authentication Flow Integration Tests (XKT-001, 002)', () => {
         }, TEST_TIMEOUT);
 
         it('should reject invalid password (PAR_002)', async () => {
-            const response = await request(API_URL)
-                .post('/api/parent/auth/login')
-                .send({
-                    email: 'test@example.com',
-                    password: 'WrongPassword123!',
-                });
+            const response = await callParentLogin({
+                email: 'test@example.com',
+                password: 'WrongPassword123!',
+            });
 
             expect(response.status).toBe(401);
             expect(response.body.error.code).toBe('PAR_002');
         }, TEST_TIMEOUT);
 
         it('should reject non-existent user (PAR_001)', async () => {
-            const response = await request(API_URL)
-                .post('/api/parent/auth/login')
-                .send({
-                    email: 'nonexistent@example.com',
-                    password: 'TestPass123!',
-                });
+            const response = await callParentLogin({
+                email: 'nonexistent@example.com',
+                password: 'TestPass123!',
+            });
 
             expect(response.status).toBe(404);
             expect(response.body.error.code).toBe('PAR_001');
         }, TEST_TIMEOUT);
 
         it('should return JWT with correct payload structure', async () => {
-            const response = await request(API_URL)
-                .post('/api/parent/auth/login')
-                .send({
-                    email: 'test@example.com',
-                    password: 'TestPass123!',
-                });
+            const response = await callParentLogin({
+                email: 'test@example.com',
+                password: 'TestPass123!',
+            });
 
             expect(response.status).toBe(200);
             const token = response.body.data.accessToken;
@@ -334,26 +339,22 @@ describe('Authentication Flow Integration Tests (XKT-001, 002)', () => {
             const invitationToken = await createInvitation();
 
             // Step 2: Register
-            const registerResponse = await request(API_URL)
-                .post('/api/parent/auth/register')
-                .send({
-                    invitationToken,
-                    name: 'Jean-Paul Moussa',
-                    email: 'jean.moussa@email.cm',
-                    password: 'SecurePass123!',
-                    language: 'fr',
-                });
+            const registerResponse = await callParentRegister({
+                invitationToken,
+                name: 'Jean-Paul Moussa',
+                email: 'jean.moussa@email.cm',
+                password: 'SecurePass123!',
+                language: 'fr',
+            });
 
             expect(registerResponse.status).toBe(201);
             const { parentProfileId } = registerResponse.body.data;
 
             // Step 3: Login
-            const loginResponse = await request(API_URL)
-                .post('/api/parent/auth/login')
-                .send({
-                    email: 'jean.moussa@email.cm',
-                    password: 'SecurePass123!',
-                });
+            const loginResponse = await callParentLogin({
+                email: 'jean.moussa@email.cm',
+                password: 'SecurePass123!',
+            });
 
             expect(loginResponse.status).toBe(200);
             expect(loginResponse.body.data.parentProfileId).toBe(parentProfileId);

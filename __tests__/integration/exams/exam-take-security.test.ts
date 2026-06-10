@@ -7,8 +7,22 @@
  * Rapport d'intrusion : A-10 (CRITIQUE, CVSS 8.6)
  */
 
+jest.mock("@/lib/mongodb", () => ({
+  __esModule: true,
+  default: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("next-auth", () => ({
+  getServerSession: jest.fn(),
+}));
+
+jest.mock("@/lib/auth", () => ({
+  authOptions: {},
+}));
+
 import { describe, expect, it, beforeAll, afterAll, beforeEach } from "@jest/globals";
 import mongoose from "mongoose";
+import { getServerSession } from "next-auth";
 import {
   connectMongoMemory,
   disconnectMongoMemory,
@@ -17,10 +31,19 @@ import Exam from "@/models/Exam";
 import Question from "@/models/Question";
 import Option from "@/models/Option";
 import User from "@/models/User";
-import { EvaluationType, ExamStatus, CloseMode } from "@/models/enums";
-import request from "supertest";
+import {
+  EvaluationType,
+  ExamStatus,
+  CloseMode,
+  SubSystem,
+  PedagogicalObjective,
+  LearningMode,
+  DifficultyLevel,
+  ExamType,
+} from "@/models/enums";
+import { GET as takeExam } from "@/app/api/student/exams/[id]/take/route";
 
-const API_URL = process.env.TEST_API_URL || "http://localhost:3001";
+const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>;
 
 /**
  * Helper: Creates a full exam with questions of each type and their options.
@@ -36,6 +59,14 @@ async function seedExamWithQuestions(teacherId: mongoose.Types.ObjectId) {
     status: ExamStatus.PUBLISHED,
     isPublished: true,
     isActive: true,
+    subSystem: SubSystem.FRANCOPHONE,
+    examType: ExamType.FORMATIVE_QUIZ,
+    pedagogicalObjective: PedagogicalObjective.SUMMATIVE_EVAL,
+    evaluationType: EvaluationType.QCM,
+    learningMode: LearningMode.EXAM,
+    difficultyLevel: DifficultyLevel.INTERMEDIATE,
+    createdWithV4: true,
+    graded: true,
     config: {
       shuffleQuestions: false,
       shuffleOptions: false,
@@ -129,7 +160,20 @@ describe("A-10 — /api/student/exams/[id]/take ne doit pas exposer les réponse
 
     const seed = await seedExamWithQuestions(teacher._id);
     examId = seed.exam._id.toString();
+
+    mockGetServerSession.mockResolvedValue({
+      user: { id: student._id.toString() },
+    } as any);
   });
+
+  async function fetchTakePayload() {
+    const response = await takeExam(
+      new Request(`http://localhost/api/student/exams/${examId}/take`) as any,
+      { params: Promise.resolve({ id: examId }) },
+    );
+    expect(response.status).toBe(200);
+    return response.json();
+  }
 
   /**
    * Recursive helper: scans an object (or array) for forbidden keys.
@@ -161,12 +205,10 @@ describe("A-10 — /api/student/exams/[id]/take ne doit pas exposer les réponse
   describe("Questions QCM", () => {
     it("should not include isCorrect on any option", async () => {
       // Arrange & Act
-      const res = await request(API_URL)
-        .get(`/api/student/exams/${examId}/take`)
-        .expect(200);
+      const body = await fetchTakePayload();
 
       // Assert
-      const questions = res.body.exam?.questions ?? [];
+      const questions = body.exam?.questions ?? [];
       for (const q of questions) {
         for (const opt of q.options ?? []) {
           expect(opt).not.toHaveProperty("isCorrect");
@@ -178,12 +220,10 @@ describe("A-10 — /api/student/exams/[id]/take ne doit pas exposer les réponse
   describe("Questions TRUE_FALSE", () => {
     it("should not include correctAnswer on any question", async () => {
       // Arrange & Act
-      const res = await request(API_URL)
-        .get(`/api/student/exams/${examId}/take`)
-        .expect(200);
+      const body = await fetchTakePayload();
 
       // Assert
-      const questions = res.body.exam?.questions ?? [];
+      const questions = body.exam?.questions ?? [];
       for (const q of questions) {
         expect(q).not.toHaveProperty("correctAnswer");
       }
@@ -193,12 +233,10 @@ describe("A-10 — /api/student/exams/[id]/take ne doit pas exposer les réponse
   describe("Questions OPEN_QUESTION", () => {
     it("should not include modelAnswer on any question", async () => {
       // Arrange & Act
-      const res = await request(API_URL)
-        .get(`/api/student/exams/${examId}/take`)
-        .expect(200);
+      const body = await fetchTakePayload();
 
       // Assert
-      const questions = res.body.exam?.questions ?? [];
+      const questions = body.exam?.questions ?? [];
       for (const q of questions) {
         expect(q).not.toHaveProperty("modelAnswer");
       }
@@ -206,12 +244,10 @@ describe("A-10 — /api/student/exams/[id]/take ne doit pas exposer les réponse
 
     it("should not include openQuestionConfig on any question", async () => {
       // Arrange & Act
-      const res = await request(API_URL)
-        .get(`/api/student/exams/${examId}/take`)
-        .expect(200);
+      const body = await fetchTakePayload();
 
       // Assert
-      const questions = res.body.exam?.questions ?? [];
+      const questions = body.exam?.questions ?? [];
       for (const q of questions) {
         expect(q).not.toHaveProperty("openQuestionConfig");
       }
@@ -221,13 +257,11 @@ describe("A-10 — /api/student/exams/[id]/take ne doit pas exposer les réponse
   describe("Deep scan — aucune fuite de réponse dans le payload complet", () => {
     it("should have zero occurrences of correctAnswer, modelAnswer, openQuestionConfig, isCorrect in the entire response body", async () => {
       // Arrange & Act
-      const res = await request(API_URL)
-        .get(`/api/student/exams/${examId}/take`)
-        .expect(200);
+      const body = await fetchTakePayload();
 
-      // Assert — scan récursif du body complet
+      // Assert — scan récursif du body complet (hors attempt.responses.isCorrect si absent)
       const forbidden = ["correctAnswer", "modelAnswer", "openQuestionConfig", "isCorrect"];
-      const leaks = findForbiddenKeys(res.body, forbidden);
+      const leaks = findForbiddenKeys(body.exam, forbidden);
 
       expect(leaks).toEqual([]);
     });

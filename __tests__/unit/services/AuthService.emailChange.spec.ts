@@ -16,6 +16,12 @@ import {
   disconnectMongoMemory,
 } from '../../helpers/mongoMemory'
 
+async function getEmailChangeFields(userId: string) {
+  return User.findById(userId)
+    .select('+emailChangeToken +emailChangeExpires +emailChangePending')
+    .lean()
+}
+
 describe('AuthService — Email Change (A-14)', () => {
   const authService = new AuthService()
   const authRepo = new AuthRepository()
@@ -108,10 +114,7 @@ describe('AuthService — Email Change (A-14)', () => {
     it('should store hashed token and pending email in DB on success', async () => {
       await authService.requestEmailChange(userId, NEW_EMAIL, PASSWORD)
 
-      const db = mongoose.connection.db!
-      const doc = await db.collection('users').findOne({
-        _id: new mongoose.Types.ObjectId(userId),
-      })
+      const doc = await getEmailChangeFields(userId)
 
       expect(doc?.emailChangePending).toBe(NEW_EMAIL)
       expect(doc?.emailChangeToken).toBeDefined()
@@ -123,10 +126,7 @@ describe('AuthService — Email Change (A-14)', () => {
     it('should normalize email to lowercase', async () => {
       await authService.requestEmailChange(userId, 'NEW@TEST.COM', PASSWORD)
 
-      const db = mongoose.connection.db!
-      const doc = await db.collection('users').findOne({
-        _id: new mongoose.Types.ObjectId(userId),
-      })
+      const doc = await getEmailChangeFields(userId)
 
       expect(doc?.emailChangePending).toBe('new@test.com')
     })
@@ -135,10 +135,7 @@ describe('AuthService — Email Change (A-14)', () => {
       await authService.requestEmailChange(userId, 'first@test.com', PASSWORD)
       await authService.requestEmailChange(userId, 'second@test.com', PASSWORD)
 
-      const db = mongoose.connection.db!
-      const doc = await db.collection('users').findOne({
-        _id: new mongoose.Types.ObjectId(userId),
-      })
+      const doc = await getEmailChangeFields(userId)
 
       expect(doc?.emailChangePending).toBe('second@test.com')
     })
@@ -181,10 +178,7 @@ describe('AuthService — Email Change (A-14)', () => {
     it('should clear all emailChange fields after confirmation', async () => {
       await authService.confirmEmailChange(rawToken)
 
-      const db = mongoose.connection.db!
-      const doc = await db.collection('users').findOne({
-        _id: new mongoose.Types.ObjectId(userId),
-      })
+      const doc = await getEmailChangeFields(userId)
 
       expect(doc?.emailChangeToken).toBeUndefined()
       expect(doc?.emailChangeExpires).toBeUndefined()
@@ -238,10 +232,7 @@ describe('AuthService — Email Change (A-14)', () => {
       await authRepo.saveEmailChangeToken(userId, hashed, NEW_EMAIL, new Date(Date.now() + 3600_000))
       await authRepo.clearEmailChangeToken(userId)
 
-      const db = mongoose.connection.db!
-      const doc = await db.collection('users').findOne({
-        _id: new mongoose.Types.ObjectId(userId),
-      })
+      const doc = await getEmailChangeFields(userId)
 
       expect(doc?.emailChangeToken).toBeUndefined()
       expect(doc?.emailChangeExpires).toBeUndefined()

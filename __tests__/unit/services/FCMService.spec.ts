@@ -36,11 +36,23 @@ jest.mock('@/lib/services/NotificationPreferencesService', () => ({
 
 // ─── Imports (après les mocks) ───────────────────────────────────────────────
 
-import { describe, it, expect, beforeEach } from '@jest/globals'
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
 import mongoose from 'mongoose'
+import {
+    connectMongoMemory,
+    disconnectMongoMemory,
+} from '../../helpers/mongoMemory'
 import { FCMService } from '@/lib/services/FCMService'
 import NotificationDevice from '@/models/NotificationDevice'
 import { NotificationPreferencesService } from '@/lib/services/NotificationPreferencesService'
+
+beforeAll(async () => {
+    await connectMongoMemory()
+}, 30000)
+
+afterAll(async () => {
+    await disconnectMongoMemory()
+})
 
 beforeEach(async () => {
     await NotificationDevice.deleteMany({})
