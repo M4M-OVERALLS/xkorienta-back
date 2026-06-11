@@ -44,6 +44,11 @@ function jpegBuffer(): Buffer {
     return buf
 }
 
+/** Convertit un Buffer Node en BlobPart compatible avec le constructeur File (DOM). */
+function toBlobPart(buffer: Buffer): BlobPart {
+    return Uint8Array.from(buffer)
+}
+
 /** Helper : cree un buffer avec le magic bytes PNG (89 50 4E 47) */
 function pngBuffer(): Buffer {
     const buf = Buffer.alloc(16)
@@ -222,7 +227,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
 
     describe('extractText — image/jpg MIME variant with proper magic bytes', () => {
         it('devrait convertir une image/jpg en base64 data URI', async () => {
-            const file = new File([jpegBuffer()], 'photo.jpg', { type: 'image/jpg' })
+            const file = new File([toBlobPart(jpegBuffer())], 'photo.jpg', { type: 'image/jpg' })
 
             const result = await FileExtractionService.extractText(file)
 
@@ -236,7 +241,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
             const pdfParse = require('pdf-parse/lib/pdf-parse.js')
             pdfParse.mockResolvedValue({ text: '   \n\n   \t  ' })
 
-            const file = new File([pdfBuffer()], 'whitespace.pdf', {
+            const file = new File([toBlobPart(pdfBuffer())], 'whitespace.pdf', {
                 type: 'application/pdf',
             })
 
@@ -249,7 +254,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
             const pdfParse = require('pdf-parse/lib/pdf-parse.js')
             pdfParse.mockResolvedValue({ text: null })
 
-            const file = new File([pdfBuffer()], 'null.pdf', {
+            const file = new File([toBlobPart(pdfBuffer())], 'null.pdf', {
                 type: 'application/pdf',
             })
 
@@ -264,7 +269,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
             const mammoth = require('mammoth')
             mammoth.extractRawText.mockResolvedValue({ value: null })
 
-            const file = new File([docxBuffer()], 'empty.docx', {
+            const file = new File([toBlobPart(docxBuffer())], 'empty.docx', {
                 type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             })
 
@@ -284,7 +289,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
             const xssPayload = '<script>alert("XSS")</script><img onerror="fetch(\'http://evil.com\')" src=x>'
             pdfParse.mockResolvedValue({ text: xssPayload })
 
-            const file = new File([pdfBuffer()], 'xss.pdf', {
+            const file = new File([toBlobPart(pdfBuffer())], 'xss.pdf', {
                 type: 'application/pdf',
             })
 
@@ -298,7 +303,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
             const sqlPayload = "Robert'); DROP TABLE students;--"
             pdfParse.mockResolvedValue({ text: sqlPayload })
 
-            const file = new File([pdfBuffer()], 'sql.pdf', {
+            const file = new File([toBlobPart(pdfBuffer())], 'sql.pdf', {
                 type: 'application/pdf',
             })
 
@@ -311,7 +316,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
             const unicodeText = 'Syllabus test \u202E\u200B'
             mammoth.extractRawText.mockResolvedValue({ value: unicodeText })
 
-            const file = new File([docxBuffer()], 'unicode.docx', {
+            const file = new File([toBlobPart(docxBuffer())], 'unicode.docx', {
                 type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             })
 
@@ -322,7 +327,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
 
         it('devrait gerer une image PNG avec un nom de fichier contenant des path traversal', async () => {
             const maliciousName = '../../../etc/passwd.png'
-            const file = new File([pngBuffer()], maliciousName, {
+            const file = new File([toBlobPart(pngBuffer())], maliciousName, {
                 type: 'image/png',
             })
 

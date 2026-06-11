@@ -104,7 +104,9 @@ describe('POST /api/notification-devices', () => {
     })
 
     describe('validation du body', () => {
-        beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
+        beforeEach(() => {
+            mockGetServerSession.mockResolvedValue(makeSession())
+        })
 
         it('should return 400 with NOTIF_001 when token is missing', async () => {
             const res = await POST(makePostRequest({ platform: 'android' }))
@@ -148,7 +150,9 @@ describe('POST /api/notification-devices', () => {
     })
 
     describe('création et upsert', () => {
-        beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
+        beforeEach(() => {
+            mockGetServerSession.mockResolvedValue(makeSession())
+        })
 
         it('should return 200 and create a device document', async () => {
             const res = await POST(makePostRequest({ token: FCM_TOKEN, platform: 'android' }))
@@ -232,7 +236,9 @@ describe('DELETE /api/notification-devices', () => {
     })
 
     describe('validation du body', () => {
-        beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
+        beforeEach(() => {
+            mockGetServerSession.mockResolvedValue(makeSession())
+        })
 
         it('should return 400 with NOTIF_001 when token is missing', async () => {
             const res = await DELETE(makeDeleteRequest({}))
