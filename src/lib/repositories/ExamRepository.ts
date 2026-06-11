@@ -1,6 +1,7 @@
 import Exam from "@/models/Exam";
 import connectDB from "@/lib/mongodb";
 import mongoose from "mongoose";
+import { ExamStatus } from "@/models/enums";
 // Ensure referenced models are registered before populate
 import "@/models/Subject";
 
@@ -23,7 +24,7 @@ export class ExamRepository {
 
         return Exam.countDocuments({
             createdById: { $in: teacherIds.map(id => new mongoose.Types.ObjectId(id)) },
-            status: { $in: ['ACTIVE', 'COMPLETED', 'PUBLISHED', 'VALIDATED'] }
+            status: { $in: [ExamStatus.VALIDATED, ExamStatus.PUBLISHED] as ExamStatus[] }
         });
     }
 
@@ -36,7 +37,7 @@ export class ExamRepository {
 
         return Exam.find({
             createdById: { $in: teacherIds.map(id => new mongoose.Types.ObjectId(id)) },
-            status: { $nin: ['DRAFT', 'ARCHIVED'] }
+            status: { $nin: [ExamStatus.DRAFT, ExamStatus.ARCHIVED] as ExamStatus[] }
         })
             .sort({ createdAt: -1 })
             .limit(limit)
@@ -61,7 +62,7 @@ export class ExamRepository {
         return Exam.countDocuments({
             createdById: new mongoose.Types.ObjectId(teacherId),
             $or: [
-                { status: 'PUBLISHED' },
+                { status: ExamStatus.PUBLISHED },
                 { isPublished: true }
             ]
         });
@@ -76,7 +77,7 @@ export class ExamRepository {
         return Exam.countDocuments({
             createdById: new mongoose.Types.ObjectId(teacherId),
             $or: [
-                { status: 'PUBLISHED' },
+                { status: ExamStatus.PUBLISHED },
                 { isPublished: true }
             ],
             startTime: { $lte: now },
@@ -92,7 +93,7 @@ export class ExamRepository {
         const exams = await Exam.find({
             createdById: new mongoose.Types.ObjectId(teacherId),
             $or: [
-                { status: { $in: ['PUBLISHED', 'VALIDATED', 'ACTIVE'] } },
+                { status: { $in: [ExamStatus.PUBLISHED, ExamStatus.VALIDATED] as ExamStatus[] } },
                 { isPublished: true }
             ]
         }).select('_id').lean();

@@ -42,7 +42,6 @@ function applyTokenVersionCheck(
 
 export const authOptions: NextAuthOptions = {
     secret: process.env.NEXTAUTH_SECRET,
-    trustHost: true,
     session: {
         strategy: "jwt",
         maxAge: 2 * 60 * 60, // 2 heures (A-13: réduit depuis 30 jours)

@@ -394,6 +394,11 @@ async function seed() {
   const { default: Exam } = await import("../../models/Exam");
   const { default: Question } = await import("../../models/Question");
   const { default: Option } = await import("../../models/Option");
+  const {
+    SubSystem, SubjectType, Cycle, UserRole,
+    PedagogicalObjective, EvaluationType, LearningMode,
+    DifficultyLevel, CloseMode, ExamStatus,
+  } = await import("../../models/enums");
 
   console.log("\n🌱 Starting seed: Diagnostic Flash - Programmation Web\n");
 
@@ -403,11 +408,11 @@ async function seed() {
     subject = await Subject.create({
       name: "Programmation Web",
       code: "PROG-WEB-101",
-      subSystem: "FRANCOPHONE",
+      subSystem: SubSystem.FRANCOPHONE,
       applicableLevels: [],
       applicableFields: [],
       isTransversal: true,
-      subjectType: "UE",
+      subjectType: SubjectType.UE,
       isActive: true,
       metadata: {
         displayName: { fr: "Programmation Web", en: "Web Programming" },
@@ -428,8 +433,8 @@ async function seed() {
     educationLevel = await EducationLevel.create({
       name: "Licence 1 (L1)",
       code: "LICENCE-L1-FR",
-      cycle: "LICENCE",
-      subSystem: "FRANCOPHONE",
+      cycle: Cycle.LICENCE,
+      subSystem: SubSystem.FRANCOPHONE,
       order: 7,
       isActive: true,
       metadata: {
@@ -448,8 +453,8 @@ async function seed() {
     teacher = await User.create({
       name: "Équipe xkorienta",
       email: "tagnewambo@m4moveralls.com",
-      role: "TEACHER",
-      subSystem: "FRANCOPHONE",
+      role: UserRole.TEACHER,
+      subSystem: SubSystem.FRANCOPHONE,
       isActive: true,
       emailVerified: true,
       preferences: {
@@ -487,18 +492,18 @@ async function seed() {
     title: "Diagnostic Flash – Introduction à la Programmation Web",
     description:
       "Évaluez votre niveau en programmation web ! 10 questions sur Internet, le WWW, l'architecture client-serveur, HTML, CSS et JavaScript. Résultat instantané avec votre profil détaillé.",
-    subSystem: "FRANCOPHONE",
+    subSystem: SubSystem.FRANCOPHONE,
     targetLevels: [educationLevel._id],
     subject: subject._id,
-    pedagogicalObjective: "DIAGNOSTIC_EVAL",
-    evaluationType: "QCM",
-    learningMode: "AUTO_EVAL",
-    difficultyLevel: "BEGINNER",
+    pedagogicalObjective: PedagogicalObjective.DIAGNOSTIC_EVAL,
+    evaluationType: EvaluationType.QCM,
+    learningMode: LearningMode.AUTO_EVAL,
+    difficultyLevel: DifficultyLevel.BEGINNER,
     startTime: now,
     endTime: farFuture,
     duration: 10, // 10 minutes
-    closeMode: "PERMISSIVE",
-    status: "PUBLISHED",
+    closeMode: CloseMode.PERMISSIVE,
+    status: ExamStatus.PUBLISHED,
     isPublished: true,
     isActive: true,
     isPublicDemo: true,
@@ -556,7 +561,7 @@ async function seed() {
     const question = await Question.create({
       examId: exam._id,
       text: questionFields.text,
-      type: "QCM",
+      type: EvaluationType.QCM,
       points: questionFields.points,
       difficulty: questionFields.difficulty as any,
       explanation: questionFields.explanation,

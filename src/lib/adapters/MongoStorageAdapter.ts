@@ -6,7 +6,7 @@ import type {
 } from '@xkorienta/payment-sdk'
 import connectDB from '@/lib/mongodb'
 import Transaction from '@/models/Transaction'
-import { TransactionStatus as DbStatus } from '@/models/enums'
+import { TransactionStatus as DbStatus, TransactionType } from '@/models/enums'
 import Idempotency from '@/models/Idempotency'
 import { exchangeRateRepository } from '@/lib/repositories/ExchangeRateRepository'
 
@@ -24,7 +24,7 @@ export class MongoStorageAdapter implements IStorageAdapter {
         await connectDB()
         const doc = await Transaction.create({
             userId: data.userId,
-            type: data.type,
+            type: data.type as TransactionType,
             productId: data.productId,
             productModel: data.productType,
             originalAmount: data.originalAmount,
@@ -102,7 +102,7 @@ export class MongoStorageAdapter implements IStorageAdapter {
         const doc = await Transaction.findOne({
             userId,
             productId,
-            type,
+            type: type as TransactionType,
             status: DbStatus.COMPLETED,
         }).lean()
         return doc ? this.toTransactionData(doc as unknown as Record<string, unknown>) : null

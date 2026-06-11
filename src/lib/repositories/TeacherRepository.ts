@@ -3,6 +3,7 @@ import School from "@/models/School";
 import Syllabus from "@/models/Syllabus";
 import User from "@/models/User";
 import connectDB from "@/lib/mongodb";
+import { UserRole } from "@/models/enums";
 
 export class TeacherRepository {
     /**
@@ -134,7 +135,7 @@ export class TeacherRepository {
         await connectDB();
         const teachers = await User.find({
             schools: schoolId,
-            role: 'TEACHER',
+            role: UserRole.TEACHER,
             isActive: true
         }).select('_id').lean();
 

@@ -1,7 +1,7 @@
 import { IExam } from '@/models/Exam'
 import { EvaluationStrategyFactory, EvaluationResult } from '@/lib/patterns/EvaluationStrategy'
 import { ExamDecoratorFactory } from '@/lib/patterns/ExamDecorator'
-import Attempt from '@/models/Attempt'
+import Attempt, { AttemptStatus } from '@/models/Attempt'
 import Response from '@/models/Response'
 import Question from '@/models/Question'
 import mongoose from 'mongoose'
@@ -175,7 +175,7 @@ export class ExamEvaluationService {
         // Récupérer toutes les tentatives complétées
         const attempts = await Attempt.find({
             examId,
-            status: 'COMPLETED'
+            status: AttemptStatus.COMPLETED
         }).lean()
 
         // Calculer la distribution
