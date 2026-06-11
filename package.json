@@ -16,8 +16,7 @@
     "migrate:isimma-s2": "node scripts/add-isimma-s2-subjects.js",
     "backfill:inscription-invoices": "npx tsx scripts/backfill-inscription-invoices.ts",
     "test": "jest",
-    "test:prepare": "node -e \"require('mongodb-memory-server').MongoMemoryServer.create().then(s => { console.log('MongoDB binary ready'); s.stop(); process.exit(0); })\"",
-    "postinstall": "npm run test:prepare"
+    "test:prepare": "node -e \"require('mongodb-memory-server').MongoMemoryServer.create().then(s => { console.log('MongoDB binary ready'); s.stop(); process.exit(0); })\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",
