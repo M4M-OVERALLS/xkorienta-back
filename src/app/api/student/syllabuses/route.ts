@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import connectDB from "@/lib/mongodb"
 import Class from "@/models/Class"
-import Syllabus from "@/models/Syllabus"
+import Syllabus, { SyllabusStatus } from "@/models/Syllabus"
 import { UserRole } from "@/models/enums"
 
 export async function GET(req: Request) {
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
         // Find all syllabuses assigned to the student's classes
         const syllabuses = await Syllabus.find({
             classes: { $in: classIds },
-            status: { $ne: 'ARCHIVED' }
+            status: { $ne: SyllabusStatus.ARCHIVED }
         })
             .populate('subject', 'name code')
             .populate('teacher', 'name')

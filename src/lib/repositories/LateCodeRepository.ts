@@ -1,4 +1,4 @@
-import LateCode, { ILateCode } from "@/models/LateCode";
+import LateCode, { ILateCode, LateCodeStatus } from "@/models/LateCode";
 import connectDB from "@/lib/mongodb";
 import mongoose from "mongoose";
 
@@ -48,7 +48,7 @@ export class LateCodeRepository {
         await connectDB();
         return LateCode.findOne({
             examId: new mongoose.Types.ObjectId(examId),
-            status: 'ACTIVE',
+            status: LateCodeStatus.ACTIVE,
             expiresAt: { $gt: new Date() },
             'usageHistory.userId': new mongoose.Types.ObjectId(userId)
         });

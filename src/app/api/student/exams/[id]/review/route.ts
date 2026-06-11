@@ -5,7 +5,7 @@ import connectDB from "@/lib/mongodb";
 import Exam, { ExamConfig } from "@/models/Exam";
 import Question, { IQuestion } from "@/models/Question";
 import Option from "@/models/Option";
-import Attempt from "@/models/Attempt";
+import Attempt, { AttemptStatus } from "@/models/Attempt";
 import Response, { IResponse } from "@/models/Response";
 import { addMinutes, isAfter, isPast } from "date-fns";
 
@@ -44,7 +44,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
         const attemptDoc = await Attempt.findOne({
             examId: id,
             userId: session.user.id,
-            status: "COMPLETED",
+            status: AttemptStatus.COMPLETED,
         }).lean();
 
         if (!attemptDoc) {

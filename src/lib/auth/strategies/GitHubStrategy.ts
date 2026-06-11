@@ -50,7 +50,7 @@ export class GitHubAuthStrategy extends BaseAuthStrategy {
                     email: profile.email.toLowerCase(),
                     image: profile.avatar_url,
                     githubId: profile.id,
-                    role: "STUDENT",
+                    role:  UserRole.STUDENT,
                     studentCode: Math.random().toString(36).substring(2, 10).toUpperCase()
                 })
             }

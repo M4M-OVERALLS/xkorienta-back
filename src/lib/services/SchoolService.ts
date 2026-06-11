@@ -1,5 +1,6 @@
 import School, { ISchool } from "@/models/School";
-import { SchoolStatus } from "@/models/enums";
+import { SchoolStatus, ModalityStatus } from "@/models/enums";
+import { SchoolType } from "@/models/School";
 import User, { IUser } from "@/models/User";
 import Class from "@/models/Class";
 import Attempt from "@/models/Attempt";
@@ -224,7 +225,7 @@ export class SchoolService {
             return true;
         });
     }
-    
+
     static async getSchoolStats(schoolId: string) {
         const schoolRepo = new SchoolRepository();
         const teacherRepo = new TeacherRepository();
@@ -397,7 +398,7 @@ export class SchoolService {
      */
     static async getPublicSchools() {
         return await School.find({
-            status: 'APPROVED',
+            status: SchoolStatus.VALIDATED,
             isActive: true
         })
             .select('name type address logoUrl contactInfo createdAt applicants')
@@ -468,7 +469,7 @@ export class SchoolService {
      */
     static async graftTeacherClassesToSchool(teacherId: string, schoolId: string) {
         const { ClassValidationStatus } = await import("@/models/enums");
-        
+
         // Find all independent classes by this teacher that were waiting for this school
         const classesToGraft = await Class.find({
             mainTeacher: teacherId,
@@ -669,7 +670,7 @@ export class SchoolService {
 
         const school = await School.create({
             name: input.name,
-            type: input.type,
+            type: input.type as SchoolType,
             address: input.address,
             contactInfo: input.contactInfo,
             status: SchoolStatus.VALIDATED,
@@ -679,9 +680,9 @@ export class SchoolService {
             teachers: [],
             admins: [],
             applicants: [],
-            specialties: [],
+
             tuitionFee: { min: 0, max: 0, currency: "XAF" },
-            modality: "PRESENTIEL",
+            modality: ModalityStatus.PRESENTIEL,
             Languages: [],
             badges: { employment: false, alternance: false, certification: [] },
             academicLevel: [],

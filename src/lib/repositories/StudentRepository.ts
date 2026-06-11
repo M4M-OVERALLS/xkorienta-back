@@ -1,7 +1,7 @@
 import Class from "@/models/Class";
 import Syllabus from "@/models/Syllabus";
 import Exam from "@/models/Exam";
-import Attempt from "@/models/Attempt";
+import Attempt, { AttemptStatus } from "@/models/Attempt";
 import Concept from "@/models/Concept";
 import ConceptEvaluation from "@/models/ConceptEvaluation";
 import connectDB from "@/lib/mongodb";
@@ -48,7 +48,7 @@ export class StudentRepository {
         return Attempt.find({
             userId: new mongoose.Types.ObjectId(studentId),
             examId: { $in: examIds },
-            status: 'COMPLETED'
+            status: AttemptStatus.COMPLETED
         }).lean();
     }
 

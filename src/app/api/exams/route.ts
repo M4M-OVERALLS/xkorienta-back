@@ -6,7 +6,7 @@ import Option from "@/models/Option"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { z } from "zod"
-import { UserRole } from "@/models/enums"
+import { UserRole, CloseMode } from "@/models/enums"
 
 const examSchema = z.object({
     title: z.string().min(3),
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
             startTime: new Date(data.startTime),
             endTime: new Date(data.endTime),
             duration: data.duration,
-            closeMode: data.closeMode,
+            closeMode: data.closeMode as CloseMode,
             createdById: session.user.id,
         })
 

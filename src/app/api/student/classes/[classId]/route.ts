@@ -8,6 +8,7 @@ import Question from "@/models/Question";
 import Syllabus from "@/models/Syllabus";
 import { isPast } from "date-fns";
 import mongoose from "mongoose";
+import { AttemptStatus } from "@/models/enums";
 
 interface RouteParams {
     params: Promise<{ classId: string }>
@@ -173,7 +174,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         // 8. Compute Ranking: aggregate completed attempts per student across all class exams
         const completedAttempts = await Attempt.find({
             examId: { $in: examIds },
-            status: "COMPLETED",
+            status: AttemptStatus.COMPLETED,
         })
             .select("userId examId score")
             .lean();

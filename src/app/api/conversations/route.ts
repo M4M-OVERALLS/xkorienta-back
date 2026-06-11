@@ -29,7 +29,7 @@ export async function GET(req: Request) {
 
         const conversations = await Conversation.find({
             participants: session.user.id,
-            status: status.toUpperCase()
+            status: status.toUpperCase() as ConversationStatus
         })
             .populate('participants', 'name email image role')
             .populate('lastMessage.senderId', 'name')
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
 
         const total = await Conversation.countDocuments({
             participants: session.user.id,
-            status: status.toUpperCase()
+            status: status.toUpperCase() as ConversationStatus
         })
 
         return NextResponse.json({
