@@ -12,6 +12,7 @@ jest.mock("@/lib/mongodb", () => ({
 }));
 
 import { describe, expect, it, beforeAll, afterAll, beforeEach } from "@jest/globals";
+import { NextRequest } from "next/server";
 import { createHash, randomBytes } from "crypto";
 import { encode } from "next-auth/jwt";
 import bcrypt from "bcryptjs";
@@ -50,14 +51,14 @@ async function buildSessionCookie(userId: string, email: string, tokenVersion = 
 function signoutRequest(csrfToken: string, csrfCookie: string, sessionToken: string) {
   const body = new URLSearchParams({ csrfToken, json: "true" });
   return signOutPost(
-    new Request("http://localhost:3001/api/auth/signout", {
+    new NextRequest("http://localhost:3001/api/auth/signout", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         cookie: `${CSRF_COOKIE}=${csrfCookie}; ${SESSION_COOKIE}=${sessionToken}`,
       },
       body: body.toString(),
-    }) as any,
+    }),
   );
 }
 

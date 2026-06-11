@@ -2,26 +2,37 @@
  * Integration Tests for XKT-003: Child Linking Request
  *
  * Location: __tests__/integration/parent/ParentLearnerLinkTest.spec.ts
- * Run: npm run test:integration -- ParentLearnerLinkTest.spec.ts
- * Requires: Test MongoDB instance + running server on TEST_API_URL
+ *
+ * Uses mongodb-memory-server + direct route handler calls (no running server needed).
  */
 
-import request from 'supertest';
+jest.mock('@/lib/mongodb', () => ({
+    __esModule: true,
+    default: jest.fn().mockResolvedValue(undefined),
+    disconnectDB: jest.fn().mockResolvedValue(undefined),
+}));
+
+import { NextRequest } from 'next/server';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
-import connectDB, { disconnectDB } from '@/lib/mongodb';
 import User from '@/models/User';
 import ParentProfile from '@/models/ParentProfile';
 import ParentLearnerLink from '@/models/ParentLearnerLink';
 import Invitation from '@/models/Invitation';
 import { UserRole, KYCLevel, KYCStatus } from '@/models/enums';
+import { POST } from '@/app/api/parent/children/[learnerId]/link/route';
+import {
+    connectMongoMemory,
+    disconnectMongoMemory,
+} from '../../helpers/mongoMemory';
 
-const API_URL = process.env.TEST_API_URL || 'http://localhost:3001';
+const TEST_SECRET = 'integration-test-nextauth-secret-32ch';
 const HOOK_TIMEOUT = 20000;
 const TEST_TIMEOUT = 20000;
 
+process.env.NEXTAUTH_SECRET = TEST_SECRET;
+
 // Signs a real JWT matching what ParentAuthService generates
-// Without this every request returns 401 — the route validates the signature
 function signToken(payload: {
     userId: string;
     parentProfileId: string;
@@ -30,7 +41,7 @@ function signToken(payload: {
 }): string {
     return jwt.sign(
         { ...payload, role: UserRole.PARENT },
-        process.env.NEXTAUTH_SECRET!,
+        TEST_SECRET,
         {
             expiresIn: '1h',
             issuer: 'xkorienta-parent-module',
@@ -59,7 +70,6 @@ async function createParent(overrides: {
     const profile = await ParentProfile.create({
         user: user._id,
         kycLevel: overrides.kycLevel ?? KYCLevel.NONE,
-        // kycStatus is required by the schema
         kycStatus: overrides.kycStatus ?? KYCStatus.PENDING,
         isActive: true,
         preferredLanguage: 'fr',
@@ -86,16 +96,28 @@ async function createLearner(suffix = '') {
     });
 }
 
+/** Calls the route handler directly — no running server needed. */
+function linkRequest(learnerId: string, token: string | null, body: Record<string, unknown>) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const req = new NextRequest(
+        `http://localhost/api/parent/children/${learnerId}/link`,
+        { method: 'POST', headers, body: JSON.stringify(body) }
+    );
+    return POST(req, { params: Promise.resolve({ learnerId }) });
+}
+
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
 
 beforeAll(async () => {
-    await connectDB();
+    await connectMongoMemory();
 }, HOOK_TIMEOUT);
 
 afterAll(async () => {
-    await disconnectDB();
+    await disconnectMongoMemory();
 }, HOOK_TIMEOUT);
 
 beforeEach(async () => {
@@ -119,18 +141,16 @@ describe('XKT-003: Child Linking Request Integration Tests', () => {
             const { profile, token } = await createParent();
             const learner = await createLearner();
 
-            const response = await request(API_URL)
-                .post(`/api/parent/children/${learner._id}/link`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({ relationshipType: 'FATHER', isPrimary: true });
+            const res = await linkRequest(learner._id.toString(), token, { relationshipType: 'FATHER', isPrimary: true });
+            const body = await res.json();
 
-            expect(response.status).toBe(201);
-            expect(response.body.success).toBe(true);
-            expect(response.body.data).toHaveProperty('linkId');
-            expect(response.body.data.status).toBe('PENDING');
+            expect(res.status).toBe(201);
+            expect(body.success).toBe(true);
+            expect(body.data).toHaveProperty('linkId');
+            expect(body.data.status).toBe('PENDING');
 
             // Verify DB state
-            const link = await ParentLearnerLink.findById(response.body.data.linkId);
+            const link = await ParentLearnerLink.findById(body.data.linkId);
             expect(link).toBeDefined();
             expect(link?.status).toBe('PENDING');
             expect(link?.parent.toString()).toBe(profile._id.toString());
@@ -140,52 +160,44 @@ describe('XKT-003: Child Linking Request Integration Tests', () => {
         it('should require Authorization header (401)', async () => {
             const learner = await createLearner();
 
-            const response = await request(API_URL)
-                .post(`/api/parent/children/${learner._id}/link`)
-                .send({ relationshipType: 'FATHER', isPrimary: true });
+            const res = await linkRequest(learner._id.toString(), null, { relationshipType: 'FATHER', isPrimary: true });
+            const body = await res.json();
 
-            expect(response.status).toBe(401);
+            expect(res.status).toBe(401);
         }, TEST_TIMEOUT);
 
         it('should reject learner not found (404 PAR_012)', async () => {
             const { token } = await createParent();
-            const fakeLearnerId = new mongoose.Types.ObjectId();
+            const fakeLearnerId = new mongoose.Types.ObjectId().toString();
 
-            const response = await request(API_URL)
-                .post(`/api/parent/children/${fakeLearnerId}/link`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({ relationshipType: 'FATHER', isPrimary: true });
+            const res = await linkRequest(fakeLearnerId, token, { relationshipType: 'FATHER', isPrimary: true });
+            const body = await res.json();
 
-            expect(response.status).toBe(404);
-            expect(response.body.error.code).toBe('PAR_012');
+            expect(res.status).toBe(404);
+            expect(body.error.code).toBe('PAR_012');
         }, TEST_TIMEOUT);
 
         it('should reject if already linked with ACTIVE status (409 PAR_011)', async () => {
-            const { profile, token } = await createParent();
+            const { token } = await createParent();
             const learner = await createLearner();
 
             // First request succeeds
-            const first = await request(API_URL)
-                .post(`/api/parent/children/${learner._id}/link`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({ relationshipType: 'FATHER', isPrimary: true });
-
-            expect(first.status).toBe(201);
+            const firstRes = await linkRequest(learner._id.toString(), token, { relationshipType: 'FATHER', isPrimary: true });
+            const firstBody = await firstRes.json();
+            expect(firstRes.status).toBe(201);
 
             // Manually promote to ACTIVE in DB
             await ParentLearnerLink.updateOne(
-                { _id: first.body.data.linkId },
+                { _id: firstBody.data.linkId },
                 { status: 'ACTIVE' }
             );
 
             // Second request — already has ACTIVE link
-            const second = await request(API_URL)
-                .post(`/api/parent/children/${learner._id}/link`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({ relationshipType: 'MOTHER', isPrimary: false });
+            const secondRes = await linkRequest(learner._id.toString(), token, { relationshipType: 'MOTHER', isPrimary: false });
+            const secondBody = await secondRes.json();
 
-            expect(second.status).toBe(409);
-            expect(second.body.error.code).toBe('PAR_011');
+            expect(secondRes.status).toBe(409);
+            expect(secondBody.error.code).toBe('PAR_011');
         }, TEST_TIMEOUT);
 
         it('should reject if link already pending (409 PAR_009 or PAR_011)', async () => {
@@ -193,49 +205,39 @@ describe('XKT-003: Child Linking Request Integration Tests', () => {
             const learner = await createLearner();
 
             // First request — creates PENDING link
-            const first = await request(API_URL)
-                .post(`/api/parent/children/${learner._id}/link`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({ relationshipType: 'FATHER', isPrimary: true });
-
-            expect(first.status).toBe(201);
-            expect(first.body.data.status).toBe('PENDING');
+            const firstRes = await linkRequest(learner._id.toString(), token, { relationshipType: 'FATHER', isPrimary: true });
+            const firstBody = await firstRes.json();
+            expect(firstRes.status).toBe(201);
+            expect(firstBody.data.status).toBe('PENDING');
 
             // Second request — link already exists (any status)
-            const second = await request(API_URL)
-                .post(`/api/parent/children/${learner._id}/link`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({ relationshipType: 'MOTHER', isPrimary: false });
+            const secondRes = await linkRequest(learner._id.toString(), token, { relationshipType: 'MOTHER', isPrimary: false });
+            const secondBody = await secondRes.json();
 
-            expect(second.status).toBe(409);
-            // service uses exists() which catches any status — PAR_009 or PAR_011
-            expect(['PAR_009', 'PAR_011']).toContain(second.body.error?.code);
+            expect(secondRes.status).toBe(409);
+            expect(['PAR_009', 'PAR_011']).toContain(secondBody.error?.code);
         }, TEST_TIMEOUT);
 
         it('should validate invalid relationshipType enum (400 VAL_*)', async () => {
             const { token } = await createParent();
             const learner = await createLearner();
 
-            const response = await request(API_URL)
-                .post(`/api/parent/children/${learner._id}/link`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({ relationshipType: 'INVALID_TYPE', isPrimary: true });
+            const res = await linkRequest(learner._id.toString(), token, { relationshipType: 'INVALID_TYPE', isPrimary: true });
+            const body = await res.json();
 
-            expect(response.status).toBe(400);
-            expect(response.body.error.code).toMatch(/VAL_/);
+            expect(res.status).toBe(400);
+            expect(body.error.code).toMatch(/VAL_/);
         }, TEST_TIMEOUT);
 
         it('should reject missing relationshipType (400 VAL_*)', async () => {
             const { token } = await createParent();
             const learner = await createLearner();
 
-            const response = await request(API_URL)
-                .post(`/api/parent/children/${learner._id}/link`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({ isPrimary: true });
+            const res = await linkRequest(learner._id.toString(), token, { isPrimary: true });
+            const body = await res.json();
 
-            expect(response.status).toBe(400);
-            expect(response.body.error.code).toMatch(/VAL_/);
+            expect(res.status).toBe(400);
+            expect(body.error.code).toMatch(/VAL_/);
         }, TEST_TIMEOUT);
 
         it('should accept all valid relationship types', async () => {
@@ -244,13 +246,8 @@ describe('XKT-003: Child Linking Request Integration Tests', () => {
 
             for (let i = 0; i < validTypes.length; i++) {
                 const learner = await createLearner(`_type_${i}`);
-
-                const response = await request(API_URL)
-                    .post(`/api/parent/children/${learner._id}/link`)
-                    .set('Authorization', `Bearer ${token}`)
-                    .send({ relationshipType: validTypes[i], isPrimary: true });
-
-                expect(response.status).toBe(201);
+                const res = await linkRequest(learner._id.toString(), token, { relationshipType: validTypes[i], isPrimary: true });
+                expect(res.status).toBe(201);
             }
         }, TEST_TIMEOUT);
 
@@ -260,43 +257,32 @@ describe('XKT-003: Child Linking Request Integration Tests', () => {
             const learner2 = await createLearner('_2');
 
             const [res1, res2] = await Promise.all([
-                request(API_URL)
-                    .post(`/api/parent/children/${learner1._id}/link`)
-                    .set('Authorization', `Bearer ${token}`)
-                    .send({ relationshipType: 'FATHER', isPrimary: true }),
-                request(API_URL)
-                    .post(`/api/parent/children/${learner2._id}/link`)
-                    .set('Authorization', `Bearer ${token}`)
-                    .send({ relationshipType: 'FATHER', isPrimary: true }),
+                linkRequest(learner1._id.toString(), token, { relationshipType: 'FATHER', isPrimary: true }),
+                linkRequest(learner2._id.toString(), token, { relationshipType: 'FATHER', isPrimary: true }),
             ]);
+
+            const [body1, body2] = await Promise.all([res1.json(), res2.json()]);
 
             expect(res1.status).toBe(201);
             expect(res2.status).toBe(201);
-            expect(res1.body.data.linkId).not.toBe(res2.body.data.linkId);
+            expect(body1.data.linkId).not.toBe(body2.data.linkId);
 
             const [link1, link2] = await Promise.all([
-                ParentLearnerLink.findById(res1.body.data.linkId),
-                ParentLearnerLink.findById(res2.body.data.linkId),
+                ParentLearnerLink.findById(body1.data.linkId),
+                ParentLearnerLink.findById(body2.data.linkId),
             ]);
             expect(link1?.learner.toString()).toBe(learner1._id.toString());
             expect(link2?.learner.toString()).toBe(learner2._id.toString());
         }, TEST_TIMEOUT);
 
         it('should allow two different parents to request the same learner', async () => {
-            // ch parent gets their own signed token — original used same token for both
             const { token: token1 } = await createParent({ email: 'parent1@example.com' });
             const { token: token2 } = await createParent({ email: 'parent2@example.com' });
             const learner = await createLearner();
 
             const [res1, res2] = await Promise.all([
-                request(API_URL)
-                    .post(`/api/parent/children/${learner._id}/link`)
-                    .set('Authorization', `Bearer ${token1}`)
-                    .send({ relationshipType: 'FATHER', isPrimary: true }),
-                request(API_URL)
-                    .post(`/api/parent/children/${learner._id}/link`)
-                    .set('Authorization', `Bearer ${token2}`)
-                    .send({ relationshipType: 'MOTHER', isPrimary: false }),
+                linkRequest(learner._id.toString(), token1, { relationshipType: 'FATHER', isPrimary: true }),
+                linkRequest(learner._id.toString(), token2, { relationshipType: 'MOTHER', isPrimary: false }),
             ]);
 
             expect(res1.status).toBe(201);
@@ -310,12 +296,8 @@ describe('XKT-003: Child Linking Request Integration Tests', () => {
             const { token } = await createParent();
             const learner = await createLearner();
 
-            const response = await request(API_URL)
-                .post(`/api/parent/children/${learner._id}/link`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({ relationshipType: 'FATHER', isPrimary: true });
-
-            expect(response.status).toBe(201);
+            const res = await linkRequest(learner._id.toString(), token, { relationshipType: 'FATHER', isPrimary: true });
+            expect(res.status).toBe(201);
             // AuditLog verification to be enabled once AuditLog model is wired up:
             // const log = await AuditLog.findOne({ action: 'LINK_REQUESTED' });
             // expect(log).toBeDefined();
