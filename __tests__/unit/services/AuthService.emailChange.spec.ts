@@ -5,6 +5,12 @@
  * Utilise MongoDB in-memory via le setup global.
  */
 
+jest.mock('@/lib/mail', () => ({
+  sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+  sendEmailChangeConfirmation: jest.fn().mockResolvedValue(undefined),
+  sendEmailChangeNotification: jest.fn().mockResolvedValue(undefined),
+}))
+
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from '@jest/globals'
 import { AuthService } from '@/lib/services/AuthService'
 import { AuthRepository } from '@/lib/repositories/AuthRepository'
