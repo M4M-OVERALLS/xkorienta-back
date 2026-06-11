@@ -21,7 +21,7 @@ cp .env.example .env
 # Modifier .env avec vos vraies valeurs
 ```
 
-> **Note** : `npm install` exécute automatiquement `postinstall` qui pré-télécharge le binaire MongoDB utilisé par `mongodb-memory-server` lors des tests (~30 MB, une seule fois, mis en cache dans `~/.cache/mongodb-binaries`).
+> **Note** : Après `npm install`, lancer `npm run test:prepare` une fois pour pré-télécharger le binaire MongoDB utilisé par `mongodb-memory-server` (~30 MB, mis en cache dans `~/.cache/mongodb-binaries`). Non requis en CI/Docker.
 
 ## 🧪 Tests
 
