@@ -6,6 +6,7 @@
 
 import {z} from 'zod';
 import {isValidObjectId} from 'mongoose';
+import {ParentRelationshipType} from "@/models/enums";
 
 // REUSABLE COMPONENTS
 
@@ -60,6 +61,27 @@ export const loginParentSchema = z.object({
 });
 
 export type LoginParentInput = z.infer<typeof loginParentSchema>;
+
+
+// ============================================================================
+// CHILD LINKING SCHEMAS
+// ============================================================================
+
+export const linkParentToLearnerSchema = z.object({
+    learnerId: mongoIdSchema,
+    relationshipType: z.nativeEnum(ParentRelationshipType),
+    isPrimary: z.boolean().optional().default(true),
+});
+
+export type LinkParentToLearnerInput = z.infer<typeof linkParentToLearnerSchema>;
+
+export const validateLinkSchema = z.object({
+    linkId: mongoIdSchema,
+    approve: z.boolean(),
+    reason: z.string().optional(),
+});
+
+export type ValidateLinkInput = z.infer<typeof validateLinkSchema>;
 
 
 // EXPORT TYPES FOR USE IN CONTROLLERS

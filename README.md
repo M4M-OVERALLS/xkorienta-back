@@ -12,7 +12,7 @@ Backend API pour l'application Quizlock, construit avec Next.js.
 ### Installation
 
 ```bash
-# Installer les dépendances
+# Installer les dépendances (télécharge aussi le binaire MongoDB pour les tests)
 npm install
 
 # Copier le fichier d'environnement
@@ -20,6 +20,26 @@ cp .env.example .env
 
 # Modifier .env avec vos vraies valeurs
 ```
+
+> **Note** : `npm install` exécute automatiquement `postinstall` qui pré-télécharge le binaire MongoDB utilisé par `mongodb-memory-server` lors des tests (~30 MB, une seule fois, mis en cache dans `~/.cache/mongodb-binaries`).
+
+## 🧪 Tests
+
+```bash
+# Lancer tous les tests
+npm test
+
+# Avec rapport de couverture
+npm test -- --coverage
+
+# Résultat dans un fichier log
+npm test 2>&1 | tee test.log
+```
+
+> Si le binaire MongoDB n'est pas encore téléchargé (premier `npm install` raté ou cache supprimé), relancer manuellement :
+> ```bash
+> npm run test:prepare
+> ```
 
 ### Configuration
 

@@ -3,7 +3,7 @@ import { BookService } from '@/lib/services/BookService'
 import { bookRepository } from '@/lib/repositories/BookRepository'
 import { bookConfigRepository } from '@/lib/repositories/BookConfigRepository'
 import { StorageStrategyFactory } from '@/lib/strategies/storage/StorageStrategyFactory'
-import { BookFormat, BookScope, BookStatus, UserRole, StorageProvider, PaymentProvider } from '@/models/enums'
+import { BookFormat, MediaScope, BookStatus, UserRole, StorageProvider, PaymentProvider } from '@/models/enums'
 
 const TEACHER_ID = new mongoose.Types.ObjectId().toString()
 const OTHER_TEACHER_ID = new mongoose.Types.ObjectId().toString()
@@ -48,7 +48,7 @@ const mockBook = {
     fileKey: 'books/test-uuid.pdf',
     price: 2000,
     currency: 'XAF',
-    scope: BookScope.GLOBAL,
+    scope: MediaScope.GLOBAL,
     submittedBy: { toString: () => TEACHER_ID },
     status: BookStatus.PENDING,
     copyrightAccepted: true,
@@ -72,7 +72,7 @@ describe('BookService', () => {
             fileOriginalName: 'book.pdf',
             price: 2000,
             currency: 'XAF',
-            scope: BookScope.GLOBAL,
+            scope: MediaScope.GLOBAL,
             copyrightAccepted: true,
             teacherId: TEACHER_ID,
         }
@@ -111,7 +111,7 @@ describe('BookService', () => {
         })
 
         it('should throw when scope is SCHOOL but schoolId is missing', async () => {
-            await expect(BookService.submitBook({ ...validInput, scope: BookScope.SCHOOL }))
+            await expect(BookService.submitBook({ ...validInput, scope: MediaScope.SCHOOL }))
                 .rejects.toThrow('schoolId is required')
         })
 
@@ -133,7 +133,7 @@ describe('BookService', () => {
 
     describe('approveBook', () => {
         it('should approve a pending global book as DG_M4M', async () => {
-            mockRepo.findById.mockResolvedValue({ ...mockBook, scope: BookScope.GLOBAL } as any)
+            mockRepo.findById.mockResolvedValue({ ...mockBook, scope: MediaScope.GLOBAL } as any)
             mockRepo.updateById.mockResolvedValue({ ...mockBook, status: BookStatus.APPROVED } as any)
 
             await BookService.approveBook({
@@ -150,7 +150,7 @@ describe('BookService', () => {
         })
 
         it('should throw when SCHOOL_ADMIN tries to approve a global book', async () => {
-            mockRepo.findById.mockResolvedValue({ ...mockBook, scope: BookScope.GLOBAL } as any)
+            mockRepo.findById.mockResolvedValue({ ...mockBook, scope: MediaScope.GLOBAL } as any)
 
             await expect(BookService.approveBook({
                 bookId: BOOK_ID,
@@ -163,7 +163,7 @@ describe('BookService', () => {
         it('should throw when SCHOOL_ADMIN approves book from a different school', async () => {
             mockRepo.findById.mockResolvedValue({
                 ...mockBook,
-                scope: BookScope.SCHOOL,
+                scope: MediaScope.SCHOOL,
                 schoolId: { toString: () => SCHOOL_ID_2 },
             } as any)
 
@@ -186,7 +186,7 @@ describe('BookService', () => {
 
     describe('rejectBook', () => {
         it('should reject a pending book with a comment', async () => {
-            mockRepo.findById.mockResolvedValue({ ...mockBook, scope: BookScope.GLOBAL } as any)
+            mockRepo.findById.mockResolvedValue({ ...mockBook, scope: MediaScope.GLOBAL } as any)
             mockRepo.updateById.mockResolvedValue({ ...mockBook, status: BookStatus.REJECTED } as any)
 
             await BookService.rejectBook({
@@ -248,7 +248,7 @@ describe('BookService', () => {
                 fileBuffer: Buffer.from('pdf'),
                 fileOriginalName: 'test.pdf',
                 price: 0,
-                scope: BookScope.GLOBAL,
+                scope: MediaScope.GLOBAL,
                 copyrightAccepted: true,
                 teacherId: TEACHER_ID,
             })

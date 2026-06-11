@@ -102,7 +102,7 @@ describe('UnverifiedSchoolService', () => {
         declaredCount: 1,
         declaredBy: [new mongoose.Types.ObjectId()],
         status: 'PENDING',
-        save: jest.fn<any>().mockResolvedValue(true),
+        save: jest.fn().mockResolvedValue(true),
       }
 
       mockUnverifiedSchoolModel.findOne.mockResolvedValue(existingSchool)

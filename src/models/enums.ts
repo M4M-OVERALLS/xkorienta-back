@@ -599,3 +599,11 @@ export enum AttemptStatus {
   EXPIRED = "EXPIRED",
   ABANDONED = "ABANDONED",
 }
+
+export enum ParentRelationshipType {
+  FATHER = "FATHER",
+  MOTHER = "MOTHER",
+  GUARDIAN = "GUARDIAN",
+  OTHER = "OTHER",
+}
+
