@@ -677,3 +677,11 @@ export const PARENT_NOTIFICATION_TYPES = {
 } as const;
 
 export type ParentNotificationType = typeof PARENT_NOTIFICATION_TYPES[keyof typeof PARENT_NOTIFICATION_TYPES];
+
+export enum ParentRelationshipType {
+  FATHER = "FATHER",
+  MOTHER = "MOTHER",
+  GUARDIAN = "GUARDIAN",
+  OTHER = "OTHER",
+}
+

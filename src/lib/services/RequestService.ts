@@ -198,7 +198,7 @@ export class RequestService {
 
     const teacherNotifications = [...teacherRecipientIds].map((teacherId) => ({
       userId: new mongoose.Types.ObjectId(teacherId),
-      type: "info",
+      type: "info" as const,
       title: "Nouvelle demande d'assistance",
       message: `${data.title}`,
       read: false,
@@ -216,7 +216,7 @@ export class RequestService {
 
     await NotificationDeliveryService.createAndPush({
       userId: new mongoose.Types.ObjectId(studentId),
-      type: "success",
+      type: "success" as const,
       title: "Demande envoyée",
       message: "Votre demande d'assistance a bien été transmise.",
       read: false,

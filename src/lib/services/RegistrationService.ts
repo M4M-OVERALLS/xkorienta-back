@@ -1,5 +1,6 @@
 import { RegistrationRepository } from "@/lib/repositories/RegistrationRepository";
 import { UserRole, SchoolStatus } from "@/models/enums";
+import { SchoolType } from "@/models/School";
 import bcrypt from "bcryptjs";
 import School from "@/models/School";
 import mongoose from "mongoose";
@@ -140,7 +141,7 @@ export class RegistrationService {
         else if (role === UserRole.STUDENT && !schoolId && declaredSchoolName?.trim() && !skipSchool) {
             createdSchool = await School.create({
                 name: declaredSchoolName.trim(),
-                type: "OTHER",
+                type: SchoolType.OTHER,
                 status: SchoolStatus.PENDING,
                 isActive: true,
                 owner: user._id,

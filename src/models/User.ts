@@ -24,6 +24,8 @@ export interface IUser extends Document {
 
     // Security
     emailVerified?: boolean
+    /** Incrémenté à chaque logout — invalide les JWT émis avant */
+    tokenVersion?: number
     isActive: boolean
     lastLogin?: Date
     loginAttempts: number
@@ -102,6 +104,7 @@ const UserSchema = new Schema<IUser>(
         githubId: { type: String, unique: true, sparse: true },
 
         emailVerified: { type: Boolean, default: false },
+        tokenVersion: { type: Number, default: 0 },
         isActive: { type: Boolean, default: true },
         lastLogin: Date,
         loginAttempts: { type: Number, default: 0 },

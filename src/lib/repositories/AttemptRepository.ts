@@ -32,7 +32,7 @@ export class AttemptRepository {
         await connectDB();
         return Attempt.find({
             userId: new mongoose.Types.ObjectId(userId),
-            status: "COMPLETED"
+            status: AttemptStatus.COMPLETED
         }).sort({ submittedAt: -1 }).lean();
     }
 

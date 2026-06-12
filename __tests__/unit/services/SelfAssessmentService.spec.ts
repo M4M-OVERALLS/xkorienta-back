@@ -386,7 +386,8 @@ describe('SelfAssessmentService', () => {
             const concept0Stats = analytics.conceptDifficulty.find(
                 (c: any) => c.concept._id.toString() === setup.concepts[0]._id.toString()
             )
-            expect(concept0Stats.averageLevel).toBeCloseTo(5, 1) // (6+4+5)/3
+            expect(concept0Stats).toBeDefined()
+            expect(concept0Stats!.averageLevel).toBeCloseTo(5, 1) // (6+4+5)/3
         })
 
         it('devrait identifier les concepts à revoir en classe', async () => {
@@ -418,7 +419,7 @@ describe('SelfAssessmentService', () => {
                 (c: any) => c.concept._id.toString() === setup.concepts[3]._id.toString()
             )
             expect(difficult).toBeDefined()
-            expect(difficult.averageLevel).toBeLessThan(3.5)
+            expect(difficult!.averageLevel).toBeLessThan(3.5)
         })
     })
 

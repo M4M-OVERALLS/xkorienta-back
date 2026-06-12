@@ -5,7 +5,7 @@ import mongoose from 'mongoose'
 
 type NotificationInput = {
     userId: string | mongoose.Types.ObjectId
-    type: string
+    type: 'badge' | 'xp' | 'level_up' | 'achievement' | 'info' | 'exam' | 'class' | 'alert' | 'success'
     title: string
     message: string
     read: boolean

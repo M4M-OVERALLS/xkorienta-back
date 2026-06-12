@@ -4,6 +4,7 @@ import User from "@/models/User"
 import School from "@/models/School"
 import connectDB from "@/lib/mongodb"
 import { SchoolApplicationService } from "@/lib/services/SchoolApplicationService"
+import { SessionInvalidationService } from "@/lib/services/SessionInvalidationService"
 
 function sanitizeTokenImage(image?: unknown): string | undefined {
     if (typeof image !== "string" || image.length === 0) return undefined
@@ -24,6 +25,21 @@ function sanitizeTokenImage(image?: unknown): string | undefined {
  * 3. Add required environment variables
  * 4. That's it! The provider will automatically appear in the UI
  */
+function applyTokenVersionCheck(
+    token: Record<string, unknown>,
+    dbTokenVersion: number | undefined,
+): void {
+    const jwtVersion = (token.tokenVersion as number | undefined) ?? 0
+    const currentVersion = dbTokenVersion ?? 0
+
+    if (currentVersion > jwtVersion) {
+        token.sessionInvalidated = true
+    } else {
+        token.tokenVersion = currentVersion
+        delete token.sessionInvalidated
+    }
+}
+
 export const authOptions: NextAuthOptions = {
     secret: process.env.NEXTAUTH_SECRET,
     session: {
@@ -90,6 +106,10 @@ export const authOptions: NextAuthOptions = {
          */
         async session({ session, token }) {
             try {
+                if (token?.sessionInvalidated) {
+                    return { ...session, user: undefined, expires: new Date(0).toISOString() }
+                }
+
                 if (token && session.user) {
                     session.user.id = token.id as string
                     session.user.role = token.role
@@ -153,6 +173,10 @@ export const authOptions: NextAuthOptions = {
                             if (dbUser.email) token.email = dbUser.email
                             // Store the real phone in token if phone-only user
                             if (isPhone) token.phone = identifier
+                            applyTokenVersionCheck(
+                                token as Record<string, unknown>,
+                                (dbUser as { tokenVersion?: number }).tokenVersion,
+                            )
 
                             // Lier les candidatures anonymes (inscription) a ce compte
                             if (dbUser.email) {
@@ -197,6 +221,10 @@ export const authOptions: NextAuthOptions = {
                             }
                             // Toujours synchroniser l'email depuis la DB
                             if (dbUser.email) token.email = dbUser.email
+                            applyTokenVersionCheck(
+                                token as Record<string, unknown>,
+                                (dbUser as { tokenVersion?: number }).tokenVersion,
+                            )
                         }
                     } catch (error) {
                         console.error("Error refreshing user role:", error)
@@ -222,6 +250,15 @@ export const authOptions: NextAuthOptions = {
         },
         async signOut({ token }) {
             console.log(`[Auth] User signed out: ${token.email}`)
+            if (token?.id) {
+                try {
+                    await SessionInvalidationService.invalidateUserSessions(
+                        token.id as string,
+                    )
+                } catch (error) {
+                    console.error("[Auth] Failed to invalidate session on signOut:", error)
+                }
+            }
         },
     },
 }

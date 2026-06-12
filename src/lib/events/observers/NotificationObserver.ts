@@ -101,7 +101,7 @@ export class NotificationObserver implements IObserver {
    */
   private async createNotifAndPush(data: {
     userId: mongoose.Types.ObjectId | string;
-    type: string;
+    type: INotification['type'];
     category?: NotificationCategory;
     title: string;
     message: string;
