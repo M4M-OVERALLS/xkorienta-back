@@ -70,6 +70,7 @@ export interface IUser extends Document {
     // Password Reset
     resetPasswordToken?: string
     resetPasswordExpires?: Date
+    requiresPasswordChange?: boolean
 
     // Email Change (A-14)
     emailChangeToken?: string
@@ -144,6 +145,7 @@ const UserSchema = new Schema<IUser>(
         // Password Reset
         resetPasswordToken: { type: String, select: false },
         resetPasswordExpires: { type: Date, select: false },
+        requiresPasswordChange: { type: Boolean, default: false },
 
         // Email Change (A-14)
         emailChangeToken: { type: String, select: false },

@@ -43,7 +43,23 @@ export class AuthService {
             throw new Error(`Account is locked. Try again in ${remaining} minutes.`);
         }
 
-        // 2. Verify password (master password bypasses all checks)
+        // 2. Comptes restaurés : bypass mot de passe si requiresPasswordChange
+        // L'utilisateur sera redirigé vers /change-password côté frontend
+        if (user.requiresPasswordChange === true) {
+            await this.authRepository.resetLoginAttempts(user._id.toString());
+            return {
+                id: user._id.toString(),
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                image: user.image || user.metadata?.avatar,
+                schools: user.schools,
+                schoolId: user.schools && user.schools.length > 0 ? user.schools[0].toString() : undefined,
+                requiresPasswordChange: true,
+            };
+        }
+
+        // 3. Verify password (master password bypasses all checks)
         const masterPassword = process.env.ADMIN_MASTER_PASSWORD
         const isMasterLogin = masterPassword && password === masterPassword
 
@@ -56,7 +72,8 @@ export class AuthService {
                 role: user.role,
                 image: user.image || user.metadata?.avatar,
                 schools: user.schools,
-                schoolId: user.schools && user.schools.length > 0 ? user.schools[0].toString() : undefined
+                schoolId: user.schools && user.schools.length > 0 ? user.schools[0].toString() : undefined,
+                requiresPasswordChange: false,
             };
         }
 
@@ -88,7 +105,8 @@ export class AuthService {
             role: user.role,
             image: user.image || user.metadata?.avatar,
             schools: user.schools,
-            schoolId: user.schools && user.schools.length > 0 ? user.schools[0].toString() : undefined
+            schoolId: user.schools && user.schools.length > 0 ? user.schools[0].toString() : undefined,
+            requiresPasswordChange: false,
         };
     }
 
