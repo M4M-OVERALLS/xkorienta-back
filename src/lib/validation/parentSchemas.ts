@@ -81,6 +81,37 @@ export const validateLinkSchema = z.object({
     reason: z.string().optional(),
 });
 
+// ============================================================================
+// KYC VERIFICATION SCHEMAS (XKT-006, 007, 008)
+// ============================================================================
+
+export const submitKYCLevel1Schema = z.object({
+    documentType: z.enum(['NATIONAL_ID', 'PASSPORT', 'DRIVER_LICENSE']),
+    fileName: z.string(),
+    fileSize: z.number().max(5 * 1024 * 1024, 'File must be less than 5MB'),
+    fileMimeType: z.enum(['image/jpeg', 'image/png', 'application/pdf']),
+    fileBase64: z.string(),
+});
+
+export type SubmitKYCLevel1Input = z.infer<typeof submitKYCLevel1Schema>;
+
+export const verifyKYCLevel1Schema = z.object({
+    parentId: mongoIdSchema,
+    approve: z.boolean(),
+    reason: z.string().optional(),
+});
+
+export type VerifyKYCLevel1Input = z.infer<typeof verifyKYCLevel1Schema>;
+
+
+export const confirmKYCLevel2Schema = z.object({
+    parentId: mongoIdSchema,
+    relationshipNotes: z.string().optional(),
+});
+
+export type ConfirmKYCLevel2Input = z.infer<typeof confirmKYCLevel2Schema>;
+
+
 export type ValidateLinkInput = z.infer<typeof validateLinkSchema>;
 
 
