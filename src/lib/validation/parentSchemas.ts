@@ -81,9 +81,6 @@ export const validateLinkSchema = z.object({
     reason: z.string().optional(),
 });
 
-export type ValidateLinkInput = z.infer<typeof validateLinkSchema>;
-
-
 // ============================================================================
 // KYC VERIFICATION SCHEMAS (XKT-006, 007, 008)
 // ============================================================================
@@ -106,6 +103,7 @@ export const verifyKYCLevel1Schema = z.object({
 
 export type VerifyKYCLevel1Input = z.infer<typeof verifyKYCLevel1Schema>;
 
+
 export const confirmKYCLevel2Schema = z.object({
     parentId: mongoIdSchema,
     relationshipNotes: z.string().optional(),
@@ -114,6 +112,7 @@ export const confirmKYCLevel2Schema = z.object({
 export type ConfirmKYCLevel2Input = z.infer<typeof confirmKYCLevel2Schema>;
 
 
+export type ValidateLinkInput = z.infer<typeof validateLinkSchema>;
 
 // EXPORT TYPES FOR USE IN CONTROLLERS
 
