@@ -122,15 +122,20 @@ export class ParentLearnerService {
             isPrimary: boolean;
         }>
     > {
-        const links = await parentLearnerRepository.findChildrenForParent(parentId);
+        try{
+            const links = await parentLearnerRepository.findChildrenForParent(parentId);
 
-        return links.map(link => ({
-            linkId: link._id,
-            learnerId: link.learner._id,
-            name: (link.learner as any).name,
-            relationshipType: link.relationshipType,
-            isPrimary: link.isPrimary,
-        }));
+            return links.map(link => ({
+                linkId: link._id,
+                learnerId: link.learner._id,
+                name: (link.learner as any).name,
+                relationshipType: link.relationshipType,
+                isPrimary: link.isPrimary,
+            }));
+        }catch (error) {
+            throw ParentError.databaseError('Failed to retrieve children');
+        }
+        
     }
 
     /**

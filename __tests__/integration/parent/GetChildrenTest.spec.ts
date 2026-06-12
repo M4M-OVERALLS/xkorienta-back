@@ -249,7 +249,7 @@ describe('XKT-005: Get Children Endpoint Integration Tests', () => {
                 expect(res.status).toBe(200);
                 expect(body.success).toBe(true);
                 expect(body.data).toEqual([]);
-                expect(body.pagination).toMatchObject({
+                expect(body.meta).toMatchObject({
                     total: 0,
                     page: 1,
                     limit: 100,
@@ -266,8 +266,8 @@ describe('XKT-005: Get Children Endpoint Integration Tests', () => {
                 const body = await res.json();
 
                 expect(res.status).toBe(200);
-                expect(body).toHaveProperty('pagination');
-                expect(body.pagination).toMatchObject({
+                expect(body).toHaveProperty('meta');
+                expect(body.meta).toMatchObject({
                     total: 1,
                     page: 1,
                     limit: 100,
@@ -363,7 +363,7 @@ describe('XKT-005: Get Children Endpoint Integration Tests', () => {
 
                 expect(body).toHaveProperty('success');
                 expect(body).toHaveProperty('data');
-                expect(body).toHaveProperty('pagination');
+                expect(body).toHaveProperty('meta');
                 expect(typeof body.success).toBe('boolean');
                 expect(Array.isArray(body.data)).toBe(true);
             }, TEST_TIMEOUT);
@@ -471,8 +471,8 @@ describe('XKT-005: Get Children Endpoint Integration Tests', () => {
                 const body = await res.json();
 
                 expect(res.status).toBe(401);
-                expect(body.error).toBeDefined();
-                expect(body.error).toContain('Missing authentication token');
+                expect(body.error.message).toBeDefined();
+                expect(body.error.message).toContain('Missing authentication token');
             }, TEST_TIMEOUT);
 
             it('should reject malformed Authorization header (no Bearer prefix)', async () => {
@@ -490,7 +490,7 @@ describe('XKT-005: Get Children Endpoint Integration Tests', () => {
                 const body = await res.json();
 
                 expect(res.status).toBe(401);
-                expect(body.error).toContain('Missing authentication token');
+                expect(body.error.message).toContain('Missing authentication token');
             }, TEST_TIMEOUT);
 
             it('should reject malformed JWT token', async () => {
@@ -508,7 +508,7 @@ describe('XKT-005: Get Children Endpoint Integration Tests', () => {
                 const body = await res.json();
 
                 expect(res.status).toBe(401);
-                expect(body.error).toContain('Invalid token');
+                expect(body.error.message).toContain('Invalid token');
             }, TEST_TIMEOUT);
 
             it('should reject JWT with invalid signature', async () => {
@@ -531,7 +531,7 @@ describe('XKT-005: Get Children Endpoint Integration Tests', () => {
                 const body = await res.json();
 
                 expect(res.status).toBe(401);
-                expect(body.error).toContain('Invalid token');
+                expect(body.error.message).toContain('Invalid token');
             }, TEST_TIMEOUT);
 
             it('should reject JWT missing parentProfileId claim', async () => {
@@ -554,7 +554,7 @@ describe('XKT-005: Get Children Endpoint Integration Tests', () => {
                 const body = await res.json();
 
                 expect(res.status).toBe(401);
-                expect(body.error).toContain('Invalid token');
+                expect(body.error.message).toContain('Invalid token');
             }, TEST_TIMEOUT);
 
             it('should reject JWT with invalid ObjectId format', async () => {
@@ -582,7 +582,7 @@ describe('XKT-005: Get Children Endpoint Integration Tests', () => {
                 const body = await res.json();
 
                 expect(res.status).toBe(401);
-                expect(body.error).toContain('Invalid token');
+                expect(body.error.message).toContain('Invalid token');
             }, TEST_TIMEOUT);
         });
 
@@ -633,7 +633,7 @@ describe('XKT-005: Get Children Endpoint Integration Tests', () => {
 
                 expect(res.status).toBe(200);
                 expect(body.data).toHaveLength(10);
-                expect(body.pagination.total).toBe(10);
+                expect(body.meta.total).toBe(10);
             }, TEST_TIMEOUT);
 
             it('should handle special characters in child names', async () => {
