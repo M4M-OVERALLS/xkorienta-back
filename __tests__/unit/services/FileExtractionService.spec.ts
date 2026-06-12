@@ -8,10 +8,8 @@
 import { describe, it, expect, beforeEach } from '@jest/globals'
 import { FileExtractionService } from '@/lib/services/FileExtractionService'
 
-// Mock pdf-parse
-jest.mock('pdf-parse', () => {
-    return jest.fn()
-})
+// Le service importe pdf-parse/lib/pdf-parse.js directement (évite le bug test-file)
+jest.mock('pdf-parse/lib/pdf-parse.js', () => jest.fn())
 
 // Mock mammoth
 jest.mock('mammoth', () => ({
@@ -118,7 +116,7 @@ describe('FileExtractionService', () => {
 
     describe('extractText — PDF', () => {
         it('devrait extraire le texte d\'un PDF avec couche texte', async () => {
-            const pdfParse = require('pdf-parse')
+            const pdfParse = require('pdf-parse/lib/pdf-parse.js')
             pdfParse.mockResolvedValue({ text: 'Chapitre 1 : Introduction au civisme' })
 
             const file = new File([PDF_MAGIC], 'syllabus.pdf', { type: 'application/pdf' })
@@ -131,7 +129,7 @@ describe('FileExtractionService', () => {
         })
 
         it('devrait retourner un texte vide si le PDF n\'a pas de couche texte', async () => {
-            const pdfParse = require('pdf-parse')
+            const pdfParse = require('pdf-parse/lib/pdf-parse.js')
             pdfParse.mockResolvedValue({ text: '' })
 
             const file = new File([PDF_MAGIC], 'scan.pdf', { type: 'application/pdf' })
@@ -143,7 +141,7 @@ describe('FileExtractionService', () => {
         })
 
         it('devrait propager l\'erreur si pdf-parse echoue', async () => {
-            const pdfParse = require('pdf-parse')
+            const pdfParse = require('pdf-parse/lib/pdf-parse.js')
             pdfParse.mockRejectedValue(new Error('Invalid PDF'))
 
             const file = new File([PDF_MAGIC], 'bad.pdf', { type: 'application/pdf' })

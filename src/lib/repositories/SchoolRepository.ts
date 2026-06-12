@@ -120,12 +120,13 @@ export class SchoolRepository {
      */
     async findByTeacher(teacherId: string) {
         await connectDB();
+        const oid = new mongoose.Types.ObjectId(teacherId);
         const schools = await School.find({
             $or: [
-                { owner: teacherId },
-                { teachers: teacherId },
-                { admins: teacherId },
-                { applicants: teacherId }
+                { owner: oid },
+                { teachers: oid },
+                { admins: oid },
+                { applicants: oid }
             ]
         }).select('name type logoUrl status address applicants').lean();
 

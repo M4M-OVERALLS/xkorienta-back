@@ -13,21 +13,20 @@ jest.mock('@/lib/mongodb', () => ({
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
 import mongoose from 'mongoose'
-import { MongoMemoryServer } from 'mongodb-memory-server'
+import {
+    connectMongoMemory,
+    disconnectMongoMemory,
+} from '../../helpers/mongoMemory'
 import { NotificationPreferencesService } from '@/lib/services/NotificationPreferencesService'
 import { NotificationError } from '@/lib/errors/core/NotificationError'
 import NotificationPreferences from '@/models/NotificationPreferences'
 
-let mongoServer: MongoMemoryServer
-
 beforeAll(async () => {
-    mongoServer = await MongoMemoryServer.create()
-    await mongoose.connect(mongoServer.getUri())
-})
+    await connectMongoMemory()
+}, 30000)
 
 afterAll(async () => {
-    await mongoose.disconnect()
-    await mongoServer.stop()
+    await disconnectMongoMemory()
 })
 
 beforeEach(async () => {

@@ -24,5 +24,7 @@ declare module "next-auth/jwt" {
         role?: string
         schools?: string[]
         institution?: string
+        tokenVersion?: number
+        sessionInvalidated?: boolean
     }
 }

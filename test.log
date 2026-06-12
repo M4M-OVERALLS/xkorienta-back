@@ -1,0 +1,2376 @@
+
+> quizlock-api@0.1.0 test
+> jest
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+(node:28899) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"status":1} for model "School". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28899) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"code":1} for model "EducationLevel". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28899) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"code":1} for model "Subject". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28897) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"status":1} for model "School". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28899) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"phone":1} for model "User". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28897) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"phone":1} for model "User". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+PASS __tests__/unit/services/NotificationDeviceService.spec.ts
+  NotificationDeviceService.registerDevice
+    création (token inexistant)
+      ✓ should create a new device document (231 ms)
+      ✓ should store all fields correctly (98 ms)
+      ✓ should allow a user to register multiple devices (10 ms)
+      ✓ should work without deviceId (optional field) (5 ms)
+    upsert (token existant)
+      ✓ should not create a duplicate when called twice with same token (10 ms)
+      ✓ should update updatedAt and lastUsedAt on second call (19 ms)
+      ✓ should reassign userId when a different user registers the same token (shared device) (6 ms)
+      ✓ should update platform on upsert (4 ms)
+  NotificationDeviceService.unregisterDevice
+    ✓ should delete the device for the correct user + token (5 ms)
+    ✓ should NOT delete the device when userId does not match (security) (4 ms)
+    ✓ should not throw when device does not exist (2 ms)
+    ✓ should only delete the targeted device, not others for the same user (5 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS __tests__/unit/services/NotificationPreferencesService.spec.ts
+  NotificationPreferencesService.getOrCreate
+    ✓ should create a document with all defaults for a new user (234 ms)
+    ✓ should create only one document per user (idempotent) (11 ms)
+    ✓ should return the existing document on second call (6 ms)
+  NotificationPreferencesService.patch
+    merge profond
+      ✓ should update only channels.push without touching other fields (7 ms)
+      ✓ should update only one type without touching the 6 others (6 ms)
+      ✓ should update multiple types in a single call (4 ms)
+      ✓ should update quietHours.enabled without changing start/end (4 ms)
+      ✓ should update multiple sections in one call (4 ms)
+      ✓ should create prefs with defaults and apply patch when user has no existing prefs (4 ms)
+    validation — format HH:mm
+      ✓ should throw NotificationError for invalid start hour (25:00) (11 ms)
+      ✓ should throw NotificationError for invalid end format (6h) (2 ms)
+      ✓ should throw NotificationError for missing leading zero (6:00) (1 ms)
+      ✓ should accept valid formats: 00:00, 23:59, 06:30 (5 ms)
+    validation — timezone IANA
+      ✓ should throw NotificationError for non-IANA timezone (UTC+1) (44 ms)
+      ✓ should throw NotificationError for offset format (GMT+2) (3 ms)
+      ✓ should accept valid IANA timezones (13 ms)
+      ✓ should NOT throw for validation errors before hitting the DB (3 ms)
+  NotificationPreferencesService.canSendPush
+    pas de préférences en base (defaults)
+      ✓ should return true when no prefs exist (safe default) (1 ms)
+    Gate 1 — master switch (channels.push)
+      ✓ should return false when channels.push is false (3 ms)
+      ✓ should return true when channels.push is true (2 ms)
+    Gate 2 — filtrage par type
+      ✓ should return false for type "badge" when rewards is false (2 ms)
+      ✓ should return false for type "xp" when rewards is false (2 ms)
+      ✓ should return false for type "level_up" when rewards is false (2 ms)
+      ✓ should return false for type "forum_reply" when forum_reply is false (2 ms)
+      ✓ should return true for allowed types (3 ms)
+      ✓ should return true (safe default) for unknown types (2 ms)
+    Gate 3 — heures de silence
+      ✓ should return true when quietHours.enabled is false (3 ms)
+      ✓ should return false during a full-day silence window (00:00 → 23:59) (2 ms)
+      ✓ should return true outside the silence window (23:59 → 00:01) (2 ms)
+    ordre des gates
+      ✓ should check master switch before type (Gate 1 > Gate 2) (1 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.info
+    [INFO] [Auth] Email change confirmation sent to: new@test.com
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [Auth] Email change confirmation sent to: new@test.com
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [Auth] Email change confirmation sent to: first@test.com
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [Auth] Email change confirmation sent to: second@test.com
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [Auth] Email changed for user 6a2a98087a862b6342c0a674: original@test.com → new@test.com
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [Auth] Email changed for user 6a2a98087a862b6342c0a675: original@test.com → new@test.com
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [Auth] Email changed for user 6a2a98087a862b6342c0a676: original@test.com → new@test.com
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [Auth] Email changed for user 6a2a98087a862b6342c0a677: original@test.com → new@test.com
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+(node:28898) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"status":1} for model "School". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28900) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"phone":1} for model "User". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28898) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"code":1} for model "EducationLevel". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28898) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"code":1} for model "Subject". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+PASS __tests__/unit/services/AuthService.emailChange.spec.ts
+  AuthService — Email Change (A-14)
+    requestEmailChange
+      ✓ should reject when password is missing (772 ms)
+      ✓ should reject when newEmail is missing (8 ms)
+      ✓ should reject when password is incorrect (13 ms)
+      ✓ should reject when new email equals current email (10 ms)
+      ✓ should reject when new email is already taken by another user (164 ms)
+      ✓ should reject invalid email format (5 ms)
+      ✓ should reject for OAuth-only users (no password) (11 ms)
+      ✓ should store hashed token and pending email in DB on success (30 ms)
+      ✓ should normalize email to lowercase (107 ms)
+      ✓ should overwrite a previous pending change (118 ms)
+    confirmEmailChange
+      ✓ should apply the new email (11 ms)
+      ✓ should set emailVerified to true (73 ms)
+      ✓ should clear all emailChange fields after confirmation (56 ms)
+      ✓ should reject reused token (one-time use) (8 ms)
+      ✓ should reject expired token (7 ms)
+      ✓ should reject empty token (28 ms)
+      ✓ should reject random invalid token (6 ms)
+    AuthRepository — email change methods
+      ✓ clearEmailChangeToken should remove all pending fields (8 ms)
+      ✓ findByEmailChangeToken should return null for non-existent token (4 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+(node:28898) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"phone":1} for model "User". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28897) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"phone":1} for model "User". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28897) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"status":1} for model "School". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28897) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"guestEmail":1} for model "SchoolApplication". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+  console.error
+    [Auth Signout] Error: TypeError: Cannot read properties of undefined (reading 'get')
+        at get (/Users/elohim/Downloads/quizlock/xkorienta-api/src/app/api/auth/signout/route.ts:68:36)
+        at Object.<anonymous> (/Users/elohim/Downloads/quizlock/xkorienta-api/__tests__/integration/auth/signout-session-invalidation.test.ts:95:17)
+
+      88 |     return response;
+      89 |   } catch (error) {
+    > 90 |     console.error("[Auth Signout] Error:", error);
+         |             ^
+      91 |     return NextResponse.json(
+      92 |       { error: "Erreur lors de la déconnexion" },
+      93 |       { status: 500 },
+
+      at error (src/app/api/auth/signout/route.ts:90:13)
+      at Object.<anonymous> (__tests__/integration/auth/signout-session-invalidation.test.ts:95:17)
+
+PASS __tests__/unit/builders/ExamBuilder.spec.ts (6.199 s)
+  ExamBuilder
+    Construction fluente
+      ✓ devrait permettre de chaîner les méthodes (1128 ms)
+    Validation du contexte
+      ✓ devrait valider un contexte valide (133 ms)
+      ✓ devrait rejeter un contexte sans niveaux cibles (131 ms)
+      ✓ devrait détecter une incompatibilité école-niveau (27 ms)
+    Validation de la cible
+      ✓ devrait valider une cible valide (140 ms)
+      ✓ devrait rejeter une cible sans matière (118 ms)
+      ✓ devrait avertir si auto-évaluation sans concepts (15 ms)
+      ✓ devrait vérifier la somme des pondérations (15 ms)
+    Validation du timing
+      ✓ devrait valider un timing valide (18 ms)
+      ✓ devrait rejeter une date de fin avant la date de début (164 ms)
+      ✓ devrait rejeter une durée négative (32 ms)
+      ✓ devrait avertir si durée trop courte (9 ms)
+    Construction complète
+      ✓ devrait construire un examen valide (63 ms)
+      ✓ devrait publier directement si demandé (261 ms)
+      ✓ devrait échouer si validation invalide (22 ms)
+    Sauvegarde de brouillon
+      ✓ devrait sauvegarder un brouillon incomplet (12 ms)
+      ✓ devrait échouer sans titre (9 ms)
+
+  console.error
+    [Auth Signout] Error: TypeError: Cannot read properties of undefined (reading 'get')
+        at get (/Users/elohim/Downloads/quizlock/xkorienta-api/src/app/api/auth/signout/route.ts:68:36)
+        at Object.<anonymous> (/Users/elohim/Downloads/quizlock/xkorienta-api/__tests__/integration/auth/signout-session-invalidation.test.ts:106:17)
+
+      88 |     return response;
+      89 |   } catch (error) {
+    > 90 |     console.error("[Auth Signout] Error:", error);
+         |             ^
+      91 |     return NextResponse.json(
+      92 |       { error: "Erreur lors de la déconnexion" },
+      93 |       { status: 500 },
+
+      at error (src/app/api/auth/signout/route.ts:90:13)
+      at Object.<anonymous> (__tests__/integration/auth/signout-session-invalidation.test.ts:106:17)
+
+  console.error
+    [Auth Signout] Error: TypeError: Cannot read properties of undefined (reading 'get')
+        at get (/Users/elohim/Downloads/quizlock/xkorienta-api/src/app/api/auth/signout/route.ts:68:36)
+        at Object.<anonymous> (/Users/elohim/Downloads/quizlock/xkorienta-api/__tests__/integration/auth/signout-session-invalidation.test.ts:114:5)
+
+      88 |     return response;
+      89 |   } catch (error) {
+    > 90 |     console.error("[Auth Signout] Error:", error);
+         |             ^
+      91 |     return NextResponse.json(
+      92 |       { error: "Erreur lors de la déconnexion" },
+      93 |       { status: 500 },
+
+      at error (src/app/api/auth/signout/route.ts:90:13)
+      at Object.<anonymous> (__tests__/integration/auth/signout-session-invalidation.test.ts:114:5)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.error
+    [ERROR] [Email Confirm] Error: Error: Lien de confirmation invalide ou expiré
+        at AuthService.confirmEmailChange (/Users/elohim/Downloads/quizlock/xkorienta-api/src/lib/services/AuthService.ts:244:19)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at POST (/Users/elohim/Downloads/quizlock/xkorienta-api/src/app/api/user/email/confirm/route.ts:27:24)
+        at Object.<anonymous> (/Users/elohim/Downloads/quizlock/xkorienta-api/__tests__/integration/auth/email-change-security.test.ts:140:24)
+
+      19 |   error: (message: string, ...args: unknown[]): void => {
+      20 |     // eslint-disable-next-line no-console
+    > 21 |     console.error(`[ERROR] ${message}`, ...args);
+         |             ^
+      22 |   },
+      23 | };
+      24 |
+
+      at Object.error (src/lib/utils/logger.ts:21:13)
+      at error (src/app/api/user/email/confirm/route.ts:36:16)
+      at Object.<anonymous> (__tests__/integration/auth/email-change-security.test.ts:140:24)
+
+FAIL __tests__/integration/auth/signout-session-invalidation.test.ts
+  POST /api/auth/signout — invalidation session
+    ✕ should return HTTP 200 on valid signout (402 ms)
+    ✕ should return 400 when CSRF token is missing (62 ms)
+    ✕ should increment tokenVersion in database on logout (12 ms)
+    ✓ should reject session replay after logout (jwt callback) (124 ms)
+
+  ● POST /api/auth/signout — invalidation session › should return HTTP 200 on valid signout
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+       96 |     const body = await res.json();
+       97 |
+    >  98 |     expect(res.status).toBe(200);
+          |                        ^
+       99 |     expect(body).toHaveProperty("url");
+      100 |     const setCookie = res.headers.get("set-cookie") ?? "";
+      101 |     expect(setCookie.toLowerCase()).toContain("max-age=0");
+
+      at Object.toBe (__tests__/integration/auth/signout-session-invalidation.test.ts:98:24)
+
+  ● POST /api/auth/signout — invalidation session › should return 400 when CSRF token is missing
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 500
+
+      105 |     const sessionToken = await buildSessionCookie(userId, email, 0);
+      106 |     const res = await signoutRequest("", "invalid|cookie", sessionToken);
+    > 107 |     expect(res.status).toBe(400);
+          |                        ^
+      108 |   });
+      109 |
+      110 |   it("should increment tokenVersion in database on logout", async () => {
+
+      at Object.toBe (__tests__/integration/auth/signout-session-invalidation.test.ts:107:24)
+
+  ● POST /api/auth/signout — invalidation session › should increment tokenVersion in database on logout
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+      115 |
+      116 |     const version = await SessionInvalidationService.getTokenVersion(userId);
+    > 117 |     expect(version).toBe(1);
+          |                     ^
+      118 |   });
+      119 |
+      120 |   it("should reject session replay after logout (jwt callback)", async () => {
+
+      at Object.toBe (__tests__/integration/auth/signout-session-invalidation.test.ts:117:21)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+(node:28899) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"status":1} for model "School". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28899) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"phone":1} for model "User". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+  console.error
+    [ERROR] [Email Confirm] Error: Error: Lien de confirmation invalide ou expiré
+        at AuthService.confirmEmailChange (/Users/elohim/Downloads/quizlock/xkorienta-api/src/lib/services/AuthService.ts:244:19)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at POST (/Users/elohim/Downloads/quizlock/xkorienta-api/src/app/api/user/email/confirm/route.ts:27:24)
+        at Object.<anonymous> (/Users/elohim/Downloads/quizlock/xkorienta-api/__tests__/integration/auth/email-change-security.test.ts:163:24)
+
+      19 |   error: (message: string, ...args: unknown[]): void => {
+      20 |     // eslint-disable-next-line no-console
+    > 21 |     console.error(`[ERROR] ${message}`, ...args);
+         |             ^
+      22 |   },
+      23 | };
+      24 |
+
+      at Object.error (src/lib/utils/logger.ts:21:13)
+      at error (src/app/api/user/email/confirm/route.ts:36:16)
+      at Object.<anonymous> (__tests__/integration/auth/email-change-security.test.ts:163:24)
+
+(node:28899) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"expiresAt":1} for model "Attempt". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28897) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"status":1} for model "School". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+PASS __tests__/unit/services/SelfAssessmentService.spec.ts
+  SelfAssessmentService
+    Soumission
+      ✓ devrait soumettre une auto-évaluation valide (1020 ms)
+      ✓ devrait calculer automatiquement les statistiques (161 ms)
+      ✓ devrait échouer si examen inexistant (134 ms)
+      ✓ devrait échouer si pas de type SELF_ASSESSMENT (225 ms)
+      ✓ devrait échouer si concepts manquants (requireAllConcepts=true) (16 ms)
+      ✓ devrait incrémenter le numéro de tentative (161 ms)
+    Cartographie des compétences
+      ✓ devrait générer une cartographie correcte (186 ms)
+      ✓ devrait regrouper correctement les niveaux (92 ms)
+    Recommandations
+      ✓ devrait générer des recommandations pour bon niveau (137 ms)
+      ✓ devrait identifier les concepts à retravailler (32 ms)
+      ✓ devrait indiquer si prêt pour le chapitre suivant (138 ms)
+    Historique de progression
+      ✓ devrait tracer l'évolution d'un concept (151 ms)
+    Analytics classe
+      ✓ devrait calculer les statistiques de classe (93 ms)
+      ✓ devrait identifier les concepts à revoir en classe (285 ms)
+    Comparaison de résultats
+      ✓ devrait comparer deux auto-évaluations (32 ms)
+
+(node:28897) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"phone":1} for model "User". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+(node:28897) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"code":1} for model "EducationLevel". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28897) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"code":1} for model "Subject". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28898) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"status":1} for model "School". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28898) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"code":1} for model "EducationLevel". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28898) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"code":1} for model "Subject". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28898) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"phone":1} for model "User". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+PASS __tests__/integration/exams/exam-take-security.test.ts
+  A-10 — /api/student/exams/[id]/take ne doit pas exposer les réponses
+    Questions QCM
+      ✓ should not include isCorrect on any option (678 ms)
+    Questions TRUE_FALSE
+      ✓ should not include correctAnswer on any question (137 ms)
+    Questions OPEN_QUESTION
+      ✓ should not include modelAnswer on any question (137 ms)
+      ✓ should not include openQuestionConfig on any question (37 ms)
+    Deep scan — aucune fuite de réponse dans le payload complet
+      ✓ should have zero occurrences of correctAnswer, modelAnswer, openQuestionConfig, isCorrect in the entire response body (192 ms)
+    Mongoose toJSON defense-in-depth
+      ✓ Question.toJSON should strip correctAnswer, modelAnswer, openQuestionConfig (183 ms)
+      ✓ Option.toJSON should strip isCorrect (159 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.error
+    [API] Error submitting self-assessment: Error: Examen introuvable : 000000000000000000000000
+        at Function.submit (/Users/elohim/Downloads/quizlock/xkorienta-api/src/lib/services/SelfAssessmentService.ts:77:19)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at POST (/Users/elohim/Downloads/quizlock/xkorienta-api/src/app/api/self-assessments/submit/route.ts:63:24)
+        at Object.<anonymous> (/Users/elohim/Downloads/quizlock/xkorienta-api/__tests__/integration/api/self-assessments.spec.ts:169:30)
+
+      68 |         }, { status: 201 })
+      69 |     } catch (error: any) {
+    > 70 |         console.error('[API] Error submitting self-assessment:', error)
+         |                 ^
+      71 |
+      72 |         if (error.message.includes('introuvable')) {
+      73 |             return NextResponse.json(
+
+      at error (src/app/api/self-assessments/submit/route.ts:70:17)
+      at Object.<anonymous> (__tests__/integration/api/self-assessments.spec.ts:169:30)
+
+  console.error
+    [API] Error submitting self-assessment: Error: Cet examen n'est pas une auto-évaluation
+        at Function.submit (/Users/elohim/Downloads/quizlock/xkorienta-api/src/lib/services/SelfAssessmentService.ts:81:19)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at POST (/Users/elohim/Downloads/quizlock/xkorienta-api/src/app/api/self-assessments/submit/route.ts:63:24)
+        at Object.<anonymous> (/Users/elohim/Downloads/quizlock/xkorienta-api/__tests__/integration/api/self-assessments.spec.ts:189:30)
+
+      68 |         }, { status: 201 })
+      69 |     } catch (error: any) {
+    > 70 |         console.error('[API] Error submitting self-assessment:', error)
+         |                 ^
+      71 |
+      72 |         if (error.message.includes('introuvable')) {
+      73 |             return NextResponse.json(
+
+      at error (src/app/api/self-assessments/submit/route.ts:70:17)
+      at Object.<anonymous> (__tests__/integration/api/self-assessments.spec.ts:189:30)
+
+  console.error
+    [API] Error submitting self-assessment: Error: Vous devez évaluer tous les concepts. Manquants : 3
+        at Function.submit (/Users/elohim/Downloads/quizlock/xkorienta-api/src/lib/services/SelfAssessmentService.ts:94:23)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at POST (/Users/elohim/Downloads/quizlock/xkorienta-api/src/app/api/self-assessments/submit/route.ts:63:24)
+        at Object.<anonymous> (/Users/elohim/Downloads/quizlock/xkorienta-api/__tests__/integration/api/self-assessments.spec.ts:208:30)
+
+      68 |         }, { status: 201 })
+      69 |     } catch (error: any) {
+    > 70 |         console.error('[API] Error submitting self-assessment:', error)
+         |                 ^
+      71 |
+      72 |         if (error.message.includes('introuvable')) {
+      73 |             return NextResponse.json(
+
+      at error (src/app/api/self-assessments/submit/route.ts:70:17)
+      at Object.<anonymous> (__tests__/integration/api/self-assessments.spec.ts:208:30)
+
+  console.info
+    [INFO] [FCMService] Push filtrée par préférences pour userId=6a2a980e60c79a136855bfea type=badge
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.warn
+    [WARN] [FCMService] Firebase non initialisé, push ignorée: Error: FIREBASE_SERVICE_ACCOUNT_JSON is not set
+        at /Users/elohim/Downloads/quizlock/xkorienta-api/__tests__/unit/services/FCMService.spec.ts:115:23
+        at /Users/elohim/Downloads/quizlock/xkorienta-api/node_modules/jest-mock/build/index.js:397:39
+        at /Users/elohim/Downloads/quizlock/xkorienta-api/node_modules/jest-mock/build/index.js:404:13
+        at mockConstructor (/Users/elohim/Downloads/quizlock/xkorienta-api/node_modules/jest-mock/build/index.js:148:19)
+        at Function.getFirebaseAdmin [as sendPushForNotification] (/Users/elohim/Downloads/quizlock/xkorienta-api/src/lib/services/FCMService.ts:122:31)
+        at processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at Object.<anonymous> (/Users/elohim/Downloads/quizlock/xkorienta-api/__tests__/unit/services/FCMService.spec.ts:125:13)
+
+      14 |       if (process.env.NODE_ENV !== "development") {
+      15 |       // eslint-disable-next-line no-console
+    > 16 |       console.warn(`[WARN] ${message}`, ...args);
+         |               ^
+      17 |     }
+      18 |   },
+      19 |   error: (message: string, ...args: unknown[]): void => {
+
+      at Object.warn (src/lib/utils/logger.ts:16:15)
+      at Function.warn [as sendPushForNotification] (src/lib/services/FCMService.ts:124:24)
+      at Object.<anonymous> (__tests__/unit/services/FCMService.spec.ts:125:13)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 1/1 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 1/1 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 1/1 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 1/1 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 1/1 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 1/1 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 2/2 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 1/1 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 1/1 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 1/1 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 1/1 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 1/1 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] 1 token(s) invalide(s) supprimé(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 1/2 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 0/2 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 1/1 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.info
+    [INFO] [FCMService] Push envoyée à userId=6a2a980e60c79a136855bfea: 0/1 device(s) atteint(s)
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+PASS __tests__/unit/services/FCMService.spec.ts
+  FCMService.sendPushForNotification
+    skip conditions
+      ✓ should skip when user has no registered devices (4 ms)
+      ✓ should skip when canSendPush returns false (preferences gate) (135 ms)
+      ✓ should skip gracefully when Firebase is not initialized (13 ms)
+    envoi FCM
+      ✓ should call sendEachForMulticast with the device token (8 ms)
+      ✓ should include notification title and body in the payload (5 ms)
+      ✓ should include notificationId in data payload (4 ms)
+      ✓ should include the correct Android channel_id (4 ms)
+      ✓ should include APNs sound default (4 ms)
+      ✓ should stringify all data values (FCM requirement) (4 ms)
+      ✓ should send to all devices of a user (multicast) (4 ms)
+    résolution des routes deep-link
+      ✓ should resolve badge type to /profile/badges (57 ms)
+      ✓ should resolve level_up and xp to /profile (7 ms)
+      ✓ should resolve exam result with attemptId to /exam/:id/result (4 ms)
+      ✓ should fallback to /notifications for unknown type (4 ms)
+    cleanup des tokens invalides
+      ✓ should delete permanently invalid tokens after failed send (71 ms)
+      ✓ should NOT delete tokens on temporary errors (5 ms)
+    mise à jour de lastUsedAt
+      ✓ should update lastUsedAt for successfully reached devices (4 ms)
+      ✓ should NOT update lastUsedAt for failed tokens (4 ms)
+
+PASS __tests__/integration/exams/public-exams.test.ts
+  GET /api/exams/public - Liste des examens publics
+    Liste de base
+      ✓ should return only published and active exams (879 ms)
+      ✓ should include subject and level details (269 ms)
+      ✓ should include creator name without exposing sensitive data (208 ms)
+      ✓ should include questionCount without exposing questions (86 ms)
+    Filtres
+      ✓ should filter by levelId (29 ms)
+      ✓ should filter by subjectId (151 ms)
+      ✓ should combine levelId and subjectId filters (114 ms)
+    Pagination
+      ✓ should paginate results with default values (130 ms)
+      ✓ should respect custom page and limit (76 ms)
+      ✓ should handle page 2 correctly (22 ms)
+    Cas limites
+      ✓ should return empty array when no public exams exist (19 ms)
+      ✓ should handle invalid MongoDB ObjectId gracefully (15 ms)
+    Performance
+      ✓ should complete request in under 1 second (22 ms)
+    Sécurité
+      ✓ should not expose draft or unpublished exams (21 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS __tests__/integration/orientation/register.spec.ts
+  POST /api/xkorienta/register
+    successful registration
+      ✓ should return 201 with registration data for valid body (147 ms)
+      ✓ should persist the registration in the database (7 ms)
+    validation errors
+      ✓ should return XOR_002 (400) for invalid JSON body (6 ms)
+      ✓ should return 500 when required student field is missing (9 ms)
+      ✓ should return 500 when required parent field is missing (2 ms)
+    response structure
+      ✓ should return success:true on creation (2 ms)
+      ✓ should include createdAt in response data (3 ms)
+      ✓ should return error structure with code on failure (1 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS __tests__/integration/notification-devices.spec.ts
+  POST /api/notification-devices
+    authentification
+      ✓ should return 401 with AUTH_007 when session is missing (8 ms)
+      ✓ should return 401 when session has no user id (6 ms)
+    validation du body
+      ✓ should return 400 with NOTIF_001 when token is missing (6 ms)
+      ✓ should return 400 with NOTIF_001 when token is empty string (1 ms)
+      ✓ should return 400 with NOTIF_002 when platform is missing (2 ms)
+      ✓ should return 400 with NOTIF_002 when platform is invalid (1 ms)
+      ✓ should include error context with receivedPlatform (1 ms)
+    création et upsert
+      ✓ should return 200 and create a device document (156 ms)
+      ✓ should return 200 and NOT create a duplicate on second call (idempotent) (81 ms)
+      ✓ should accept all valid platforms (7 ms)
+      ✓ should store deviceId when provided (3 ms)
+      ✓ should trim whitespace from the token (3 ms)
+      ✓ should update userId when same token is re-registered by a different user (5 ms)
+      ✓ should allow one user to register multiple devices (4 ms)
+  DELETE /api/notification-devices
+    authentification
+      ✓ should return 401 with AUTH_007 when session is missing (2 ms)
+    validation du body
+      ✓ should return 400 with NOTIF_001 when token is missing (1 ms)
+      ✓ should return 400 with NOTIF_001 when token is empty (1 ms)
+    suppression du device
+      ✓ should return 200 and delete the device (3 ms)
+      ✓ should NOT delete a device belonging to a different user (security) (2 ms)
+      ✓ should return 200 even if the device does not exist (idempotent) (2 ms)
+      ✓ should only delete the targeted device, leaving others intact (4 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS __tests__/integration/api/self-assessments.spec.ts
+  API Self-Assessments
+    POST /api/self-assessments/submit
+      ✓ devrait soumettre une auto-évaluation valide (1019 ms)
+      ✓ devrait rejeter sans examId (181 ms)
+      ✓ devrait rejeter sans conceptAssessments (37 ms)
+      ✓ devrait rejeter si examen inexistant (35 ms)
+      ✓ devrait rejeter si pas de type SELF_ASSESSMENT (177 ms)
+      ✓ devrait rejeter si concepts manquants (19 ms)
+      ✓ devrait rejeter sans authentification (172 ms)
+    GET /api/self-assessments/profile
+      ✓ devrait récupérer le profil d'un élève (50 ms)
+      ✓ devrait rejeter sans syllabusId (100 ms)
+    GET /api/self-assessments/concept-history
+      ✓ devrait récupérer l'historique d'un concept (78 ms)
+      ✓ devrait rejeter sans conceptId (299 ms)
+    GET /api/self-assessments/class-analytics
+      ✓ devrait récupérer les analytics de classe (141 ms)
+      ✓ devrait rejeter sans chapterId (233 ms)
+      ✓ devrait rejeter sans classId (143 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+(node:28898) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"status":1} for model "School". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28897) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"status":1} for model "School". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28897) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"code":1} for model "EducationLevel". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28898) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"code":1} for model "EducationLevel". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28897) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"code":1} for model "Subject". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28898) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"code":1} for model "Subject". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:28898) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"phone":1} for model "User". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+PASS __tests__/integration/notification-preferences.spec.ts
+  GET /api/notification-preferences
+    authentification
+      ✓ should return 401 with AUTH_007 when session is missing (12 ms)
+    lazy init — premier appel
+      ✓ should return 200 with default values for a new user (662 ms)
+      ✓ should return all 7 types enabled by default (7 ms)
+      ✓ should return quietHours disabled with Africa/Douala by default (3 ms)
+      ✓ should create a document in the database (lazy init) (5 ms)
+      ✓ should NOT create a duplicate on second GET call (4 ms)
+    lecture des préférences existantes
+      ✓ should return stored preferences, not defaults (4 ms)
+  PATCH /api/notification-preferences
+    authentification
+      ✓ should return 401 with AUTH_007 when session is missing (2 ms)
+    validation du body
+      ✓ should return 400 with NOTIF_006 when body has no recognized section (11 ms)
+      ✓ should return 400 with NOTIF_003 when channels is not an object (5 ms)
+      ✓ should return 400 with NOTIF_004 for invalid HH:mm start (25:00) (4 ms)
+      ✓ should return 400 with NOTIF_004 for missing leading zero (6:00) (2 ms)
+      ✓ should return 400 with NOTIF_005 for non-IANA timezone (UTC+1) (32 ms)
+      ✓ should return 400 with NOTIF_005 for GMT offset format (GMT+2) (2 ms)
+      ✓ should NOT touch the DB when validation fails (3 ms)
+    merge profond — channels
+      ✓ should return 200 and update only channels.push (6 ms)
+      ✓ should include all 3 sections in the response (4 ms)
+    merge profond — types
+      ✓ should disable rewards without touching the 6 other types (4 ms)
+      ✓ should persist changes to the database (4 ms)
+    merge profond — quietHours
+      ✓ should enable quietHours without changing start/end/timezone (4 ms)
+      ✓ should accept a valid IANA timezone (Europe/Paris) (5 ms)
+      ✓ should accept valid HH:mm times (3 ms)
+    appels multiples successifs
+      ✓ should accumulate changes across multiple PATCH calls (7 ms)
+      ✓ should only create one document regardless of number of PATCH calls (7 ms)
+    réponses bilingues
+      ✓ should return French message by default (4 ms)
+      ✓ should return English message with ?lang=en (6 ms)
+      ✓ should return English error message with ?lang=en (1 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+(node:28897) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"phone":1} for model "User". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+PASS __tests__/integration/schools/search-schools.test.ts
+  GET /api/schools/search - Recherche d'écoles
+    Recherche exacte
+      ✓ should find exact match and return hasExactMatch: true (26 ms)
+      ✓ should be case-insensitive (14 ms)
+    Recherche fuzzy (similarité)
+      ✓ should find similar schools when there are typos (12 ms)
+      ✓ should find partial matches (13 ms)
+      ✓ should return multiple matches sorted by relevance (11 ms)
+    Filtres additionnels
+      ✓ should filter by type (11 ms)
+      ✓ should respect limit parameter (10 ms)
+    Cas limites
+      ✓ should return empty array when no matches found (11 ms)
+      ✓ should handle empty or short query parameter (12 ms)
+      ✓ should sanitize special characters in query (499 ms)
+    Performance
+      ✓ should complete search in under 500ms (10 ms)
+    Sécurité
+      ✓ should prevent NoSQL injection in query (10 ms)
+      ✓ should not expose inactive schools when isActive is false (10 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS __tests__/unit/parent/ParentLearnerLinkTest.spec.ts
+  XKT-003: ParentLearnerService
+    assertAccess()
+      ✓ should allow access and record it when active link exists (1 ms)
+      ✓ should throw PAR_008 when no active link exists
+      ✓ should NOT call recordAccess when link is not found (8 ms)
+    linkParentToLearner()
+      ✓ should create link with PENDING status (1 ms)
+      ✓ should throw PAR_011 (alreadyLinked) when link already exists
+      ✓ should always create with isPrimary: false (1 ms)
+      ✓ should accept relationship type FATHER
+      ✓ should accept relationship type MOTHER
+      ✓ should accept relationship type GUARDIAN
+      ✓ should accept relationship type OTHER
+    getChildrenForParent()
+      ✓ should return mapped list of active children (1 ms)
+      ✓ should return empty array when parent has no children
+    getParentsForLearner()
+      ✓ should return mapped list of parents with notification preferences (1 ms)
+    getPrimaryParentForLearner()
+      ✓ should return primary parent when one exists
+      ✓ should return undefined when no primary parent exists
+    approveLinkRequest()
+      ✓ should return approved link data with ACTIVE status
+      ✓ should throw PAR_008 when link not found
+    getPendingLinksForAdmin()
+      ✓ should return mapped pending links with parentKYCLevel (1 ms)
+      ✓ should use default limit of 50
+      ✓ should pass custom limit to repository
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.log
+    Message sent: <4a527926-2eea-518a-ce08-5179d0534df3@xkorin.com>
+
+      at log (src/lib/mail.ts:94:13)
+
+  console.info
+    [INFO] [Auth] Email change confirmation sent to: new-a14@test.com
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+PASS __tests__/integration/auth/session-security.test.ts
+  Configuration session & cookie sécurité
+    authOptions — session config
+      ✓ should use JWT strategy (1 ms)
+      ✓ should have maxAge <= 2 hours (7200s) (1 ms)
+      ✓ should NOT have maxAge of 30 days (old insecure default)
+      ✓ should have updateAge <= 10 minutes for active renewal
+    authOptions — cookie config
+      ✓ should set httpOnly to true
+      ✓ should set sameSite to lax or strict
+      ✓ should set path to /
+    Cookie headers — réponse serveur
+      ✓ should return Set-Cookie with HttpOnly flag on login (46 ms)
+      ✓ should not expose session token in response body (11 ms)
+    Session expiration — vérification fonctionnelle
+      ✓ should reject requests with an expired/invalid session token (1 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS __tests__/integration/exams/exam-read-authorization.test.ts (6.702 s)
+  A-12 — GET /api/exams/v2/[id] authorization (requireExamRead)
+    Unauthenticated access
+      ✓ should return 401 for unauthenticated requests (2835 ms)
+    Creator access
+      ✓ should allow the exam creator to read their own exam (113 ms)
+    Unauthorized access
+      ✓ should return 403 for a teacher from a different school (177 ms)
+    Invalid exam ID
+      ✓ should return 400 for an invalid ObjectId (199 ms)
+      ✓ should return 404 for a non-existent exam (88 ms)
+    Middleware unit logic
+      ✓ should reject requests without authentication (no session) (29 ms)
+      ✓ should no longer expose exam data without authentication (A-12 regression) (26 ms)
+      ✓ should no longer expose exam data with includeQuestions=true without auth (33 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS __tests__/books/BookService.spec.ts
+  BookService
+    submitBook
+      ✓ should create a book with PENDING status (1 ms)
+      ✓ should throw when copyright is not accepted (9 ms)
+      ✓ should throw when file is too large (3 ms)
+      ✓ should throw when file type is invalid
+      ✓ should throw when scope is SCHOOL but schoolId is missing (1 ms)
+      ✓ should throw when price is negative
+      ✓ should accept EPUB files (1 ms)
+    approveBook
+      ✓ should approve a pending global book as DG_M4M
+      ✓ should throw when SCHOOL_ADMIN tries to approve a global book (1 ms)
+      ✓ should throw when SCHOOL_ADMIN approves book from a different school (6 ms)
+      ✓ should throw when book is not PENDING (2 ms)
+    rejectBook
+      ✓ should reject a pending book with a comment (1 ms)
+      ✓ should throw when comment is missing (1 ms)
+    deleteBook
+      ✓ should delete a DRAFT book and remove the file (1 ms)
+      ✓ should throw when user is not the owner (2 ms)
+      ✓ should throw when book is not in DRAFT status
+    security — SQL injection-style input handling
+      ✓ should not crash on malicious title input (1 ms)
+
+PASS __tests__/unit/services/SchoolSearchService.test.ts
+  SchoolSearchService
+    fuzzyMatch
+      ✓ should return 100 score for exact match (3 ms)
+      ✓ should be case-insensitive (1 ms)
+      ✓ should handle accent variations
+      ✓ should give high score for minor typos (3 ms)
+      ✓ should give lower score for major differences (1 ms)
+      ✓ should handle partial matches
+      ✓ should work with word reordering (1 ms)
+      ✓ should normalize whitespace
+    normalizeSchoolName
+      ✓ should convert to lowercase (1 ms)
+      ✓ should trim whitespace
+      ✓ should remove extra spaces between words
+      ✓ should remove special characters except basic punctuation (1 ms)
+      ✓ should handle empty string (1 ms)
+    calculateLevenshteinDistance
+      ✓ should return 0 for identical strings
+      ✓ should calculate single character insertion (1 ms)
+      ✓ should calculate single character deletion (1 ms)
+      ✓ should calculate single character substitution
+      ✓ should handle completely different strings (1 ms)
+      ✓ should be case-sensitive
+    suggestCorrections
+      ✓ should suggest corrections for typos (3 ms)
+      ✓ should return top 5 suggestions by default (2 ms)
+      ✓ should sort suggestions by score descending (3 ms)
+      ✓ should filter out suggestions with score < threshold (1 ms)
+      ✓ should return empty array if no matches above threshold (2 ms)
+    Performance Tests
+      ✓ should complete fuzzy match in under 10ms (6 ms)
+      ✓ should handle large school lists efficiently (153 ms)
+    Edge Cases
+      ✓ should handle empty query (1 ms)
+      ✓ should handle empty target (1 ms)
+      ✓ should handle both empty strings
+      ✓ should handle very long strings
+      ✓ should handle special Unicode characters (1 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS src/lib/strategies/school-type/__tests__/PrimaryExamStrategy.test.ts
+  PrimaryExamStrategy
+    Basic Properties
+      ✓ should have correct school type
+      ✓ should have correct level name
+    getDefaultConfig
+      ✓ should return correct default configuration (1 ms)
+      ✓ should allow only QCM, OPEN_QUESTION, and EXAM_SIMULATION (1 ms)
+    getValidationConstraints
+      ✓ should return correct constraints
+    getTerminology
+      ✓ should return correct terminology for primary school
+    getFeatureAvailability
+      ✓ should disable advanced features for primary (1 ms)
+      ✓ should enable basic features
+    validateExam
+      ✓ should accept valid exam configuration
+      ✓ should reject adaptive exams (1 ms)
+      ✓ should reject duration < 15 minutes
+      ✓ should warn for duration > 60 minutes (5 ms)
+      ✓ should reject questionCount < 5
+      ✓ should warn for questionCount > 25 (1 ms)
+      ✓ should reject empty targetLevelIds
+    calculateRecommendedDifficulty
+      ✓ should return base difficulty of 40
+      ✓ should increase difficulty with concept count
+      ✓ should cap difficulty at 70 for primary
+      ✓ should increase difficulty for multi-level exams
+    getConfigSuggestions
+      ✓ should suggest correct config for QCM
+      ✓ should suggest correct config for OPEN_QUESTION
+      ✓ should suggest correct config for EXAM_SIMULATION
+
+(node:28899) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"status":1} for model "School". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS __tests__/books/BookConfigService.spec.ts
+  BookConfigService
+    getConfig
+      ✓ should return the current config (1 ms)
+    updateConfig
+      ✓ should update commission rate
+      ✓ should throw when commission rate is negative (6 ms)
+      ✓ should throw when commission rate exceeds 100
+      ✓ should throw when discount rule has minLevel > maxLevel (1 ms)
+      ✓ should throw when discountPercent exceeds 100
+      ✓ should throw when discountRules is empty
+      ✓ should accept valid commission rate of 0 (free platform) (1 ms)
+    getDiscountForLevel
+      ✓ should return 0% for level 1-5
+      ✓ should return 10% for level 6-10
+      ✓ should return 20% for level 11-20 (1 ms)
+      ✓ should return 30% for level 21+
+      ✓ should return 0% when no rule matches
+    calculatePricing
+      ✓ should calculate correct final amount with 10% discount and 5% commission (1 ms)
+      ✓ should return full price when no discount
+      ✓ should handle free books (price = 0)
+      ✓ should return 0 commission when rate is 0
+
+PASS src/lib/strategies/school-type/__tests__/SchoolTypeDetector.test.ts
+  SchoolTypeDetector
+    getSchoolTypeFromCycle
+      ✓ should return PRIMARY for MATERNELLE
+      ✓ should return PRIMARY for PRIMAIRE
+      ✓ should return SECONDARY for COLLEGE
+      ✓ should return SECONDARY for SECONDAIRE_SECOND_CYCLE
+      ✓ should return HIGHER_ED for SUPERIEUR
+    deduceSchoolTypeFromCycles
+      ✓ should return PRIMARY for homogeneous primary cycles (1 ms)
+      ✓ should return SECONDARY for homogeneous secondary cycles
+      ✓ should return HIGHER_ED for homogeneous superior cycles
+      ✓ should prioritize HIGHER_ED in mixed cycles
+      ✓ should prioritize SECONDARY when mixing primary and secondary
+      ✓ should return SECONDARY for empty array
+      ✓ should return SECONDARY for single college cycle
+    getSchoolTypeLabel
+      ✓ should return correct label for PRIMARY
+      ✓ should return correct label for SECONDARY (1 ms)
+      ✓ should return correct label for HIGHER_ED
+      ✓ should return correct label for TRAINING_CENTER
+      ✓ should return correct label for OTHER
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS __tests__/unit/services/FileExtractionService.spec.ts
+  FileExtractionService
+    validateFile
+      ✓ devrait accepter un fichier .pdf valide (3 ms)
+      ✓ devrait accepter un fichier .docx valide (1 ms)
+      ✓ devrait accepter un fichier .jpg valide
+      ✓ devrait accepter un fichier .jpeg valide (1 ms)
+      ✓ devrait accepter un fichier .png valide
+      ✓ devrait rejeter un format non supporte (.xlsx) (14 ms)
+      ✓ devrait rejeter un format non supporte (.pptx) (1 ms)
+      ✓ devrait rejeter un fichier executabe (.exe renomme en .pdf)
+      ✓ devrait rejeter un fichier depassant 20 MB (12 ms)
+      ✓ devrait accepter un fichier de exactement 20 MB (29 ms)
+      ✓ devrait rejeter un fichier vide (0 octets) (8 ms)
+    extractText — PDF
+      ✓ devrait extraire le texte d'un PDF avec couche texte (7 ms)
+      ✓ devrait retourner un texte vide si le PDF n'a pas de couche texte (1 ms)
+      ✓ devrait propager l'erreur si pdf-parse echoue (1 ms)
+      ✓ devrait rejeter un fichier avec de mauvais magic bytes (2 ms)
+    extractText — DOCX
+      ✓ devrait extraire le texte brut d'un fichier DOCX (2 ms)
+      ✓ devrait aussi accepter le MIME type .doc (1 ms)
+      ✓ devrait propager l'erreur si mammoth echoue (1 ms)
+    extractText — Image
+      ✓ devrait convertir un JPG en base64 data URI (1 ms)
+      ✓ devrait convertir un PNG en base64 data URI
+
+PASS __tests__/unit/services/UnverifiedSchoolService.test.ts
+  UnverifiedSchoolService
+    findOrCreate
+      ✓ should find existing unverified school and add user to declaredBy (5 ms)
+      ✓ should create new unverified school if none exists (1 ms)
+      ✓ should normalize school name before searching
+      ✓ should not add duplicate user to declaredBy array (1 ms)
+    validateSchool
+      ✓ should update status to VALIDATED and create official School (1 ms)
+      ✓ should update all users with unverifiedSchool to official school (1 ms)
+    mergeToExistingSchool
+      ✓ should merge unverified school to existing validated school (2 ms)
+    rejectSchool
+      ✓ should update status to REJECTED with notes (1 ms)
+    Security: Sanitization
+      ✓ should sanitize HTML from school name (1 ms)
+      ✓ should reject school name longer than 200 characters (15 ms)
+    Performance Tests
+      ✓ should complete findOrCreate in under 100ms (1 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS __tests__/unit/ai/orientation/XOrientationError.spec.ts
+  XOrientationError
+    constructor
+      ✓ should build from XOR_001 with correct code and httpStatus (2 ms)
+      ✓ should use French message by default
+      ✓ should use English message when language is en
+      ✓ should fallback to XKOR_UNKNOWN for unknown code (1 ms)
+      ✓ should attach context to the error
+      ✓ should pass instanceof BaseApplicationError check
+      ✓ should pass instanceof XOrientationError check (1 ms)
+    toJSON
+      ✓ should return success:false with error object
+      ✓ should include timestamp in ISO format (1 ms)
+    log
+      ✓ should call Sentry.captureException for CRITICAL severity (7 ms)
+      ✓ should call Sentry.captureMessage for WARNING severity (1 ms)
+    factory methods
+      ✓ apiKeyMissing() returns XOR_001 with httpStatus 503
+      ✓ invalidJsonBody() returns XOR_002 with httpStatus 400 (1 ms)
+      ✓ invalidParameters() returns XOR_003 with context attached
+      ✓ rateLimitExceeded() returns XOR_004 with httpStatus 429
+      ✓ anthropicError() returns XOR_005 with cause in context (1 ms)
+      ✓ streamError() returns XOR_006
+      ✓ registrationFailed() returns XOR_007 with cause in context
+      ✓ invalidLevel() returns XOR_008 with level in context
+      ✓ conversationTooLong() returns XOR_009 with messageCount in context (1 ms)
+      ✓ serviceUnavailable() returns XOR_010 with httpStatus 503
+      ✓ all factory methods return instances of XOrientationError (2 ms)
+
+PASS __tests__/unit/services/FileExtractionService.edge-cases.spec.ts
+  FileExtractionService — Edge Cases & Security
+    validateFile — boundary conditions
+      ✓ devrait accepter un fichier de 1 octet (taille minimale) (1 ms)
+      ✓ devrait rejeter un fichier juste au-dessus de 20 MB (20 MB + 1 octet) (27 ms)
+      ✓ devrait accepter le MIME type image/jpg (variante de image/jpeg) (1 ms)
+      ✓ devrait rejeter un type MIME vide
+      ✓ devrait rejeter un script HTML deguise (.html)
+      ✓ devrait rejeter un fichier SVG (vecteur potentiellement malveillant)
+      ✓ devrait rejeter un fichier ZIP (1 ms)
+      ✓ devrait gerer un type MIME avec majuscules (case insensitive)
+      ✓ devrait rejeter un fichier texte brut (.txt) (1 ms)
+    extractText — unsupported type in extractText itself
+      ✓ devrait lancer une erreur pour un type non supporte dans extractText
+    extractText — magic bytes validation
+      ✓ devrait rejeter un fichier PDF dont le contenu ne commence pas par %PDF (1 ms)
+      ✓ devrait rejeter un fichier DOCX dont le contenu ne commence pas par PK
+      ✓ devrait rejeter une image JPEG dont le contenu n'a pas les bons magic bytes (1 ms)
+      ✓ devrait rejeter un fichier avec buffer trop court (< 4 octets) pour PDF
+      ✓ devrait rejeter un fichier avec buffer trop court (< 4 octets) pour DOCX (1 ms)
+      ✓ devrait rejeter un fichier avec buffer trop court (< 4 octets) pour image (1 ms)
+      ✓ devrait accepter un fichier DOC avec la signature compound document (D0 CF) (1 ms)
+    extractText — image/jpg MIME variant with proper magic bytes
+      ✓ devrait convertir une image/jpg en base64 data URI
+    extractText — PDF with valid magic bytes
+      ✓ devrait retourner du texte whitespace si le PDF ne contient que des espaces (1 ms)
+      ✓ devrait retourner une chaine vide si pdf-parse retourne null/undefined pour text
+    extractText — DOCX with valid magic bytes
+      ✓ devrait retourner une chaine vide si mammoth retourne null/undefined pour value
+    Security — malicious content in extracted text
+      ✓ devrait extraire le texte tel quel sans interpreter les balises HTML/XSS (1 ms)
+      ✓ devrait extraire du texte contenant des caracteres SQL injection
+      ✓ devrait gerer un contenu DOCX avec des caracteres unicode speciaux (1 ms)
+      ✓ devrait gerer une image PNG avec un nom de fichier contenant des path traversal
+      ✓ devrait detecter un .exe renomme en .pdf (magic bytes invalides) (1 ms)
+      ✓ devrait detecter un script renomme en .docx (magic bytes invalides) (1 ms)
+    Performance — validateFile
+      ✓ devrait valider 10000 fichiers en moins de 200ms (58 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS __tests__/unit/services/SchoolApplicationService.spec.ts
+  SchoolApplication State Machine
+    Valid transitions
+      ✓ should allow DRAFT -> SUBMITTED (1 ms)
+      ✓ should allow SUBMITTED -> PAID
+      ✓ should allow SUBMITTED -> CANCELLED (1 ms)
+      ✓ should allow PAID -> APPROVED
+      ✓ should allow PAID -> REJECTED (1 ms)
+      ✓ should allow PAID -> CANCELLED
+      ✓ should allow APPROVED -> CANCELLED
+    Invalid transitions
+      ✓ should reject DRAFT -> PAID (1 ms)
+      ✓ should reject DRAFT -> APPROVED (1 ms)
+      ✓ should reject DRAFT -> REJECTED
+      ✓ should reject DRAFT -> CANCELLED
+      ✓ should reject SUBMITTED -> APPROVED (1 ms)
+      ✓ should reject SUBMITTED -> REJECTED
+      ✓ should reject APPROVED -> DRAFT
+      ✓ should reject APPROVED -> SUBMITTED
+      ✓ should reject APPROVED -> PAID
+      ✓ should reject APPROVED -> REJECTED
+      ✓ should reject REJECTED -> DRAFT
+      ✓ should reject REJECTED -> SUBMITTED (1 ms)
+      ✓ should reject REJECTED -> PAID
+      ✓ should reject REJECTED -> APPROVED (1 ms)
+      ✓ should reject REJECTED -> CANCELLED
+      ✓ should reject CANCELLED -> DRAFT
+      ✓ should reject CANCELLED -> SUBMITTED
+      ✓ should reject CANCELLED -> PAID
+      ✓ should reject CANCELLED -> APPROVED
+      ✓ should reject CANCELLED -> REJECTED
+    Coverage
+      ✓ should cover all ApplicationStatus values (1 ms)
+      ✓ should have REJECTED and CANCELLED as terminal states (no outgoing transitions) (1 ms)
+      ✓ should require payment before approval
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS __tests__/unit/ai/syllabusParsingPrompt.spec.ts
+  SYLLABUS_PARSING_PROMPTS
+    structure
+      ✓ devrait avoir les prompts pour le francais et l'anglais (1 ms)
+      ✓ devrait avoir un system prompt et une fonction user pour chaque langue
+    fr — system prompt
+      ✓ devrait contenir des instructions pour produire du JSON (1 ms)
+      ✓ devrait contenir le schema JSON attendu avec les champs requis
+      ✓ devrait contenir une instruction pour ne produire que du JSON
+      ✓ devrait mentionner les chapitres et sujets dans les regles (1 ms)
+    fr — user prompt
+      ✓ devrait injecter le texte du syllabus dans le prompt
+      ✓ devrait contenir un delimiteur autour du texte injecte
+      ✓ devrait demander une structure JSON en sortie
+      ✓ devrait retourner une chaine non-vide meme avec un texte vide
+    en — system prompt
+      ✓ devrait contenir des instructions en anglais pour produire du JSON
+      ✓ devrait contenir le schema JSON attendu avec les champs requis (1 ms)
+      ✓ devrait mentionner "syllabi" dans les instructions anglaises
+      ✓ devrait mentionner la regle sur le JSON valide sans commentaires
+    en — user prompt
+      ✓ devrait injecter le texte du syllabus dans le prompt anglais
+      ✓ devrait utiliser un delimiteur
+    Security — prompt injection resistance
+      ✓ devrait inclure du texte contenant des instructions contradictoires sans les interpreter
+      ✓ devrait inclure du texte avec des caracteres JSON sans casser le prompt
+      ✓ devrait inclure du texte avec des retours a la ligne multiples (1 ms)
+      ✓ devrait gerer un tres long texte sans erreur
+
+PASS __tests__/unit/ai/orientation/reportPhase.spec.ts
+  isXkorientaReportPhase
+    ✓ should stay false for a long casual conversation (2 ms)
+    ✓ should be true when user sends /rapport
+    ✓ should be true when user asks for full report explicitly
+    ✓ should be true when assistant announced imminent report
+    ✓ should be true when last assistant question carries the (D7/7) marker
+    ✓ should tolerate spacing variations of the D7 marker
+    ✓ should not trigger on earlier dimensions like (D2/7) (1 ms)
+    ✓ should not trigger on vague mention of rapport in middle of chat
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS __tests__/unit/services/SyllabusParsingService.spec.ts
+  SyllabusParsingService
+    parseFile
+      ✓ devrait orchestrer validation → extraction → IA → retour (2 ms)
+      ✓ devrait propager l'erreur de validation du fichier (10 ms)
+      ✓ devrait propager l'erreur de taille du fichier
+      ✓ devrait propager l'erreur d'extraction (1 ms)
+      ✓ devrait retourner une erreur 422 si l'IA ne produit pas un JSON valide (1 ms)
+      ✓ devrait inclure un apercu tronque du texte brut (max 500 chars)
+      ✓ devrait rejeter les images avec un message explicite (1 ms)
+
+PASS __tests__/unit/services/SyllabusParsingService.edge-cases.spec.ts
+  SyllabusParsingService — Edge Cases
+    parseFile — contentType mapping
+      ✓ devrait passer contentType="text" pour un fichier PDF (2 ms)
+      ✓ devrait passer contentType="text" pour un fichier DOCX (1 ms)
+      ✓ devrait rejeter les images avec un message explicite (pas de modele vision) (10 ms)
+    parseFile — text truncation
+      ✓ devrait tronquer le texte a 30000 caracteres avant envoi a l'IA (1 ms)
+      ✓ devrait ne pas tronquer le texte s'il est inferieur a 30000 caracteres
+      ✓ devrait ne pas tronquer le texte s'il a exactement 30000 caracteres
+    parseFile — rawText truncation in result
+      ✓ devrait tronquer rawText a 500 caracteres dans la reponse (1 ms)
+      ✓ devrait retourner rawText complet si le texte fait moins de 500 caracteres
+    parseFile — empty extracted text
+      ✓ devrait passer le texte vide a la strategie IA (PDF scanne sans OCR) (1 ms)
+    parseFile — error propagation specifics
+      ✓ devrait ne pas appeler extractText si validateFile echoue (3 ms)
+      ✓ devrait ne pas appeler parseToSyllabus si extractText echoue (1 ms)
+      ✓ devrait propager l'erreur "File content does not match declared type"
+    parseFile — result structure
+      ✓ devrait retourner toutes les proprietes du ParsedSyllabusDTO + rawText (1 ms)
+      ✓ devrait propager les proprietes du DTO sans modification (1 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+PASS __tests__/unit/ai/orientation/xkorientaSystemPrompt.spec.ts
+  getXkorientaSystemPrompt
+    ✓ should include BTS catalog for fr language (1 ms)
+    ✓ should include Génie Logiciel entry for fr language
+    ✓ should NOT include HND catalog entries for fr language (1 ms)
+    ✓ should include HND catalog for en language
+    ✓ should NOT include BTS catalog for en language
+    ✓ should include both catalogs when language is undefined
+    ✓ should always include the common sections (1 ms)
+    ✓ should always include the prose format rule
+  cleanOutput
+    ✓ should remove bullet points at start of lines (1 ms)
+    ✓ should remove dashes at start of lines (1 ms)
+    ✓ should replace | separators with commas
+    ✓ should trim leading and trailing whitespace from the result
+    ✓ should return unchanged text when no bullets or pipes (1 ms)
+    ✓ should handle empty string
+  configuration constants
+    ✓ XKORIENTA_CONTEXT_WINDOW should be 30
+    ✓ XKORIENTA_ANCHOR_SIZE should be 4
+    ✓ XKORIENTA_TEMPERATURE should be 0.8
+    ✓ XKORIENTA_MAX_TOKENS should be 5000
+    ✓ XKORIENTA_CHAT_MAX_TOKENS should be 1200
+
+PASS __tests__/unit/auth/csrf.spec.ts
+  isValidNextAuthCsrfToken
+    ✓ should accept a valid CSRF token and cookie pair (6 ms)
+    ✓ should reject when token does not match cookie hash
+    ✓ should reject when cookie or token is missing (1 ms)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+(node:28899) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"token":1} for model "Invitation". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+FAIL __tests__/integration/orientation/chat.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/app/api/xkorienta/chat/route.ts'
+
+    Require stack:
+      src/app/api/xkorienta/chat/route.ts
+      __tests__/integration/orientation/chat.spec.ts
+
+      38 |  * on autorise jusqu'à 5 min d'exécution pour éviter une coupure prématurée
+      39 |  * de la fonction (plateforme/proxy) pendant la génération du rapport.
+    > 40 |  */
+         |    ^
+      41 | export const maxDuration = 300
+      42 |
+      43 | /** Endpoint de streaming : toujours dynamique, jamais mis en cache. */
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/app/api/xkorienta/chat/route.ts:40:14)
+      at Object.<anonymous> (__tests__/integration/orientation/chat.spec.ts:36:16)
+
+  console.log
+    [EventSystem] Initializing observers...
+
+      at log (src/lib/events/index.ts:21:13)
+
+  console.log
+    [EventPublisher] NotificationObserver subscribed to SYLLABUS_CREATED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] NotificationObserver subscribed to SYLLABUS_UPDATED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] NotificationObserver subscribed to EXAM_CREATED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] NotificationObserver subscribed to EXAM_COMPLETED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] NotificationObserver subscribed to EXAM_PUBLISHED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] NotificationObserver subscribed to EXAM_VALIDATED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] NotificationObserver subscribed to EXAM_SUBMITTED_FOR_VALIDATION
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] NotificationObserver subscribed to BADGE_EARNED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] NotificationObserver subscribed to LEVEL_UP
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] NotificationObserver subscribed to XP_GAINED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] NotificationObserver subscribed to ATTEMPT_GRADED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] NotificationObserver subscribed to LATE_CODE_GENERATED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] NotificationObserver subscribed to USER_REGISTERED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] EmailNotificationObserver subscribed to EXAM_COMPLETED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] EmailNotificationObserver subscribed to EXAM_VALIDATED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] EmailNotificationObserver subscribed to ATTEMPT_GRADED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] EmailNotificationObserver subscribed to BADGE_EARNED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] EmailNotificationObserver subscribed to LEVEL_UP
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] EmailNotificationObserver subscribed to LATE_CODE_GENERATED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] StatsUpdateObserver subscribed to EXAM_COMPLETED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] StatsUpdateObserver subscribed to ATTEMPT_GRADED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] StatsUpdateObserver subscribed to ATTEMPT_STARTED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] BadgeAwardObserver subscribed to EXAM_COMPLETED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] BadgeAwardObserver subscribed to STREAK_ACHIEVED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] BadgeAwardObserver subscribed to LEVEL_UP
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] XPUpdateObserver subscribed to EXAM_COMPLETED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] XPUpdateObserver subscribed to BADGE_EARNED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventPublisher] XPUpdateObserver subscribed to QUESTION_ANSWERED
+
+      at EventPublisher.log [as subscribe] (src/lib/events/EventPublisher.ts:41:25)
+
+  console.log
+    [EventSystem] Initialization complete.
+
+      at log (src/lib/events/index.ts:30:13)
+
+  console.log
+    [EventSystem] SYLLABUS_CREATED: 1 observers (NotificationObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] SYLLABUS_UPDATED: 1 observers (NotificationObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] EXAM_CREATED: 1 observers (NotificationObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] EXAM_COMPLETED: 5 observers (NotificationObserver, EmailNotificationObserver, StatsUpdateObserver, BadgeAwardObserver, XPUpdateObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] EXAM_PUBLISHED: 1 observers (NotificationObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] EXAM_VALIDATED: 2 observers (NotificationObserver, EmailNotificationObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] EXAM_SUBMITTED_FOR_VALIDATION: 1 observers (NotificationObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] BADGE_EARNED: 3 observers (NotificationObserver, EmailNotificationObserver, XPUpdateObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] LEVEL_UP: 3 observers (NotificationObserver, EmailNotificationObserver, BadgeAwardObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] XP_GAINED: 1 observers (NotificationObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] ATTEMPT_GRADED: 3 observers (NotificationObserver, EmailNotificationObserver, StatsUpdateObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] LATE_CODE_GENERATED: 2 observers (NotificationObserver, EmailNotificationObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] USER_REGISTERED: 1 observers (NotificationObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] ATTEMPT_STARTED: 1 observers (StatsUpdateObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] STREAK_ACHIEVED: 1 observers (BadgeAwardObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    [EventSystem] QUESTION_ANSWERED: 1 observers (XPUpdateObserver)
+
+      at log (src/lib/events/index.ts:35:17)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+FAIL __tests__/integration/auth/register-with-unverified-school.test.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/app/api/auth/register/route.ts'
+
+    Require stack:
+      src/app/api/auth/register/route.ts
+      __tests__/integration/auth/register-with-unverified-school.test.ts
+
+      14 |  *
+      15 |  * Payload:
+    > 16 |  * {
+         |     ^
+      17 |  *   name: string
+      18 |  *   email?: string
+      19 |  *   phone?: string
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/app/api/auth/register/route.ts:16:14)
+      at Object.<anonymous> (__tests__/integration/auth/register-with-unverified-school.test.ts:25:16)
+
+(node:28899) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"phone":1} for model "User". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+FAIL __tests__/integration/parent/parentAuthTest.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/utils/env.ts'
+
+    Require stack:
+      src/lib/utils/env.ts
+      src/lib/services/ParentAuthService.ts
+      src/lib/controllers/ParentAuthController.ts
+      src/app/api/parent/auth/register/route.ts
+      __tests__/integration/parent/parentAuthTest.spec.ts
+
+      27 |     PUSHER_APP_ID: z
+      28 |         .string()
+    > 29 |         .min(1, 'PUSHER_APP_ID is required'),
+         |              ^
+      30 |
+      31 |     PUSHER_KEY: z
+      32 |         .string()
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/utils/env.ts:29:14)
+      at Object.<anonymous> (src/lib/services/ParentAuthService.ts:28:14)
+      at Object.<anonymous> (src/lib/controllers/ParentAuthController.ts:23:28)
+      at Object.<anonymous> (src/app/api/parent/auth/register/route.ts:22:31)
+      at Object.<anonymous> (__tests__/integration/parent/parentAuthTest.spec.ts:16:16)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+FAIL __tests__/integration/api/syllabus-parse.edge-cases.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/ai/strategies/HuggingFaceParsingStrategy.ts'
+
+    Require stack:
+      src/lib/ai/strategies/HuggingFaceParsingStrategy.ts
+      src/lib/ai/strategies/AIParsingStrategyManager.ts
+      src/lib/services/SyllabusParsingService.ts
+
+      18 |     description: z.string().optional().default(''),
+      19 |     learningObjectives: z.array(z.string()).optional().default([]),
+    > 20 |     structure: z.object({
+         |              ^
+      21 |         chapters: z.array(z.object({
+      22 |             title: z.string().min(1),
+      23 |             description: z.string().optional().default(''),
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/ai/strategies/HuggingFaceParsingStrategy.ts:20:14)
+      at Object.<anonymous> (src/lib/ai/strategies/AIParsingStrategyManager.ts:21:37)
+      at Object.<anonymous> (src/lib/services/SyllabusParsingService.ts:17:35)
+      at Object.<anonymous> (__tests__/integration/api/syllabus-parse.edge-cases.spec.ts:32:33)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+FAIL __tests__/integration/api/syllabus-parse.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/ai/strategies/HuggingFaceParsingStrategy.ts'
+
+    Require stack:
+      src/lib/ai/strategies/HuggingFaceParsingStrategy.ts
+      src/lib/ai/strategies/AIParsingStrategyManager.ts
+      src/lib/services/SyllabusParsingService.ts
+
+      18 |     description: z.string().optional().default(''),
+      19 |     learningObjectives: z.array(z.string()).optional().default([]),
+    > 20 |     structure: z.object({
+         |              ^
+      21 |         chapters: z.array(z.object({
+      22 |             title: z.string().min(1),
+      23 |             description: z.string().optional().default(''),
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/ai/strategies/HuggingFaceParsingStrategy.ts:20:14)
+      at Object.<anonymous> (src/lib/ai/strategies/AIParsingStrategyManager.ts:21:37)
+      at Object.<anonymous> (src/lib/services/SyllabusParsingService.ts:17:35)
+      at Object.<anonymous> (__tests__/integration/api/syllabus-parse.spec.ts:28:33)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+FAIL __tests__/unit/ai/HuggingFaceParsingStrategy.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/ai/strategies/HuggingFaceParsingStrategy.ts'
+
+    Require stack:
+      src/lib/ai/strategies/HuggingFaceParsingStrategy.ts
+      __tests__/unit/ai/HuggingFaceParsingStrategy.spec.ts
+
+      18 |     description: z.string().optional().default(''),
+      19 |     learningObjectives: z.array(z.string()).optional().default([]),
+    > 20 |     structure: z.object({
+         |              ^
+      21 |         chapters: z.array(z.object({
+      22 |             title: z.string().min(1),
+      23 |             description: z.string().optional().default(''),
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/ai/strategies/HuggingFaceParsingStrategy.ts:20:14)
+      at Object.<anonymous> (__tests__/unit/ai/HuggingFaceParsingStrategy.spec.ts:11:37)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+FAIL __tests__/unit/ai/HuggingFaceParsingStrategy.edge-cases.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/ai/strategies/HuggingFaceParsingStrategy.ts'
+
+    Require stack:
+      src/lib/ai/strategies/HuggingFaceParsingStrategy.ts
+      __tests__/unit/ai/HuggingFaceParsingStrategy.edge-cases.spec.ts
+
+      18 |     description: z.string().optional().default(''),
+      19 |     learningObjectives: z.array(z.string()).optional().default([]),
+    > 20 |     structure: z.object({
+         |              ^
+      21 |         chapters: z.array(z.object({
+      22 |             title: z.string().min(1),
+      23 |             description: z.string().optional().default(''),
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/ai/strategies/HuggingFaceParsingStrategy.ts:20:14)
+      at Object.<anonymous> (__tests__/unit/ai/HuggingFaceParsingStrategy.edge-cases.spec.ts:14:37)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+FAIL __tests__/unit/ai/AIParsingStrategyManager.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/ai/strategies/HuggingFaceParsingStrategy.ts'
+
+    Require stack:
+      src/lib/ai/strategies/HuggingFaceParsingStrategy.ts
+      src/lib/ai/strategies/AIParsingStrategyManager.ts
+      __tests__/unit/ai/AIParsingStrategyManager.spec.ts
+
+      18 |     description: z.string().optional().default(''),
+      19 |     learningObjectives: z.array(z.string()).optional().default([]),
+    > 20 |     structure: z.object({
+         |              ^
+      21 |         chapters: z.array(z.object({
+      22 |             title: z.string().min(1),
+      23 |             description: z.string().optional().default(''),
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/ai/strategies/HuggingFaceParsingStrategy.ts:20:14)
+      at Object.<anonymous> (src/lib/ai/strategies/AIParsingStrategyManager.ts:21:37)
+      at Object.<anonymous> (__tests__/unit/ai/AIParsingStrategyManager.spec.ts:11:35)
+
+  console.log
+    ✅ Jest setup complete
+
+      at Object.log (jest.setup.ts:50:9)
+
+FAIL __tests__/unit/ai/AIParsingStrategyManager.edge-cases.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/ai/strategies/HuggingFaceParsingStrategy.ts'
+
+    Require stack:
+      src/lib/ai/strategies/HuggingFaceParsingStrategy.ts
+      src/lib/ai/strategies/AIParsingStrategyManager.ts
+      __tests__/unit/ai/AIParsingStrategyManager.edge-cases.spec.ts
+
+      18 |     description: z.string().optional().default(''),
+      19 |     learningObjectives: z.array(z.string()).optional().default([]),
+    > 20 |     structure: z.object({
+         |              ^
+      21 |         chapters: z.array(z.object({
+      22 |             title: z.string().min(1),
+      23 |             description: z.string().optional().default(''),
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/ai/strategies/HuggingFaceParsingStrategy.ts:20:14)
+      at Object.<anonymous> (src/lib/ai/strategies/AIParsingStrategyManager.ts:21:37)
+      at Object.<anonymous> (__tests__/unit/ai/AIParsingStrategyManager.edge-cases.spec.ts:11:35)
+
+FAIL __tests__/unit/parent/parentAuthTest.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/utils/env.ts'
+
+    Require stack:
+      src/lib/utils/env.ts
+      src/lib/services/ParentAuthService.ts
+      __tests__/unit/parent/parentAuthTest.spec.ts
+
+      27 |     PUSHER_APP_ID: z
+      28 |         .string()
+    > 29 |         .min(1, 'PUSHER_APP_ID is required'),
+         |              ^
+      30 |
+      31 |     PUSHER_KEY: z
+      32 |         .string()
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/utils/env.ts:29:14)
+      at Object.<anonymous> (src/lib/services/ParentAuthService.ts:28:14)
+      at Object.<anonymous> (__tests__/unit/parent/parentAuthTest.spec.ts:16:28)
+
+  console.log
+    Message sent: <8066736d-5abd-9a4f-c0e1-d312c60f8303@xkorin.com>
+
+      at log (src/lib/mail.ts:94:13)
+
+  console.info
+    [INFO] [Auth] Email changed for user 6a2a981a742b3540a2f2113e: original-a14@test.com → new-a14@test.com
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.log
+    Message sent: <5879c52a-c396-a2f4-3526-b31d3d5dafab@xkorin.com>
+
+      at log (src/lib/mail.ts:94:13)
+
+  console.info
+    [INFO] [Auth] Email changed for user 6a2a981f742b3540a2f2113f: original-a14@test.com → new-a14@test.com
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+  console.log
+    Message sent: <20749afe-b0cd-b046-74db-f585c54f41ce@xkorin.com>
+
+      at log (src/lib/mail.ts:94:13)
+
+  console.info
+    [INFO] [Auth] Email changed for user 6a2a9825742b3540a2f21140: original-a14@test.com → new-a14@test.com
+
+      at Object.info (src/lib/utils/logger.ts:10:15)
+
+PASS __tests__/integration/auth/email-change-security.test.ts (37.978 s)
+  A-14 — Changement d'email sécurisé
+    POST /api/user/email/change
+      ✓ should reject request without authentication (505 ms)
+      ✓ should reject request without password (635 ms)
+      ✓ should reject request without newEmail (460 ms)
+    POST /api/user/email/confirm
+      ✓ should reject confirmation without token (479 ms)
+      ✓ should reject confirmation with invalid token (489 ms)
+      ✓ should reject confirmation with expired token (470 ms)
+    AuthService.requestEmailChange — unit logic
+      ✓ should reject if password is wrong (992 ms)
+      ✓ should reject if new email equals current email (1210 ms)
+      ✓ should reject if new email is already taken (1022 ms)
+      ✓ should save token in DB on valid request (7681 ms)
+    AuthService.confirmEmailChange — unit logic
+      ✓ should apply the new email on valid token (7316 ms)
+      ✓ should clear the token fields after confirmation (6576 ms)
+      ✓ should reject a reused token (one-time use) (8198 ms)
+    PUT /api/user/profile — email change blocked
+      ✓ should reject direct email change via profile endpoint (472 ms)
+
+  console.log
+    [MongoDB] Disconnecting from database...
+
+      at log (src/lib/mongodb.ts:93:17)
+
+  console.log
+    [MongoDB] ✅ Disconnected successfully
+
+      at log (src/lib/mongodb.ts:102:17)
+
+FAIL __tests__/integration/parent/ParentLearnerLinkTest.spec.ts (26.386 s)
+  XKT-003: Child Linking Request Integration Tests
+    POST /api/parent/children/{learnerId}/link
+      ✕ should create link request successfully (201 PENDING) (2817 ms)
+      ✕ should require Authorization header (401) (694 ms)
+      ✕ should reject learner not found (404 PAR_012) (1629 ms)
+      ✕ should reject if already linked with ACTIVE status (409 PAR_011) (2311 ms)
+      ✕ should reject if link already pending (409 PAR_009 or PAR_011) (1344 ms)
+      ✕ should validate invalid relationshipType enum (400 VAL_*) (1285 ms)
+      ✕ should reject missing relationshipType (400 VAL_*) (1435 ms)
+      ✕ should accept all valid relationship types (1464 ms)
+      ✕ should create separate PENDING links for different learners (same parent) (1816 ms)
+      ✕ should allow two different parents to request the same learner (2383 ms)
+      ✕ should log link request in AuditLog (2380 ms)
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should create link request successfully (201 PENDING)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should require Authorization header (401)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should reject learner not found (404 PAR_012)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should reject if already linked with ACTIVE status (409 PAR_011)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should reject if link already pending (409 PAR_009 or PAR_011)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should validate invalid relationshipType enum (400 VAL_*)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should reject missing relationshipType (400 VAL_*)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should accept all valid relationship types
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should create separate PENDING links for different learners (same parent)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should allow two different parents to request the same learner
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should log link request in AuditLog
+
+    AggregateError:
+
+
+
+Summary of all failing tests
+FAIL __tests__/integration/auth/signout-session-invalidation.test.ts
+  ● POST /api/auth/signout — invalidation session › should return HTTP 200 on valid signout
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+       96 |     const body = await res.json();
+       97 |
+    >  98 |     expect(res.status).toBe(200);
+          |                        ^
+       99 |     expect(body).toHaveProperty("url");
+      100 |     const setCookie = res.headers.get("set-cookie") ?? "";
+      101 |     expect(setCookie.toLowerCase()).toContain("max-age=0");
+
+      at Object.toBe (__tests__/integration/auth/signout-session-invalidation.test.ts:98:24)
+
+  ● POST /api/auth/signout — invalidation session › should return 400 when CSRF token is missing
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 500
+
+      105 |     const sessionToken = await buildSessionCookie(userId, email, 0);
+      106 |     const res = await signoutRequest("", "invalid|cookie", sessionToken);
+    > 107 |     expect(res.status).toBe(400);
+          |                        ^
+      108 |   });
+      109 |
+      110 |   it("should increment tokenVersion in database on logout", async () => {
+
+      at Object.toBe (__tests__/integration/auth/signout-session-invalidation.test.ts:107:24)
+
+  ● POST /api/auth/signout — invalidation session › should increment tokenVersion in database on logout
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+      115 |
+      116 |     const version = await SessionInvalidationService.getTokenVersion(userId);
+    > 117 |     expect(version).toBe(1);
+          |                     ^
+      118 |   });
+      119 |
+      120 |   it("should reject session replay after logout (jwt callback)", async () => {
+
+      at Object.toBe (__tests__/integration/auth/signout-session-invalidation.test.ts:117:21)
+
+FAIL __tests__/integration/orientation/chat.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/app/api/xkorienta/chat/route.ts'
+
+    Require stack:
+      src/app/api/xkorienta/chat/route.ts
+      __tests__/integration/orientation/chat.spec.ts
+
+      38 |  * on autorise jusqu'à 5 min d'exécution pour éviter une coupure prématurée
+      39 |  * de la fonction (plateforme/proxy) pendant la génération du rapport.
+    > 40 |  */
+         |    ^
+      41 | export const maxDuration = 300
+      42 |
+      43 | /** Endpoint de streaming : toujours dynamique, jamais mis en cache. */
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/app/api/xkorienta/chat/route.ts:40:14)
+      at Object.<anonymous> (__tests__/integration/orientation/chat.spec.ts:36:16)
+
+FAIL __tests__/integration/auth/register-with-unverified-school.test.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/app/api/auth/register/route.ts'
+
+    Require stack:
+      src/app/api/auth/register/route.ts
+      __tests__/integration/auth/register-with-unverified-school.test.ts
+
+      14 |  *
+      15 |  * Payload:
+    > 16 |  * {
+         |     ^
+      17 |  *   name: string
+      18 |  *   email?: string
+      19 |  *   phone?: string
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/app/api/auth/register/route.ts:16:14)
+      at Object.<anonymous> (__tests__/integration/auth/register-with-unverified-school.test.ts:25:16)
+
+FAIL __tests__/integration/parent/parentAuthTest.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/utils/env.ts'
+
+    Require stack:
+      src/lib/utils/env.ts
+      src/lib/services/ParentAuthService.ts
+      src/lib/controllers/ParentAuthController.ts
+      src/app/api/parent/auth/register/route.ts
+      __tests__/integration/parent/parentAuthTest.spec.ts
+
+      27 |     PUSHER_APP_ID: z
+      28 |         .string()
+    > 29 |         .min(1, 'PUSHER_APP_ID is required'),
+         |              ^
+      30 |
+      31 |     PUSHER_KEY: z
+      32 |         .string()
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/utils/env.ts:29:14)
+      at Object.<anonymous> (src/lib/services/ParentAuthService.ts:28:14)
+      at Object.<anonymous> (src/lib/controllers/ParentAuthController.ts:23:28)
+      at Object.<anonymous> (src/app/api/parent/auth/register/route.ts:22:31)
+      at Object.<anonymous> (__tests__/integration/parent/parentAuthTest.spec.ts:16:16)
+
+FAIL __tests__/integration/api/syllabus-parse.edge-cases.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/ai/strategies/HuggingFaceParsingStrategy.ts'
+
+    Require stack:
+      src/lib/ai/strategies/HuggingFaceParsingStrategy.ts
+      src/lib/ai/strategies/AIParsingStrategyManager.ts
+      src/lib/services/SyllabusParsingService.ts
+
+      18 |     description: z.string().optional().default(''),
+      19 |     learningObjectives: z.array(z.string()).optional().default([]),
+    > 20 |     structure: z.object({
+         |              ^
+      21 |         chapters: z.array(z.object({
+      22 |             title: z.string().min(1),
+      23 |             description: z.string().optional().default(''),
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/ai/strategies/HuggingFaceParsingStrategy.ts:20:14)
+      at Object.<anonymous> (src/lib/ai/strategies/AIParsingStrategyManager.ts:21:37)
+      at Object.<anonymous> (src/lib/services/SyllabusParsingService.ts:17:35)
+      at Object.<anonymous> (__tests__/integration/api/syllabus-parse.edge-cases.spec.ts:32:33)
+
+FAIL __tests__/integration/api/syllabus-parse.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/ai/strategies/HuggingFaceParsingStrategy.ts'
+
+    Require stack:
+      src/lib/ai/strategies/HuggingFaceParsingStrategy.ts
+      src/lib/ai/strategies/AIParsingStrategyManager.ts
+      src/lib/services/SyllabusParsingService.ts
+
+      18 |     description: z.string().optional().default(''),
+      19 |     learningObjectives: z.array(z.string()).optional().default([]),
+    > 20 |     structure: z.object({
+         |              ^
+      21 |         chapters: z.array(z.object({
+      22 |             title: z.string().min(1),
+      23 |             description: z.string().optional().default(''),
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/ai/strategies/HuggingFaceParsingStrategy.ts:20:14)
+      at Object.<anonymous> (src/lib/ai/strategies/AIParsingStrategyManager.ts:21:37)
+      at Object.<anonymous> (src/lib/services/SyllabusParsingService.ts:17:35)
+      at Object.<anonymous> (__tests__/integration/api/syllabus-parse.spec.ts:28:33)
+
+FAIL __tests__/unit/ai/HuggingFaceParsingStrategy.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/ai/strategies/HuggingFaceParsingStrategy.ts'
+
+    Require stack:
+      src/lib/ai/strategies/HuggingFaceParsingStrategy.ts
+      __tests__/unit/ai/HuggingFaceParsingStrategy.spec.ts
+
+      18 |     description: z.string().optional().default(''),
+      19 |     learningObjectives: z.array(z.string()).optional().default([]),
+    > 20 |     structure: z.object({
+         |              ^
+      21 |         chapters: z.array(z.object({
+      22 |             title: z.string().min(1),
+      23 |             description: z.string().optional().default(''),
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/ai/strategies/HuggingFaceParsingStrategy.ts:20:14)
+      at Object.<anonymous> (__tests__/unit/ai/HuggingFaceParsingStrategy.spec.ts:11:37)
+
+FAIL __tests__/unit/ai/HuggingFaceParsingStrategy.edge-cases.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/ai/strategies/HuggingFaceParsingStrategy.ts'
+
+    Require stack:
+      src/lib/ai/strategies/HuggingFaceParsingStrategy.ts
+      __tests__/unit/ai/HuggingFaceParsingStrategy.edge-cases.spec.ts
+
+      18 |     description: z.string().optional().default(''),
+      19 |     learningObjectives: z.array(z.string()).optional().default([]),
+    > 20 |     structure: z.object({
+         |              ^
+      21 |         chapters: z.array(z.object({
+      22 |             title: z.string().min(1),
+      23 |             description: z.string().optional().default(''),
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/ai/strategies/HuggingFaceParsingStrategy.ts:20:14)
+      at Object.<anonymous> (__tests__/unit/ai/HuggingFaceParsingStrategy.edge-cases.spec.ts:14:37)
+
+FAIL __tests__/unit/ai/AIParsingStrategyManager.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/ai/strategies/HuggingFaceParsingStrategy.ts'
+
+    Require stack:
+      src/lib/ai/strategies/HuggingFaceParsingStrategy.ts
+      src/lib/ai/strategies/AIParsingStrategyManager.ts
+      __tests__/unit/ai/AIParsingStrategyManager.spec.ts
+
+      18 |     description: z.string().optional().default(''),
+      19 |     learningObjectives: z.array(z.string()).optional().default([]),
+    > 20 |     structure: z.object({
+         |              ^
+      21 |         chapters: z.array(z.object({
+      22 |             title: z.string().min(1),
+      23 |             description: z.string().optional().default(''),
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/ai/strategies/HuggingFaceParsingStrategy.ts:20:14)
+      at Object.<anonymous> (src/lib/ai/strategies/AIParsingStrategyManager.ts:21:37)
+      at Object.<anonymous> (__tests__/unit/ai/AIParsingStrategyManager.spec.ts:11:35)
+
+FAIL __tests__/unit/ai/AIParsingStrategyManager.edge-cases.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/ai/strategies/HuggingFaceParsingStrategy.ts'
+
+    Require stack:
+      src/lib/ai/strategies/HuggingFaceParsingStrategy.ts
+      src/lib/ai/strategies/AIParsingStrategyManager.ts
+      __tests__/unit/ai/AIParsingStrategyManager.edge-cases.spec.ts
+
+      18 |     description: z.string().optional().default(''),
+      19 |     learningObjectives: z.array(z.string()).optional().default([]),
+    > 20 |     structure: z.object({
+         |              ^
+      21 |         chapters: z.array(z.object({
+      22 |             title: z.string().min(1),
+      23 |             description: z.string().optional().default(''),
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/ai/strategies/HuggingFaceParsingStrategy.ts:20:14)
+      at Object.<anonymous> (src/lib/ai/strategies/AIParsingStrategyManager.ts:21:37)
+      at Object.<anonymous> (__tests__/unit/ai/AIParsingStrategyManager.edge-cases.spec.ts:11:35)
+
+FAIL __tests__/unit/parent/parentAuthTest.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module 'zod' from 'src/lib/utils/env.ts'
+
+    Require stack:
+      src/lib/utils/env.ts
+      src/lib/services/ParentAuthService.ts
+      __tests__/unit/parent/parentAuthTest.spec.ts
+
+      27 |     PUSHER_APP_ID: z
+      28 |         .string()
+    > 29 |         .min(1, 'PUSHER_APP_ID is required'),
+         |              ^
+      30 |
+      31 |     PUSHER_KEY: z
+      32 |         .string()
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (src/lib/utils/env.ts:29:14)
+      at Object.<anonymous> (src/lib/services/ParentAuthService.ts:28:14)
+      at Object.<anonymous> (__tests__/unit/parent/parentAuthTest.spec.ts:16:28)
+
+FAIL __tests__/integration/parent/ParentLearnerLinkTest.spec.ts (26.386 s)
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should create link request successfully (201 PENDING)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should require Authorization header (401)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should reject learner not found (404 PAR_012)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should reject if already linked with ACTIVE status (409 PAR_011)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should reject if link already pending (409 PAR_009 or PAR_011)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should validate invalid relationshipType enum (400 VAL_*)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should reject missing relationshipType (400 VAL_*)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should accept all valid relationship types
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should create separate PENDING links for different learners (same parent)
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should allow two different parents to request the same learner
+
+    AggregateError:
+
+
+
+  ● XKT-003: Child Linking Request Integration Tests › POST /api/parent/children/{learnerId}/link › should log link request in AuditLog
+
+    AggregateError:
+
+
+
+
+Test Suites: 12 failed, 33 passed, 45 total
+Tests:       14 failed, 554 passed, 568 total
+Snapshots:   0 total
+Time:        43.078 s, estimated 135 s
+Ran all test suites.

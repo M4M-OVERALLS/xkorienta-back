@@ -30,23 +30,22 @@ jest.mock('@/lib/auth', () => ({
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
 import mongoose from 'mongoose'
-import { MongoMemoryServer } from 'mongodb-memory-server'
 import { getServerSession } from 'next-auth'
+import {
+    connectMongoMemory,
+    disconnectMongoMemory,
+} from '../helpers/mongoMemory'
 import { GET, PATCH } from '@/app/api/notification-preferences/route'
 import NotificationPreferences from '@/models/NotificationPreferences'
 
 const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>
 
-let mongoServer: MongoMemoryServer
-
 beforeAll(async () => {
-    mongoServer = await MongoMemoryServer.create()
-    await mongoose.connect(mongoServer.getUri())
-})
+    await connectMongoMemory()
+}, 30000)
 
 afterAll(async () => {
-    await mongoose.disconnect()
-    await mongoServer.stop()
+    await disconnectMongoMemory()
 })
 
 beforeEach(async () => {
@@ -91,7 +90,9 @@ describe('GET /api/notification-preferences', () => {
     })
 
     describe('lazy init — premier appel', () => {
-        beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
+        beforeEach(() => {
+            mockGetServerSession.mockResolvedValue(makeSession())
+        })
 
         it('should return 200 with default values for a new user', async () => {
             const res = await GET(makeGetRequest())
@@ -181,7 +182,9 @@ describe('PATCH /api/notification-preferences', () => {
     })
 
     describe('validation du body', () => {
-        beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
+        beforeEach(() => {
+            mockGetServerSession.mockResolvedValue(makeSession())
+        })
 
         it('should return 400 with NOTIF_006 when body has no recognized section', async () => {
             const res = await PATCH(makePatchRequest({}))
@@ -242,7 +245,9 @@ describe('PATCH /api/notification-preferences', () => {
     })
 
     describe('merge profond — channels', () => {
-        beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
+        beforeEach(() => {
+            mockGetServerSession.mockResolvedValue(makeSession())
+        })
 
         it('should return 200 and update only channels.push', async () => {
             const res = await PATCH(makePatchRequest({ channels: { push: false } }))
@@ -265,7 +270,9 @@ describe('PATCH /api/notification-preferences', () => {
     })
 
     describe('merge profond — types', () => {
-        beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
+        beforeEach(() => {
+            mockGetServerSession.mockResolvedValue(makeSession())
+        })
 
         it('should disable rewards without touching the 6 other types', async () => {
             const res = await PATCH(makePatchRequest({ types: { rewards: false } }))
@@ -292,7 +299,9 @@ describe('PATCH /api/notification-preferences', () => {
     })
 
     describe('merge profond — quietHours', () => {
-        beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
+        beforeEach(() => {
+            mockGetServerSession.mockResolvedValue(makeSession())
+        })
 
         it('should enable quietHours without changing start/end/timezone', async () => {
             const res = await PATCH(makePatchRequest({ quietHours: { enabled: true } }))
@@ -320,7 +329,9 @@ describe('PATCH /api/notification-preferences', () => {
     })
 
     describe('appels multiples successifs', () => {
-        beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
+        beforeEach(() => {
+            mockGetServerSession.mockResolvedValue(makeSession())
+        })
 
         it('should accumulate changes across multiple PATCH calls', async () => {
             await PATCH(makePatchRequest({ channels: { push: false } }))
@@ -346,7 +357,9 @@ describe('PATCH /api/notification-preferences', () => {
     })
 
     describe('réponses bilingues', () => {
-        beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
+        beforeEach(() => {
+            mockGetServerSession.mockResolvedValue(makeSession())
+        })
 
         it('should return French message by default', async () => {
             const res = await PATCH(makePatchRequest({ channels: { push: false } }))

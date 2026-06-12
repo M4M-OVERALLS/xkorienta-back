@@ -536,5 +536,83 @@
       "severity": "WARNING",
       "category": "NOT_FOUND"
     }
+  },
+  "PARENT": {
+    "PAR_001": {
+      "code": "PAR_001",
+      "message": {
+        "fr": "Compte parent introuvable",
+        "en": "Parent account not found"
+      },
+      "httpStatus": 404,
+      "severity": "WARNING",
+      "category": "NOT_FOUND"
+    },
+
+    "PAR_002": {
+      "code": "PAR_002",
+      "message": {
+        "fr": "Mot de passe invalide",
+        "en": "Invalid email or password"
+      },
+      "httpStatus": 401,
+      "severity": "WARNING",
+      "category": "AUTHENTICATION"
+    },
+
+    "PAR_003": {
+      "code": "PAR_003",
+      "message": {
+        "fr": "Compte désactivé",
+        "en": "Account is disabled"
+      },
+      "httpStatus": 403,
+      "severity": "WARNING",
+      "category": "AUTHORIZATION"
+    },
+
+    "PAR_004": {
+      "code": "PAR_004",
+      "message": {
+        "fr": "Email déjà utilisé",
+        "en": "Email already registered"
+      },
+      "httpStatus": 409,
+      "severity": "WARNING",
+      "category": "CONFLICT"
+    },
+
+    "PAR_005": {
+      "code": "PAR_005",
+      "message": {
+        "fr": "Token d'invitation invalide ou expiré",
+        "en": "Invalid or expired invitation token"
+      },
+      "httpStatus": 400,
+      "severity": "WARNING",
+      "category": "VALIDATION"
+    },
+
+    "PAR_006": {
+      "code": "PAR_006",
+      "message": {
+        "fr": "Erreur de validation",
+        "en": "Validation error"
+      },
+      "httpStatus": 400,
+      "severity": "WARNING",
+      "category": "VALIDATION"
+    },
+
+    "PAR_007": {
+      "code": "PAR_007",
+      "message": {
+        "fr": "Erreur interne serveur",
+        "en": "Internal server error"
+      },
+      "httpStatus": 500,
+      "severity": "CRITICAL",
+      "category": "SERVER"
+    }
   }
 }

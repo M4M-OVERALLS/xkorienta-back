@@ -11,10 +11,7 @@
 import { describe, it, expect, beforeEach } from '@jest/globals'
 import { FileExtractionService } from '@/lib/services/FileExtractionService'
 
-// Mock pdf-parse
-jest.mock('pdf-parse', () => {
-    return jest.fn()
-})
+jest.mock('pdf-parse/lib/pdf-parse.js', () => jest.fn())
 
 // Mock mammoth
 jest.mock('mammoth', () => ({
@@ -45,6 +42,11 @@ function jpegBuffer(): Buffer {
     buf[2] = 0xFF
     buf[3] = 0xE0 // JFIF marker
     return buf
+}
+
+/** Convertit un Buffer Node en BlobPart compatible avec le constructeur File (DOM). */
+function toBlobPart(buffer: Buffer): BlobPart {
+    return Uint8Array.from(buffer)
 }
 
 /** Helper : cree un buffer avec le magic bytes PNG (89 50 4E 47) */
@@ -225,7 +227,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
 
     describe('extractText — image/jpg MIME variant with proper magic bytes', () => {
         it('devrait convertir une image/jpg en base64 data URI', async () => {
-            const file = new File([jpegBuffer()], 'photo.jpg', { type: 'image/jpg' })
+            const file = new File([toBlobPart(jpegBuffer())], 'photo.jpg', { type: 'image/jpg' })
 
             const result = await FileExtractionService.extractText(file)
 
@@ -236,10 +238,10 @@ describe('FileExtractionService — Edge Cases & Security', () => {
 
     describe('extractText — PDF with valid magic bytes', () => {
         it('devrait retourner du texte whitespace si le PDF ne contient que des espaces', async () => {
-            const pdfParse = require('pdf-parse')
+            const pdfParse = require('pdf-parse/lib/pdf-parse.js')
             pdfParse.mockResolvedValue({ text: '   \n\n   \t  ' })
 
-            const file = new File([pdfBuffer()], 'whitespace.pdf', {
+            const file = new File([toBlobPart(pdfBuffer())], 'whitespace.pdf', {
                 type: 'application/pdf',
             })
 
@@ -249,10 +251,10 @@ describe('FileExtractionService — Edge Cases & Security', () => {
         })
 
         it('devrait retourner une chaine vide si pdf-parse retourne null/undefined pour text', async () => {
-            const pdfParse = require('pdf-parse')
+            const pdfParse = require('pdf-parse/lib/pdf-parse.js')
             pdfParse.mockResolvedValue({ text: null })
 
-            const file = new File([pdfBuffer()], 'null.pdf', {
+            const file = new File([toBlobPart(pdfBuffer())], 'null.pdf', {
                 type: 'application/pdf',
             })
 
@@ -267,7 +269,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
             const mammoth = require('mammoth')
             mammoth.extractRawText.mockResolvedValue({ value: null })
 
-            const file = new File([docxBuffer()], 'empty.docx', {
+            const file = new File([toBlobPart(docxBuffer())], 'empty.docx', {
                 type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             })
 
@@ -283,11 +285,11 @@ describe('FileExtractionService — Edge Cases & Security', () => {
 
     describe('Security — malicious content in extracted text', () => {
         it('devrait extraire le texte tel quel sans interpreter les balises HTML/XSS', async () => {
-            const pdfParse = require('pdf-parse')
+            const pdfParse = require('pdf-parse/lib/pdf-parse.js')
             const xssPayload = '<script>alert("XSS")</script><img onerror="fetch(\'http://evil.com\')" src=x>'
             pdfParse.mockResolvedValue({ text: xssPayload })
 
-            const file = new File([pdfBuffer()], 'xss.pdf', {
+            const file = new File([toBlobPart(pdfBuffer())], 'xss.pdf', {
                 type: 'application/pdf',
             })
 
@@ -297,11 +299,11 @@ describe('FileExtractionService — Edge Cases & Security', () => {
         })
 
         it('devrait extraire du texte contenant des caracteres SQL injection', async () => {
-            const pdfParse = require('pdf-parse')
+            const pdfParse = require('pdf-parse/lib/pdf-parse.js')
             const sqlPayload = "Robert'); DROP TABLE students;--"
             pdfParse.mockResolvedValue({ text: sqlPayload })
 
-            const file = new File([pdfBuffer()], 'sql.pdf', {
+            const file = new File([toBlobPart(pdfBuffer())], 'sql.pdf', {
                 type: 'application/pdf',
             })
 
@@ -314,7 +316,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
             const unicodeText = 'Syllabus test \u202E\u200B'
             mammoth.extractRawText.mockResolvedValue({ value: unicodeText })
 
-            const file = new File([docxBuffer()], 'unicode.docx', {
+            const file = new File([toBlobPart(docxBuffer())], 'unicode.docx', {
                 type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             })
 
@@ -325,7 +327,7 @@ describe('FileExtractionService — Edge Cases & Security', () => {
 
         it('devrait gerer une image PNG avec un nom de fichier contenant des path traversal', async () => {
             const maliciousName = '../../../etc/passwd.png'
-            const file = new File([pngBuffer()], maliciousName, {
+            const file = new File([toBlobPart(pngBuffer())], maliciousName, {
                 type: 'image/png',
             })
 

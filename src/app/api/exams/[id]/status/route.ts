@@ -155,7 +155,7 @@ async function notifyStudentsAboutExam(exam: any, teacherId: string) {
         // Create notifications for all students
         const notifications = Array.from(studentIds).map(studentId => ({
             userId: new mongoose.Types.ObjectId(studentId),
-            type: 'exam',
+            type: 'exam' as const,
             title: '📝 Nouvel Examen Disponible',
             message: `L'examen "${exam.title}" est maintenant disponible. Bonne chance !`,
             data: {
@@ -176,7 +176,7 @@ async function notifyStudentsAboutExam(exam: any, teacherId: string) {
         // Also notify the teacher
         await NotificationDeliveryService.createAndPush({
             userId: new mongoose.Types.ObjectId(teacherId),
-            type: 'success',
+            type: 'success' as const,
             title: '✅ Examen Publié',
             message: `Votre examen "${exam.title}" a été publié avec succès. ${studentIds.size} apprenants ont été notifiés.`,
             data: {

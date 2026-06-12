@@ -5,13 +5,28 @@
  * Utilise MongoDB in-memory via le setup global.
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals'
+jest.mock('@/lib/mail', () => ({
+  sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+  sendEmailChangeConfirmation: jest.fn().mockResolvedValue(undefined),
+  sendEmailChangeNotification: jest.fn().mockResolvedValue(undefined),
+}))
+
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from '@jest/globals'
 import { AuthService } from '@/lib/services/AuthService'
 import { AuthRepository } from '@/lib/repositories/AuthRepository'
 import User from '@/models/User'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
-import mongoose from 'mongoose'
+import {
+  connectMongoMemory,
+  disconnectMongoMemory,
+} from '../../helpers/mongoMemory'
+
+async function getEmailChangeFields(userId: string) {
+  return User.findById(userId)
+    .select('+emailChangeToken +emailChangeExpires +emailChangePending')
+    .lean()
+}
 
 describe('AuthService — Email Change (A-14)', () => {
   const authService = new AuthService()
@@ -21,8 +36,18 @@ describe('AuthService — Email Change (A-14)', () => {
   const NEW_EMAIL = 'new@test.com'
   let userId: string
 
+  beforeAll(async () => {
+    await connectMongoMemory()
+  }, 30000)
+
+  afterAll(async () => {
+    await disconnectMongoMemory()
+  })
+
   beforeEach(async () => {
-    const hashed = await bcrypt.hash(PASSWORD, 10)
+    await User.deleteMany({})
+
+    const hashed = await bcrypt.hash(PASSWORD, 1)
     const user = await User.create({
       email: ORIGINAL_EMAIL,
       name: 'Test User',
@@ -95,10 +120,7 @@ describe('AuthService — Email Change (A-14)', () => {
     it('should store hashed token and pending email in DB on success', async () => {
       await authService.requestEmailChange(userId, NEW_EMAIL, PASSWORD)
 
-      const db = mongoose.connection.db!
-      const doc = await db.collection('users').findOne({
-        _id: new mongoose.Types.ObjectId(userId),
-      })
+      const doc = await getEmailChangeFields(userId)
 
       expect(doc?.emailChangePending).toBe(NEW_EMAIL)
       expect(doc?.emailChangeToken).toBeDefined()
@@ -110,10 +132,7 @@ describe('AuthService — Email Change (A-14)', () => {
     it('should normalize email to lowercase', async () => {
       await authService.requestEmailChange(userId, 'NEW@TEST.COM', PASSWORD)
 
-      const db = mongoose.connection.db!
-      const doc = await db.collection('users').findOne({
-        _id: new mongoose.Types.ObjectId(userId),
-      })
+      const doc = await getEmailChangeFields(userId)
 
       expect(doc?.emailChangePending).toBe('new@test.com')
     })
@@ -122,10 +141,7 @@ describe('AuthService — Email Change (A-14)', () => {
       await authService.requestEmailChange(userId, 'first@test.com', PASSWORD)
       await authService.requestEmailChange(userId, 'second@test.com', PASSWORD)
 
-      const db = mongoose.connection.db!
-      const doc = await db.collection('users').findOne({
-        _id: new mongoose.Types.ObjectId(userId),
-      })
+      const doc = await getEmailChangeFields(userId)
 
       expect(doc?.emailChangePending).toBe('second@test.com')
     })
@@ -168,10 +184,7 @@ describe('AuthService — Email Change (A-14)', () => {
     it('should clear all emailChange fields after confirmation', async () => {
       await authService.confirmEmailChange(rawToken)
 
-      const db = mongoose.connection.db!
-      const doc = await db.collection('users').findOne({
-        _id: new mongoose.Types.ObjectId(userId),
-      })
+      const doc = await getEmailChangeFields(userId)
 
       expect(doc?.emailChangeToken).toBeUndefined()
       expect(doc?.emailChangeExpires).toBeUndefined()
@@ -225,10 +238,7 @@ describe('AuthService — Email Change (A-14)', () => {
       await authRepo.saveEmailChangeToken(userId, hashed, NEW_EMAIL, new Date(Date.now() + 3600_000))
       await authRepo.clearEmailChangeToken(userId)
 
-      const db = mongoose.connection.db!
-      const doc = await db.collection('users').findOne({
-        _id: new mongoose.Types.ObjectId(userId),
-      })
+      const doc = await getEmailChangeFields(userId)
 
       expect(doc?.emailChangeToken).toBeUndefined()
       expect(doc?.emailChangeExpires).toBeUndefined()

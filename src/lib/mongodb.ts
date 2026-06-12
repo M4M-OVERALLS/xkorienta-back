@@ -72,6 +72,41 @@ async function connectDB() {
     return cached.conn
 }
 
+
+/**
+ * Disconnect from MongoDB database
+ */
+export async function disconnectDB(): Promise<void> {
+    // Check if there's an active connection
+    if (mongoose.connection.readyState === 0) {
+        console.log('[MongoDB] No active connection to disconnect')
+        return
+    }
+
+    // Check cached connection
+    if (!cached.conn && mongoose.connection.readyState !== 1) {
+        console.log('[MongoDB] No active connection found in cache')
+        return
+    }
+
+    try {
+        console.log('[MongoDB] Disconnecting from database...')
+
+        // Close the mongoose connection
+        await mongoose.disconnect()
+
+        // Clear the cached connection
+        cached.conn = null
+        cached.promise = null
+
+        console.log('[MongoDB] ✅ Disconnected successfully')
+    } catch (error) {
+        console.error('[MongoDB] ❌ Error disconnecting:', error)
+        throw error
+    }
+}
+
+
 /**
  * Ensure indexes are properly configured
  * Fixes the email index to be sparse (allows multiple null values for phone-only users)

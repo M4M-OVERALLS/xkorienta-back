@@ -60,8 +60,8 @@ export class InvitationRepository {
         await connectDB();
         return Invitation.findOne({
             classId,
-            type,
-            status,
+            type: type as 'LINK' | 'INDIVIDUAL',
+            status: status as 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED',
             $or: [{ expiresAt: { $gt: new Date() } }, { expiresAt: { $exists: false } }]
         });
     }

@@ -1,0 +1,454 @@
+{
+  "info": {
+    "name": "Xkorienta Parent Module API",
+    "description": "Complete API testing collection for Parent Module (XKT-001 to XKT-003+)",
+    "version": "2.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "author": "Xkorienta Team",
+    "license": "MIT",
+    "updated": "2025-06-03"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Authentication (XKT-001, 002)",
+      "description": "Parent registration and login",
+      "item": [
+        {
+          "name": "1. Register Parent (XKT-001)",
+          "description": "POST /api/parent/auth/register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invitationToken\": \"{{invitationToken}}\",\n  \"name\": \"Jean-Paul Moussa\",\n  \"email\": \"parent-{{$timestamp}}@example.cm\",\n  \"phone\": \"+237691234567\",\n  \"password\": \"SecurePass123!\",\n  \"language\": \"fr\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "auth", "register"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set(\"userId\", jsonData.data.userId);",
+                  "  pm.environment.set(\"parentProfileId\", jsonData.data.parentProfileId);",
+                  "  pm.environment.set(\"parentEmail\", jsonData.data.email);",
+                  "  pm.test(\"✅ Parent registered successfully (XKT-001)\", function() {",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.data.parentProfileId).to.exist;",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Login Parent (XKT-002)",
+          "description": "POST /api/parent/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{parentEmail}}\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set(\"accessToken\", jsonData.data.accessToken);",
+                  "  pm.environment.set(\"refreshToken\", jsonData.data.refreshToken);",
+                  "  pm.test(\"✅ Parent logged in successfully (XKT-002)\", function() {",
+                  "    pm.expect(jsonData.data.accessToken).to.exist;",
+                  "    pm.expect(jsonData.data.kycLevel).to.equal(0);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Child Linking (XKT-003, 004, 005)",
+      "description": "Parent-child relationship management",
+      "item": [
+        {
+          "name": "3. Request Child Link (XKT-003)",
+          "description": "POST /api/parent/children/{learnerId}/link - Request to link to a child (PENDING approval)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"relationshipType\": \"FATHER\",\n  \"isPrimary\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/children/{{learnerId}}/link",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "children", "{{learnerId}}", "link"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set(\"linkId\", jsonData.data.linkId);",
+                  "  pm.test(\"✅ Child link request created (XKT-003)\", function() {",
+                  "    pm.expect(jsonData.data.status).to.equal(\"PENDING\");",
+                  "    pm.expect(jsonData.data.relationshipType).to.equal(\"FATHER\");",
+                  "  });",
+                  "} else if (pm.response.code === 404) {",
+                  "  pm.test(\"ℹ️  Learner not found - set {{learnerId}} variable\", function() {",
+                  "    pm.expect(pm.response.code).to.equal(404);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. List Children (XKT-005)",
+          "description": "GET /api/parent/children - Get all linked children",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/parent/children",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "children"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"✅ Children list retrieved (XKT-005)\", function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.success).to.be.true;",
+                  "  pm.expect(jsonData.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin Operations (XKT-004+)",
+      "description": "School admin approval and verification",
+      "item": [
+        {
+          "name": "⚠️ ADMIN: Approve Link (XKT-004)",
+          "description": "POST /api/parent/children/{linkId}/validate - Admin approves link request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approve\": true,\n  \"reason\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/children/{{linkId}}/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "children", "{{linkId}}", "validate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"✅ Link approved (XKT-004)\", function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  if (jsonData.data) {",
+                  "    pm.expect(jsonData.data.status).to.equal(\"ACTIVE\");",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Error Cases & Edge Cases",
+      "description": "Test error scenarios",
+      "item": [
+        {
+          "name": "Error: Invalid Relationship Type (XKT-003)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"relationshipType\": \"INVALID_TYPE\",\n  \"isPrimary\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/children/{{learnerId}}/link",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "children", "{{learnerId}}", "link"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"❌ Returns VAL_003 for invalid relationshipType\", function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "  pm.expect(jsonData.error.code).to.match(/VAL_/);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Error: Already Linked (XKT-003, PAR_009)",
+          "description": "Parent tries to link twice to same child",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"relationshipType\": \"MOTHER\",\n  \"isPrimary\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/children/{{learnerId}}/link",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "children", "{{learnerId}}", "link"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 409) {",
+                  "  pm.test(\"❌ Returns PAR_009 when already linked\", function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error.code).to.equal(\"PAR_009\");",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Error: Learner Not Found (XKT-003, PAR_010)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"relationshipType\": \"FATHER\",\n  \"isPrimary\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parent/children/nonexistent-id/link",
+              "host": ["{{baseUrl}}"],
+              "path": ["parent", "children", "nonexistent-id", "link"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"❌ Returns PAR_010 when learner not found\", function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(pm.response.code).to.equal(404);",
+                  "  pm.expect(jsonData.error.code).to.equal(\"PAR_010\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Complete Workflows",
+      "description": "Full user journeys",
+      "item": [
+        {
+          "name": "Workflow: Register → Login → Link Child (XKT-001, 002, 003)",
+          "description": "Complete parent onboarding flow",
+          "item": [
+            {
+              "name": "Step 1: Register",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/parent/auth/register",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["parent", "auth", "register"]
+                }
+              }
+            },
+            {
+              "name": "Step 2: Login",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/parent/auth/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["parent", "auth", "login"]
+                }
+              }
+            },
+            {
+              "name": "Step 3: Link Child",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/parent/children/{{learnerId}}/link",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["parent", "children", "{{learnerId}}", "link"]
+                }
+              }
+            },
+            {
+              "name": "Step 4: List Children",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/parent/children",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["parent", "children"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "admin-token-here",
+      "type": "string"
+    },
+    {
+      "key": "invitationToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "parentProfileId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "parentEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "learnerId",
+      "value": "507f1f77bcf86cd799439012",
+      "type": "string"
+    },
+    {
+      "key": "linkId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

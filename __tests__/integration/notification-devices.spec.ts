@@ -30,23 +30,22 @@ jest.mock('@/lib/auth', () => ({
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals'
 import mongoose from 'mongoose'
-import { MongoMemoryServer } from 'mongodb-memory-server'
 import { getServerSession } from 'next-auth'
+import {
+    connectMongoMemory,
+    disconnectMongoMemory,
+} from '../helpers/mongoMemory'
 import { POST, DELETE } from '@/app/api/notification-devices/route'
 import NotificationDevice from '@/models/NotificationDevice'
 
 const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>
 
-let mongoServer: MongoMemoryServer
-
 beforeAll(async () => {
-    mongoServer = await MongoMemoryServer.create()
-    await mongoose.connect(mongoServer.getUri())
-})
+    await connectMongoMemory()
+}, 30000)
 
 afterAll(async () => {
-    await mongoose.disconnect()
-    await mongoServer.stop()
+    await disconnectMongoMemory()
 })
 
 beforeEach(async () => {
@@ -105,7 +104,9 @@ describe('POST /api/notification-devices', () => {
     })
 
     describe('validation du body', () => {
-        beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
+        beforeEach(() => {
+            mockGetServerSession.mockResolvedValue(makeSession())
+        })
 
         it('should return 400 with NOTIF_001 when token is missing', async () => {
             const res = await POST(makePostRequest({ platform: 'android' }))
@@ -149,7 +150,9 @@ describe('POST /api/notification-devices', () => {
     })
 
     describe('création et upsert', () => {
-        beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
+        beforeEach(() => {
+            mockGetServerSession.mockResolvedValue(makeSession())
+        })
 
         it('should return 200 and create a device document', async () => {
             const res = await POST(makePostRequest({ token: FCM_TOKEN, platform: 'android' }))
@@ -233,7 +236,9 @@ describe('DELETE /api/notification-devices', () => {
     })
 
     describe('validation du body', () => {
-        beforeEach(() => mockGetServerSession.mockResolvedValue(makeSession()))
+        beforeEach(() => {
+            mockGetServerSession.mockResolvedValue(makeSession())
+        })
 
         it('should return 400 with NOTIF_001 when token is missing', async () => {
             const res = await DELETE(makeDeleteRequest({}))

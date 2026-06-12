@@ -24,6 +24,8 @@ export interface IUser extends Document {
 
     // Security
     emailVerified?: boolean
+    /** Incrémenté à chaque logout — invalide les JWT émis avant */
+    tokenVersion?: number
     isActive: boolean
     lastLogin?: Date
     loginAttempts: number
@@ -68,6 +70,7 @@ export interface IUser extends Document {
     // Password Reset
     resetPasswordToken?: string
     resetPasswordExpires?: Date
+    requiresPasswordChange?: boolean
 
     // Email Change (A-14)
     emailChangeToken?: string
@@ -102,6 +105,7 @@ const UserSchema = new Schema<IUser>(
         githubId: { type: String, unique: true, sparse: true },
 
         emailVerified: { type: Boolean, default: false },
+        tokenVersion: { type: Number, default: 0 },
         isActive: { type: Boolean, default: true },
         lastLogin: Date,
         loginAttempts: { type: Number, default: 0 },
@@ -141,6 +145,7 @@ const UserSchema = new Schema<IUser>(
         // Password Reset
         resetPasswordToken: { type: String, select: false },
         resetPasswordExpires: { type: Date, select: false },
+        requiresPasswordChange: { type: Boolean, default: false },
 
         // Email Change (A-14)
         emailChangeToken: { type: String, select: false },

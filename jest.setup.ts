@@ -6,12 +6,15 @@
  */
 
 import { TextDecoder, TextEncoder } from "util";
-
 // Polyfills for Node.js environment
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder as any;
 
-// Mock environment variables
+// SAFETY NET: Override DATABASE_URL to prevent any test from accidentally
+// connecting to the real production database. Tests must use connectMongoMemory()
+// or mock @/lib/mongodb explicitly. This saved us from a real data wipe incident.
+process.env.DATABASE_URL = "mongodb://localhost:27017/xkorienta-test-safeguard";
+
 process.env.TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL || "mongodb://localhost:27017/Xkorienta-test";
 process.env.TEST_API_URL = process.env.TEST_API_URL || "http://localhost:3001";

@@ -21,9 +21,11 @@ describe("SchoolTypeDetector", () => {
         SchoolType.SECONDARY,
       );
     });
-Cycle.SECONDAIRE_SECOND_CYCLE
-    it("should return SECONDARY for LYCEE", () => {
-      expect(getSchoolTypeFromCycle(Cycle.LYCEE)).toBe(SchoolType.SECONDARY);
+
+    it("should return SECONDARY for SECONDAIRE_SECOND_CYCLE", () => {
+      expect(getSchoolTypeFromCycle(Cycle.SECONDAIRE_SECOND_CYCLE)).toBe(
+        SchoolType.SECONDARY,
+      );
     });
 
     it("should return HIGHER_ED for SUPERIEUR", () => {
@@ -36,7 +38,7 @@ Cycle.SECONDAIRE_SECOND_CYCLE
   describe("deduceSchoolTypeFromCycles", () => {
     it("should return PRIMARY for homogeneous primary cycles", () => {
       const result = deduceSchoolTypeFromCycles([
-        Cycle.PRESCOLAIRE,Cycle.SECONDAIRE_SECOND_CYCLE
+        Cycle.PRESCOLAIRE,
         Cycle.PRIMAIRE,
       ]);
       expect(result).toBe(SchoolType.PRIMARY);
@@ -45,7 +47,7 @@ Cycle.SECONDAIRE_SECOND_CYCLE
     it("should return SECONDARY for homogeneous secondary cycles", () => {
       const result = deduceSchoolTypeFromCycles([
         Cycle.SECONDAIRE_PREMIER_CYCLE,
-        Cycle.LYCEE,
+        Cycle.SECONDAIRE_SECOND_CYCLE,
       ]);
       expect(result).toBe(SchoolType.SECONDARY);
     });

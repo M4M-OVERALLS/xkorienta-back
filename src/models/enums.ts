@@ -229,6 +229,7 @@ export enum UserRole {
   // Pédagogiques
   TEACHER = "TEACHER",
   SCHOOL_ADMIN = "SCHOOL_ADMIN",
+  PARENT = "PARENT",
   INSPECTOR = "INSPECTOR",
   SURVEILLANT = "SURVEILLANT",
   PREFET = "PREFET",
@@ -566,4 +567,112 @@ export enum FormFieldType {
 export enum ExamContext {
   SYLLABUS_BASED = 'SYLLABUS_BASED',
   PUBLIC = 'PUBLIC',
+}
+export enum AlertSeverity {
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH",
+  CRITICAL = "CRITICAL",
+}
+
+export enum AttemptStatus {
+  STARTED = "STARTED",
+  COMPLETED = "COMPLETED",
+  EXPIRED = "EXPIRED",
+  ABANDONED = "ABANDONED",
+}
+
+/**
+ * Xkorienta Parent Module Enumerations
+ * Extends existing UserRole enum and adds new enums for parent features
+ */
+
+// KYC Verification Levels
+export enum KYCLevel {
+  NONE = 0,
+  LEVEL_1 = 1, // Identity verified
+  LEVEL_2 = 2, // School relationship confirmed
+}
+
+// KYC Verification Status
+export enum KYCStatus {
+  PENDING = 'PENDING',
+  SUBMITTED = 'SUBMITTED',
+  APPROVED = 'APPROVED',
+  VERIFIED = 'VERIFIED',
+  CONFIRMED = 'CONFIRMED',
+  REJECTED = 'REJECTED',
+}
+
+// Parent-Learner Link Status
+export enum LinkStatus {
+  PENDING = 'PENDING', // Awaiting admin approval
+  ACTIVE = 'ACTIVE', // Approved, parent can access
+  REVOKED = 'REVOKED', // Link terminated
+}
+
+// Attendance Status (Option A: Exam-based)
+export enum AttendanceStatus {
+  PRESENT = 'PRESENT', // Submitted exam before deadline
+  ABSENT = 'ABSENT', // No exam submission
+  LATE = 'LATE', // Submitted after deadline
+  EXCUSED = 'EXCUSED', // Admin marked as excused
+}
+
+// Early Warning Alert Type
+export enum AlertType {
+  ATTENDANCE = 'ATTENDANCE',
+  PERFORMANCE = 'PERFORMANCE',
+  DROPOUT_RISK = 'DROPOUT_RISK',
+}
+
+// SOS Alert Status
+export enum SOSAlertStatus {
+  OPEN = 'OPEN',
+  ACKNOWLEDGED = 'ACKNOWLEDGED',
+  RESOLVED = 'RESOLVED',
+  ESCALATION_REQUIRED = 'ESCALATION_REQUIRED',
+}
+
+// Audit Log Action Type
+export enum AuditAction {
+  KYC_L1_SUBMITTED = 'KYC_L1_SUBMITTED',
+  KYC_L1_VERIFIED = 'KYC_L1_VERIFIED',
+  KYC_L1_REJECTED = 'KYC_L1_REJECTED',
+  KYC_L2_VERIFIED = 'KYC_L2_VERIFIED',
+  LINK_CREATED = 'LINK_CREATED',
+  LINK_APPROVED = 'LINK_APPROVED',
+  LINK_REVOKED = 'LINK_REVOKED',
+  SOS_TRIGGERED = 'SOS_TRIGGERED',
+  SOS_ACKNOWLEDGED = 'SOS_ACKNOWLEDGED',
+  DASHBOARD_ACCESSED = 'DASHBOARD_ACCESSED',
+}
+
+// Risk Score Categories (for early warning system)
+export enum RiskLevel {
+  ON_TRACK = 'ON_TRACK', // No risk
+  AT_RISK = 'AT_RISK', // Medium risk
+  CRITICAL = 'CRITICAL', // High risk
+}
+
+// Notification Type (extend existing)
+export const PARENT_NOTIFICATION_TYPES = {
+  KYC_L1_VERIFIED: 'kyc_l1_verified',
+  KYC_L1_REJECTED: 'kyc_l1_rejected',
+  KYC_L2_VERIFIED: 'kyc_l2_verified',
+  LINK_APPROVED: 'link_approved',
+  EARLY_WARNING: 'early_warning',
+  SOS_ACKNOWLEDGED: 'sos_acknowledged',
+  EXAM_RESULT: 'exam_result',
+  ATTENDANCE_ALERT: 'attendance_alert',
+  DROPOUT_WARNING: 'dropout_warning',
+} as const;
+
+export type ParentNotificationType = typeof PARENT_NOTIFICATION_TYPES[keyof typeof PARENT_NOTIFICATION_TYPES];
+
+export enum ParentRelationshipType {
+  FATHER = "FATHER",
+  MOTHER = "MOTHER",
+  GUARDIAN = "GUARDIAN",
+  OTHER = "OTHER",
 }
