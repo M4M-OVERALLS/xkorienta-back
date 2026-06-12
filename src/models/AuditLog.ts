@@ -41,6 +41,10 @@ export interface IAuditLog extends Document {
 
     // Immutable flag (set after creation)
     isImmutable: boolean;
+
+    // Methods
+    verifyHash(crypto: any): boolean;
+    getDescription(): string;
 }
 
 /**
