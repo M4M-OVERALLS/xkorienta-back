@@ -179,6 +179,45 @@ export class ParentError extends BaseApplicationError {
         });
     }
 
+    /**
+     * PAR_013: KYC L1 must be verified before L2 confirmation
+     */
+    static kycL1NotVerified() {
+        return new ParentError({
+            code: 'PAR_013',
+            message: 'KYC Level 1 must be verified before Level 2 confirmation',
+            httpStatus: 400,
+            severity: "WARNING" as ErrorSeverity,
+            category: "VALIDATION" as ErrorCategory,
+        });
+    }
+
+    /**
+     * PAR_014: File upload failed
+     */
+    static fileUploadFailed(reason?: string) {
+        return new ParentError({
+            code: 'PAR_014',
+            message: `File upload failed${reason ? ': ' + reason : ''}`,
+            httpStatus: 400,
+            severity: "WARNING" as ErrorSeverity,
+            category: "VALIDATION" as ErrorCategory,
+        });
+    }
+
+    /**
+     * PAR_015: Invalid file type or size
+     */
+    static invalidFileFormat() {
+        return new ParentError({
+            code: 'PAR_015',
+            message: 'Invalid file format. Allowed: JPEG, PNG, PDF. Max size: 5MB',
+            httpStatus: 400,
+            severity: "WARNING" as ErrorSeverity,
+            category: "VALIDATION" as ErrorCategory,
+        });
+    }
+
     constructor(options: BaseApplicationErrorOptions) {
         super(
             options.code,
