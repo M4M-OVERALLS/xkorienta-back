@@ -1,7 +1,12 @@
-import mongoose, {Document, Model, Schema} from 'mongoose';
+import mongoose, { Document, Model, Schema } from 'mongoose';
 import { KYCLevel, KYCStatus } from '@/models/enums';
 
-export interface IParentProfile extends Document {
+interface IParentProfileMethods {
+    canAccessDashboard(): boolean;
+    canRequestChildLink(): boolean;
+}
+
+export interface IParentProfile extends Document, IParentProfileMethods {
     user: mongoose.Types.ObjectId; // Reference to User model (role = PARENT)
 
     // KYC Verification information
@@ -157,14 +162,13 @@ const parentProfileSchema = new Schema<IParentProfile>(
         },
 
         // Metadata
-
         createdAt: {
             type: Date,
-            description: "Date at which account was created",
+            description: 'Date at which account was created',
         },
         updatedAt: {
             type: Date,
-            description : "Date at which account was updated",
+            description: 'Date at which account was updated',
         },
         lastLoginAt: {
             type: Date,
@@ -177,11 +181,11 @@ const parentProfileSchema = new Schema<IParentProfile>(
     }
 );
 
-// Some methids useful to the Parent Entity
+// Instance Methods
 
 /**
  * Can this parent access the dashboard?
- * Requires: that the parent is KYC L2 verified
+ * Requires: that the parent is KYC L2 verified and account is active
  */
 parentProfileSchema.methods.canAccessDashboard = function (): boolean {
     return this.kycLevel >= KYCLevel.LEVEL_2 && this.isActive;
@@ -194,7 +198,6 @@ parentProfileSchema.methods.canAccessDashboard = function (): boolean {
 parentProfileSchema.methods.canRequestChildLink = function (): boolean {
     return this.kycLevel >= KYCLevel.LEVEL_1;
 };
-
 
 const ParentProfile: Model<IParentProfile> =
     mongoose.models.ParentProfile || mongoose.model<IParentProfile>('ParentProfile', parentProfileSchema);
