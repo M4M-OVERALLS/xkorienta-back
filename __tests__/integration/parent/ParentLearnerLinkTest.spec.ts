@@ -56,8 +56,8 @@ function signToken(payload: {
 
 async function createParent(overrides: {
     email?: string;
-    kycLevel?: number;
-    kycStatus?: string;
+    kycLevel?: KYCLevel;
+    kycStatus?: KYCStatus;
 } = {}) {
     const user = await User.create({
         name: 'Test Parent',
@@ -91,7 +91,7 @@ async function createLearner(suffix = '') {
         name: `Student${suffix}`,
         email: `student${suffix}@school.cm`,
         password: 'hashed-password',
-        role: 'STUDENT',
+        role: UserRole.STUDENT,
         isActive: true,
     });
 }

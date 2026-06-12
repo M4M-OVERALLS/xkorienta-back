@@ -58,7 +58,7 @@ export const POST = async (request: NextRequest) => {
         // Extract admin ID from jwt token
         const adminId = extractAdminIdFromToken(token);
         if (!adminId) {
-            return ApiResponse.unauthorized('Invalid token - admin ID not found');
+            return ApiResponse.unauthorized('Invalid jwt token - admin ID not found');
         }
 
         // Parse request body

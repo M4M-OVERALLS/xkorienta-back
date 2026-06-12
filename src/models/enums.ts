@@ -611,14 +611,6 @@ export enum LinkStatus {
   REVOKED = 'REVOKED', // Link terminated
 }
 
-// Parent-Learner Relationship Type
-export enum RelationshipType {
-  FATHER = 'FATHER',
-  MOTHER = 'MOTHER',
-  GUARDIAN = 'GUARDIAN',
-  OTHER = 'OTHER',
-}
-
 // Attendance Status (Option A: Exam-based)
 export enum AttendanceStatus {
   PRESENT = 'PRESENT', // Submitted exam before deadline
