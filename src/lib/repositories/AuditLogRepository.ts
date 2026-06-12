@@ -166,7 +166,7 @@ export class AuditLogRepository {
         await connectDB();
 
         const logs = await AuditLog.find({
-            action: { $in: ['KYC_L1_VERIFIED', 'KYC_L1_REJECTED', 'KYC_L2_VERIFIED'] },
+            action: { $in: [AuditAction.KYC_L1_VERIFIED, AuditAction.KYC_L1_REJECTED, AuditAction.KYC_L2_VERIFIED] },
             createdAt: { $gte: startDate, $lte: endDate },
         });
 
@@ -196,7 +196,7 @@ export class AuditLogRepository {
 
         return await AuditLog.find({
             targetId: sosAlertId,
-            action: { $in: ['SOS_TRIGGERED', 'SOS_ACKNOWLEDGED'] },
+            action: { $in: [AuditAction.SOS_TRIGGERED, AuditAction.SOS_ACKNOWLEDGED] },
         }).sort({ createdAt: 1 });
     }
 
