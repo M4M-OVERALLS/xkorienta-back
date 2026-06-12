@@ -160,6 +160,9 @@ export const authOptions: NextAuthOptions = {
                             token.name = dbUser.name
                             token.picture = sanitizeTokenImage(dbUser.image || dbUser.metadata?.avatar)
                             token.schools = dbUser.schools?.map((id: any) => id.toString()) || []
+                            if ((dbUser as any).requiresPasswordChange) {
+                                token.requiresPasswordChange = true
+                            }
                             // Institution : champ direct ou nom de la première école liée
                             if (dbUser.institution) {
                                 token.institution = dbUser.institution
