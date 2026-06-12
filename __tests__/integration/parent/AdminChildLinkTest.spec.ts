@@ -45,15 +45,6 @@ function generateAdminToken(adminId: string): string {
     );
 }
 
-// Add this helper function at the top of your test file
-async function debugResponse(response: { status: number; body: any }) {
-    console.log('\n=== DEBUG RESPONSE ===');
-    console.log('Status:', response.status);
-    console.log('Body:', JSON.stringify(response.body, null, 2));
-    console.log('=====================\n');
-    return response;
-}
-
 
 /**
  * Create a parent user and profile with optional KYC level
@@ -206,8 +197,6 @@ describe('Admin Child Link Approval Integration Tests (XKT-004)', () => {
                 pendingLink._id.toString(),
                 { isPrimary: true }
             );
-
-            await debugResponse(response);
 
             expect(response.status).toBe(200);
             expect(response.body.success).toBe(true);
