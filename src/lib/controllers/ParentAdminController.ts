@@ -25,7 +25,6 @@ export class ParentAdminController {
         // Validate input
         let validatedData;
         try {
-            // ✅ FIX: Schema expects 'learnerId', not 'linkId'
             validatedData = validateLinkSchema.parse({
                 learnerId: linkId,  // Map linkId parameter to learnerId field
                 approve: (body as any).approve,
