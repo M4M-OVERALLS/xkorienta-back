@@ -29,11 +29,7 @@ export const POST = async (
     { params }: { params: Promise<{ learnerId: string }> }
 ) => {
     try {
-        // ✅ CRITICAL: Must await params
         const { learnerId } = await params;
-
-        // ✅ Debug log
-        console.log('✅ Route handler - learnerId received:', learnerId);
 
         const token = extractToken(request);
         if (!token) {
@@ -95,7 +91,6 @@ export const POST = async (
             });
         }
 
-        console.error('[POST /api/parent/children/:learnerId/validate] Error:', error);
         return ApiResponse.internalError('Failed to process link validation');
     }
 };
